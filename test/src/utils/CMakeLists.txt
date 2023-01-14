@@ -1,0 +1,2 @@
+add_executable(TSQueueTestMain TSQueueTest.cpp)
+target_link_libraries(TSQueueTestMain PUBLIC gtest_main)

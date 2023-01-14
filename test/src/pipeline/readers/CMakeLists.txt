@@ -1,0 +1,2 @@
+add_executable(BlockReaderTestMain BlockReaderTest.cpp)
+target_link_libraries(BlockReaderTestMain PUBLIC DefaultTasks gtest_main)

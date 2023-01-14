@@ -1,0 +1,2 @@
+add_executable(SearcherTestMain SearcherTest.cpp)
+target_link_libraries(SearcherTestMain PUBLIC DefaultTasks gtest_main)

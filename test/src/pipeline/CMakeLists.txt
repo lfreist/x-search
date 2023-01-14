@@ -1,0 +1,10 @@
+add_subdirectory(processors)
+add_subdirectory(readers)
+add_subdirectory(result_collectors)
+add_subdirectory(searchers)
+
+add_executable(TaskTestMain TaskTest.cpp)
+target_link_libraries(TaskTestMain PUBLIC TaskManager gtest_main)
+
+add_executable(TaskManagerTestMain TaskManagerTest.cpp)
+target_link_libraries(TaskManagerTestMain PUBLIC TaskManager gtest_main)
