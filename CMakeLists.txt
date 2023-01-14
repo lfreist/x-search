@@ -21,7 +21,7 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 endif()
 
 # --- BOOST ------------------------------------------------------------------------------------------------------------
-find_package(Boost 1.74 REQUIRED COMPONENTS program_options chrono)
+find_package(Boost 1.74 REQUIRED COMPONENTS program_options)
 include_directories(${Boost_INCLUDE_DIR})
 # ----------------------------------------------------------------------------------------------------------------------
 
