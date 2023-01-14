@@ -12,9 +12,7 @@ RUN rm -rf /var/lib/apt/lists/*
 COPY . xsearch
 WORKDIR "xsearch"
 RUN git submodule update --init --recursive
-RUN make build
-RUN make lib_test
-RUN make sfgrep_test
+RUN make help
 
 # docker build -t leon-freist-bachelorthesis .
 # docker run -it -v $(pwd)/files:/inputfiles/input:ro --name leon-freist-bachelorthesis leon-freist-bachelorthesis
