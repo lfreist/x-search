@@ -5,7 +5,7 @@
 
 #include <xsearch/DataChunk.h>
 
-namespace xs::tasks::collector {
+namespace xs::collector {
 
 class GrepOutput {
  public:
@@ -30,4 +30,4 @@ class GrepOutput {
   size_t _offset = 0;
 };
 
-}  // namespace xs::tasks::collector
+}  // namespace xs::collector

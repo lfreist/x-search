@@ -24,21 +24,21 @@ ProducerTask::ProducerTask(std::function<std::vector<DataChunk>()> func,
 
 // _____________________________________________________________________________
 void ProducerTask::run_if_possible(xs::utils::TSQueue<DataChunk>* queue) {
-  std::unique_lock locker(_mutex);
-  if (_done.load() || _num_workers.load() >= _max_workers) {
+  std::unique_lock locker(*_mutex);
+  if (_done || _num_workers >= _max_workers) {
     return;
   }
-  _num_workers.fetch_add(1);
+  _num_workers++;
   locker.unlock();
   while (true) {
     std::vector<DataChunk> dcs = _func();
     if (dcs.empty()) {
       locker.lock();
-      _num_workers.fetch_sub(1);
-      if (_num_workers.load() == 0) {
+      _num_workers--;
+      if (_num_workers == 0) {
         // there is no other thread reading and reading did not result in new
         //  data -> we mark the reading task and the queue as closed.
-        _done.store(true);
+        _done = true;
         queue->close();
         return;
       }
@@ -62,11 +62,8 @@ void ProducerTask::run_if_possible(xs::utils::TSQueue<DataChunk>* queue) {
     }
   }
   locker.lock();
-  _num_workers.fetch_sub(1);
+  _num_workers--;
 }
-
-// _____________________________________________________________________________
-bool ProducerTask::is_done() { return _done.load(); }
 
 // ===== CollectorTask =========================================================
 // is templated on the result type and thus defined within the header file.

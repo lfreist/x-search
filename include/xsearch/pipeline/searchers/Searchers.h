@@ -4,7 +4,7 @@
 #include <re2/re2.h>
 #include <xsearch/DataChunk.h>
 
-namespace xs::tasks {
+namespace xs::searcher {
 
 class Searcher {
  public:
@@ -12,6 +12,8 @@ class Searcher {
   ~Searcher() = default;
 
   void count(DataChunk* data);
+
+  void count_lines(DataChunk* data);
 
   void byte_offsets_match(DataChunk* data, bool skip_line = true);
 
@@ -29,4 +31,4 @@ class Searcher {
   bool _regex;
 };
 
-}  // namespace xs::tasks
+}  // namespace xs::searcher

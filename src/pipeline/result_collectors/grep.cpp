@@ -8,7 +8,7 @@
 
 #include <cstring>
 
-namespace xs::tasks::collector {
+namespace xs::collector {
 
 // _____________________________________________________________________________
 std::string _get_regex_match(const char* data, size_t size,
@@ -128,4 +128,4 @@ uint64_t GrepOutput::getCount() const {
   return _counter;
 }
 
-}  // namespace xs::tasks::collector
+}  // namespace xs::collector

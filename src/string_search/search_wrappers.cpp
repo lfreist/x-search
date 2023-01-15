@@ -132,7 +132,8 @@ std::vector<uint64_t> line_indices(xs::DataChunk* data,
 }
 
 // _____________________________________________________________________________
-uint64_t count(xs::DataChunk* data, const std::string& pattern) {
+uint64_t count(xs::DataChunk* data, const std::string& pattern,
+               bool skip_to_nl) {
   uint64_t result = 0;
   char* data_c = data->data();
   const char* pattern_c = pattern.c_str();
@@ -145,11 +146,13 @@ uint64_t count(xs::DataChunk* data, const std::string& pattern) {
     }
     result++;
     shift = match + pattern.size();
-    match = simd::findNextNewLine(data_c, data->size(), shift);
-    if (match == -1) {
-      break;
+    if (skip_to_nl) {
+      match = simd::findNextNewLine(data_c, data->size(), shift);
+      if (match == -1) {
+        break;
+      }
+      shift = match + 1;
     }
-    shift = match + 1;
   }
   return result;
 }
@@ -193,7 +196,8 @@ std::vector<uint64_t> regex::line_indices(xs::DataChunk* data,
 }
 
 // _____________________________________________________________________________
-uint64_t regex::count(xs::DataChunk* data, const re2::RE2& pattern) {
+uint64_t regex::count(xs::DataChunk* data, const re2::RE2& pattern,
+                      bool skip_to_nl) {
   uint64_t counter = 0;
   re2::StringPiece input(data->data(), data->size());
   re2::StringPiece match;
@@ -202,12 +206,14 @@ uint64_t regex::count(xs::DataChunk* data, const re2::RE2& pattern) {
     counter++;
     shift += match.size();
     input.remove_prefix(shift);
-    size_t next_nl = input.find('\n');
-    if (next_nl == re2::StringPiece::npos) {
-      break;
+    if (skip_to_nl) {
+      size_t next_nl = input.find('\n');
+      if (next_nl == re2::StringPiece::npos) {
+        break;
+      }
+      next_nl++;
+      input.remove_prefix(next_nl);
     }
-    next_nl++;
-    input.remove_prefix(next_nl);
   }
   return counter;
 }

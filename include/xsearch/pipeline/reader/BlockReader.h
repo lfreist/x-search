@@ -11,7 +11,7 @@
 #include <mutex>
 #include <string>
 
-namespace xs::tasks::reader {
+namespace xs::reader {
 
 class BlockReader {
  public:
@@ -28,4 +28,4 @@ class BlockReader {
   MetaFile _meta_file;
 };
 
-}  // namespace xs::tasks::reader
+}  // namespace xs::reader

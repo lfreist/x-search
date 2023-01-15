@@ -61,6 +61,7 @@ IF(${MAIN_PROJECT})
 
     add_test(MetaFileTest test/src/MetaFileTestMain)
     add_test(DataChunkTest test/src/DataChunkTestMain)
+    add_test(ExternSearcherTest test/src/ExternSearcherTestMain)
     add_test(TSQueueTest test/src/utils/TSQueueTestMain)
     add_test(OffsetMappingsTest test/src/string_search/OffsetMappingsTestMain)
     add_test(SearchWrappersTest test/src/string_search/SearchWrappersTestMain)

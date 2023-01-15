@@ -16,8 +16,10 @@ template <typename T, typename Enable = void>
 class ExternSearcher {};
 
 template <typename T>
-class ExternSearcher<
-    T, typename std::enable_if<std::is_same<T, restype::count>::value>::type> {
+class ExternSearcher<T,
+                     typename std::enable_if<
+                         std::is_same<T, restype::count>::value ||
+                         std::is_same<T, restype::count_lines>::value>::type> {
  public:
   static size_t search(const std::string& file_path,
                        const std::string& meta_file_path,

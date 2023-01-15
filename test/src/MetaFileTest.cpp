@@ -4,14 +4,13 @@
 #include <gtest/gtest.h>
 #include <xsearch/MetaFile.h>
 
-#include <filesystem>
 namespace xs {
 
 TEST(MetaFileTest, constructor) {
   {
     MetaFile meta_file("test/files/dummy.txt.sfzst.meta", std::ios::in);
 
-    ASSERT_EQ(meta_file._filePath, "test/files/dummy.txt.sfzst.meta");
+    ASSERT_EQ(meta_file._filePath, "test/files/dummy.sfzst.meta");
     ASSERT_EQ(meta_file._openMode, std::ios::in | std::ios::binary);
     ASSERT_TRUE(meta_file._metaFileStream.is_open());
   }
@@ -25,7 +24,7 @@ TEST(MetaFileTest, constructor) {
 }
 
 TEST(MetaFileTest, nextChunkMetaData) {
-  MetaFile meta_file("test/files/dummy.txt.sfzst.meta", std::ios::in);
+  MetaFile meta_file("test/files/dummy.sfzst.meta", std::ios::in);
 
   std::optional<ChunkMetaData> chunk_size = meta_file.nextChunkMetaData();
   ASSERT_TRUE(chunk_size.has_value());
@@ -66,7 +65,7 @@ TEST(MetaFileTest, nextChunkMetaData) {
 }
 
 TEST(MetaFileTest, nextChunkMetaDataMultiple) {
-  MetaFile meta_file("test/files/dummy.txt.sfzst.meta", std::ios::in);
+  MetaFile meta_file("test/files/dummy.sfzst.meta", std::ios::in);
 
   std::vector<ChunkMetaData> chunk_sizes = meta_file.nextChunkMetaData(5);
   ASSERT_EQ(chunk_sizes.size(), 5);

@@ -83,7 +83,8 @@ std::vector<uint64_t> line_indices(xs::DataChunk* data,
  * @param pattern const std::string&: pattern to be searched for
  * @return number of matching lines within data
  */
-uint64_t count(xs::DataChunk* data, const std::string& pattern);
+uint64_t count(xs::DataChunk* data, const std::string& pattern,
+               bool skip_to_nl = true);
 
 namespace regex {
 
@@ -160,7 +161,8 @@ std::vector<uint64_t> line_indices(xs::DataChunk* data,
  * @param pattern const re2::RE2&: pattern to be searched for
  * @return number of matching lines within data
  */
-uint64_t count(xs::DataChunk* data, const re2::RE2& pattern);
+uint64_t count(xs::DataChunk* data, const re2::RE2& pattern,
+               bool skip_to_nl = true);
 
 }  // namespace regex
 

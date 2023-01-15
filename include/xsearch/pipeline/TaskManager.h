@@ -10,12 +10,11 @@ namespace xs::pipeline {
 template <class ResType>
 class TaskManager {
  public:
-  TaskManager(ProducerTask* producer_task, std::vector<ProcessingTask*> tasks,
-              CollectorTask<ResType>* collector_task)
-      : _tasks(std::move(tasks)) {
-    _producer_task = producer_task;
-    _collector_task = collector_task;
-  }
+  TaskManager(ProducerTask producer_task, std::vector<ProcessingTask> tasks,
+              CollectorTask<ResType> collector_task)
+      : _producer_task(std::move(producer_task)),
+        _tasks(std::move(tasks)),
+        _collector_task(std::move(collector_task)) {}
 
   ~TaskManager() {
     if (_executed) {
@@ -38,7 +37,7 @@ class TaskManager {
     _executed = true;
   }
 
-  ResType wait() {
+  ResType join() {
     if (_executed) {
       for (auto& thread : _threads) {
         if (thread.joinable()) {
@@ -46,7 +45,7 @@ class TaskManager {
         }
       }
     }
-    return _collector_task->getResult();
+    return _collector_task.getResult();
   }
 
  private:
@@ -61,11 +60,11 @@ class TaskManager {
     //  subsequently and thus, all data will be processed completely before all
     //  threads stop working.
     while (!done) {
-      _producer_task->run_if_possible(&_processors_queue);
+      _producer_task.run_if_possible(&_processors_queue);
       while (true) {
         bool pop_failed_flag = false;
         // TODO: if readers are slow and many threads working here, we get a
-        //  busy wait: they cannot pop from queue and cannot work as readers...
+        //  busy join: they cannot pop from queue and cannot work as readers...
         //  FIX THIS!
         std::optional<DataChunk> optData =
             _processors_queue.pop(&pop_failed_flag);
@@ -82,20 +81,24 @@ class TaskManager {
         // data received
         DataChunk& data = optData.value();
         for (auto& t : _tasks) {
-          t->run(&data);
+          t.run(&data);
         }
-        _collectors_queue.push(std::move(data));
+        bool push_warn_flag = false;
+        _collectors_queue.push(std::move(data), &push_warn_flag);
+        if (push_warn_flag) {
+          break;
+        }
       }
-      _collector_task->run_if_possible(&_collectors_queue);
+      _collector_task.run_if_possible(&_collectors_queue);
     }
   }
 
   utils::TSQueue<DataChunk> _processors_queue;
   utils::TSQueue<DataChunk> _collectors_queue;
   bool _executed = false;
-  ProducerTask* _producer_task;
-  std::vector<ProcessingTask*> _tasks;
-  CollectorTask<ResType>* _collector_task;
+  ProducerTask _producer_task;
+  std::vector<ProcessingTask> _tasks;
+  CollectorTask<ResType> _collector_task;
   std::vector<std::thread> _threads;
 };
 

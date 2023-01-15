@@ -6,11 +6,11 @@
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/utils/InlineBench.h>
 
-namespace xs::tasks {
+namespace xs::searcher {
 
 // _____________________________________________________________________________
 Searcher::Searcher(std::string pattern, bool regex)
-    : _pattern(std::move(pattern)) {  // TODO: is this move okay?
+    : _pattern(std::move(pattern)) {
   _regex = regex;
   if (_regex) {
     _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
@@ -23,9 +23,21 @@ void Searcher::count(DataChunk* data) {
   data->results.regex = _regex;
   if (_regex) {
     data->results._match_count =
-        xs::search::regex::count(data, *_regex_pattern);
+        xs::search::regex::count(data, *_regex_pattern, false);
   } else {
-    data->results._match_count = xs::search::count(data, _pattern);
+    data->results._match_count = xs::search::count(data, _pattern, false);
+  }
+}
+
+// _____________________________________________________________________________
+void Searcher::count_lines(DataChunk* data) {
+  data->results.pattern = _pattern;
+  data->results.regex = _regex;
+  if (_regex) {
+    data->results._match_count =
+        xs::search::regex::count(data, *_regex_pattern, true);
+  } else {
+    data->results._match_count = xs::search::count(data, _pattern, true);
   }
 }
 
@@ -53,7 +65,7 @@ void Searcher::byte_offsets_line(DataChunk* data) {
   data->results.regex = _regex;
   if (_regex) {
     data->results._local_byte_offsets =
-        xs::search::regex::local_byte_offsets_line(data, _regex_pattern);
+        xs::search::regex::local_byte_offsets_line(data, *_regex_pattern);
   } else {
     data->results._local_byte_offsets =
         xs::search::local_byte_offsets_line(data, _pattern);
@@ -106,4 +118,4 @@ void Searcher::setPattern(const std::string& pattern, bool regex) {
   _regex = regex;
 }
 
-}  // namespace xs::tasks
+}  // namespace xs::searcher

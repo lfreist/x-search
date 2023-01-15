@@ -7,3 +7,6 @@ target_link_libraries(DataChunkTestMain PUBLIC DataChunk gtest_main)
 
 add_executable(MetaFileTestMain MetaFileTest.cpp)
 target_link_libraries(MetaFileTestMain PUBLIC MetaFile gtest_main)
+
+add_executable(ExternSearcherTestMain ExternSearcherTest.cpp)
+target_link_libraries(ExternSearcherTestMain PUBLIC ExternSearcher gtest_main)

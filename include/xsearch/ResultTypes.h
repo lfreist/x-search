@@ -3,13 +3,14 @@
 
 #pragma once
 
-namespace restype {
+namespace xs::restype {
 
 struct byte_positions {};
 struct line_numbers {};
 struct line_indices {};
 struct lines {};
 struct count {};
+struct count_lines {};
 struct full {};
 
-}  // namespace restype
+}  // namespace xs::restype

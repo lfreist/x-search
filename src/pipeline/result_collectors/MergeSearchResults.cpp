@@ -11,6 +11,13 @@ void Result<restype::count>::addPartialResult(DataChunk* data) {
   _result += data->results._match_count;
 }
 
+// ===== restype::count_lines implementation
+// =========================================
+template <>
+void Result<restype::count_lines>::addPartialResult(DataChunk* data) {
+  _result += data->results._match_count;
+}
+
 // ===== restype::byte_positions implementation ================================
 // _____________________________________________________________________________
 template <>
@@ -20,7 +27,7 @@ void Result<restype::byte_positions>::addPartialResult(DataChunk* data) {
   }
   auto& data_bo = data->results._local_byte_offsets.value();
   std::transform(data_bo.begin(), data_bo.end(), data_bo.begin(),
-                 [](auto v) { return v + 1; });
+                 [](auto v) { return v; });
   _result.reserve(_result.size() + data_bo.size());
   _result.insert(_result.end(), std::make_move_iterator(data_bo.begin()),
                  std::make_move_iterator(data_bo.end()));

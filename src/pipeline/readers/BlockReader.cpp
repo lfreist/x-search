@@ -4,7 +4,7 @@
 #include <xsearch/pipeline/reader/BlockReader.h>
 #include <xsearch/utils/InlineBench.h>
 
-namespace xs::tasks::reader {
+namespace xs::reader {
 
 BlockReader::BlockReader(std::string file_path, std::string meta_file_path,
                          int chunks_per_read)
@@ -38,4 +38,4 @@ std::vector<DataChunk> BlockReader::read() {
   return dcs;
 }
 
-}  // namespace xs::tasks::reader
+}  // namespace xs::reader

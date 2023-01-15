@@ -25,15 +25,18 @@ namespace xs {
  * @tparam Enable
  */
 template <typename T, typename Enable = void>
-class Result {};
+class Result {
+  Result() = default;
+};
 
 /**
  * Result class for count matches only.
  * @tparam T
  */
 template <typename T>
-class Result<
-    T, typename std::enable_if<std::is_same<T, restype::count>::value>::type> {
+class Result<T, typename std::enable_if<
+                    std::is_same<T, restype::count>::value ||
+                    std::is_same<T, restype::count_lines>::value>::type> {
  public:
   Result() = default;
 
