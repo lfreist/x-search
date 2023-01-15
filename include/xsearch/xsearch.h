@@ -7,6 +7,7 @@
 #include <xsearch/ExternSearcher.h>
 #include <xsearch/FilePreprocessing.h>
 #include <xsearch/MetaFile.h>
+#include <xsearch/ResultTypes.h>
 #include <xsearch/pipeline/Task.h>
 #include <xsearch/pipeline/TaskManager.h>
 #include <xsearch/pipeline/processors/decompressors.h>
@@ -21,3 +22,4 @@
 #include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/compression/Lz4Wrapper.h>
 #include <xsearch/utils/compression/ZstdWrapper.h>
+#include <xsearch/utils/utils.h>

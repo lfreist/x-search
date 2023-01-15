@@ -13,21 +13,6 @@
 
 namespace po = boost::program_options;
 
-/**
- * Check whether a pattern should be used as regex or as plain text.
- * pattern is used as regex if it contains regex specific characters.
- * @param pattern
- * @return bool: true if regex, else false
- */
-bool use_str_as_regex(const std::string& pattern) {
-  try {
-    std::regex r(pattern);
-    return !(std::regex_match(pattern, std::regex("^" + pattern + "$")));
-  } catch (std::regex_error& e) {
-    return false;
-  }
-}
-
 int main(int argc, char** argv) {
   std::string pattern;
   std::string file_path;
@@ -110,7 +95,7 @@ int main(int argc, char** argv) {
   // ---------------------------------------------------------------------------
 
   // check if provided pattern is regex ----------------------------------------
-  bool regex = use_str_as_regex(pattern);
+  bool regex = xs::utils::use_str_as_regex(pattern);
   // ---------------------------------------------------------------------------
 
   // creating TaskManager with its tasks and run it ----------------------------

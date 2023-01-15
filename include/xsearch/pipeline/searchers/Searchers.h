@@ -21,9 +21,11 @@ class Searcher {
 
   void line(DataChunk* data);
 
+  void setPattern(const std::string& pattern, bool regex = false);
+
  private:
   std::string _pattern;
-  re2::RE2 _regex_pattern;
+  std::unique_ptr<re2::RE2> _regex_pattern;
   bool _regex;
 };
 

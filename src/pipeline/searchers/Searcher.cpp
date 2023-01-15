@@ -10,9 +10,11 @@ namespace xs::tasks {
 
 // _____________________________________________________________________________
 Searcher::Searcher(std::string pattern, bool regex)
-    : _regex_pattern("(" + pattern + ")") {  // TODO: is this move okay?
+    : _pattern(std::move(pattern)) {  // TODO: is this move okay?
   _regex = regex;
-  _pattern = std::move(pattern);
+  if (_regex) {
+    _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
+  }
 }
 
 // _____________________________________________________________________________
@@ -20,7 +22,8 @@ void Searcher::count(DataChunk* data) {
   data->results.pattern = _pattern;
   data->results.regex = _regex;
   if (_regex) {
-    data->results._match_count = xs::search::regex::count(data, _regex_pattern);
+    data->results._match_count =
+        xs::search::regex::count(data, *_regex_pattern);
   } else {
     data->results._match_count = xs::search::count(data, _pattern);
   }
@@ -33,7 +36,7 @@ void Searcher::byte_offsets_match(DataChunk* data, bool skip_line) {
   data->results.regex = _regex;
   if (_regex) {
     data->results._local_byte_offsets =
-        xs::search::regex::local_byte_offsets_match(data, _regex_pattern,
+        xs::search::regex::local_byte_offsets_match(data, *_regex_pattern,
                                                     skip_line);
   } else {
     data->results._local_byte_offsets =
@@ -92,6 +95,15 @@ void Searcher::line(DataChunk* data) {
     data->results._matching_lines.value().push_back(std::move(line));
   }
   INLINE_BENCHMARK_WALL_STOP("mapping to line");
+}
+
+// _____________________________________________________________________________
+void Searcher::setPattern(const std::string& pattern, bool regex) {
+  if (regex) {
+    _regex_pattern = std::make_unique<re2::RE2>("(" + pattern + ")");
+  }
+  _pattern = pattern;
+  _regex = regex;
 }
 
 }  // namespace xs::tasks
