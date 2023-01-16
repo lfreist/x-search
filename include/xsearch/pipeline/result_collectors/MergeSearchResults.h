@@ -38,7 +38,37 @@ class Result<T, typename std::enable_if<
                     std::is_same<T, restype::count>::value ||
                     std::is_same<T, restype::count_lines>::value>::type> {
  public:
+  class iterator : public std::iterator<std::forward_iterator_tag, size_t> {
+   public:
+    explicit iterator(Result& r) : _result(r) {}
+
+    size_t operator*() {
+      std::unique_lock locker(*(_result._mutex));
+      return _result._result;
+    }
+
+    iterator& operator++() {
+      std::unique_lock locker(*(_result._mutex));
+      _result->_cv.get()->wait(
+          locker, [&]() { return _result._changed || _result._done; });
+      _result->_changed = false;
+      return *this;
+    }
+
+    bool operator!=(const iterator&) {
+      std::unique_lock locker(*(_result._mutex));
+      return !_result._done;
+    }
+
+   private:
+    Result& _result;
+  };
+
   Result() = default;
+
+  iterator begin() { return iterator(*this); }
+
+  iterator end() { return iterator(*this); }
 
   /**
    * Get the sum of collected partial count results.
@@ -53,7 +83,12 @@ class Result<T, typename std::enable_if<
   void addPartialResult(DataChunk* data);
 
  private:
-  size_t _result;
+  size_t _result = 0;
+  bool _changed = true;
+  bool _done = false;
+  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
+  std::unique_ptr<std::condition_variable> _cv =
+      std::make_unique<std::condition_variable>();
 };
 
 /**
@@ -66,6 +101,32 @@ class Result<T, typename std::enable_if<
                     std::is_same<T, restype::line_numbers>::value ||
                     std::is_same<T, restype::line_indices>::value>::type> {
  public:
+  class iterator : public std::iterator<std::forward_iterator_tag, size_t> {
+   public:
+    explicit iterator(Result& r) : _result(r) {}
+
+    size_t operator*() {
+      std::unique_lock locker(*(_result._mutex));
+      return _result._result.back();
+    }
+
+    iterator& operator++() {
+      std::unique_lock locker(*(_result._mutex));
+      _result->_cv.get()->wait(
+          locker, [&]() { return _result._changed || _result._done; });
+      _result->_changed = false;
+      return *this;
+    }
+
+    bool operator!=(const iterator&) {
+      std::unique_lock locker(*(_result._mutex));
+      return !_result._done;
+    }
+
+   private:
+    Result& _result;
+  };
+
   Result() = default;
 
   /**
@@ -92,6 +153,11 @@ class Result<T, typename std::enable_if<
 
  private:
   std::vector<size_t> _result;
+  bool _changed = true;
+  bool _done = false;
+  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
+  std::unique_ptr<std::condition_variable> _cv =
+      std::make_unique<std::condition_variable>();
 };
 
 /**
@@ -102,6 +168,33 @@ template <typename T>
 class Result<
     T, typename std::enable_if<std::is_same<T, restype::lines>::value>::type> {
  public:
+  class iterator
+      : public std::iterator<std::forward_iterator_tag, std::string> {
+   public:
+    explicit iterator(Result& r) : _result(r) {}
+
+    std::string& operator*() {
+      std::unique_lock locker(*(_result._mutex));
+      return _result._result.back();
+    }
+
+    iterator& operator++() {
+      std::unique_lock locker(*(_result._mutex));
+      _result->_cv.get()->wait(
+          locker, [&]() { return _result._changed || _result._done; });
+      _result->_changed = false;
+      return *this;
+    }
+
+    bool operator!=(const iterator&) {
+      std::unique_lock locker(*(_result._mutex));
+      return !_result._done;
+    }
+
+   private:
+    Result& _result;
+  };
+
   Result() = default;
 
   /**
@@ -132,6 +225,11 @@ class Result<
 
  private:
   std::vector<std::string> _result;
+  bool _changed = true;
+  bool _done = false;
+  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
+  std::unique_ptr<std::condition_variable> _cv =
+      std::make_unique<std::condition_variable>();
 };
 
 /**
@@ -142,6 +240,33 @@ template <typename T>
 class Result<
     T, typename std::enable_if<std::is_same<T, restype::full>::value>::type> {
  public:
+  class iterator
+      : public std::iterator<std::forward_iterator_tag, SearchResults> {
+   public:
+    explicit iterator(Result& r) : _result(r) {}
+
+    SearchResults operator*() {
+      std::unique_lock locker(*(_result._mutex));
+      return _result._result.back();
+    }
+
+    iterator& operator++() {
+      std::unique_lock locker(*(_result._mutex));
+      _result->_cv.get()->wait(
+          locker, [&]() { return _result._changed || _result._done; });
+      _result->_changed = false;
+      return *this;
+    }
+
+    bool operator!=(const iterator&) {
+      std::unique_lock locker(*(_result._mutex));
+      return !_result._done;
+    }
+
+   private:
+    Result& _result;
+  };
+
   Result() = default;
 
   /**
@@ -172,6 +297,11 @@ class Result<
 
  private:
   std::vector<SearchResults> _result;
+  bool _changed = true;
+  bool _done = false;
+  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
+  std::unique_ptr<std::condition_variable> _cv =
+      std::make_unique<std::condition_variable>();
 };
 
 }  // namespace xs

@@ -20,11 +20,9 @@ CompressionType get_compression_type(MetaFile meta_file) {
 }
 
 template <>
-size_t ExternSearcher<restype::count>::search(const std::string& file_path,
-                                              const std::string& meta_file_path,
-                                              const std::string& pattern,
-                                              int num_threads,
-                                              int max_readers) {
+std::shared_ptr<Result<restype::count>> ExternSearcher<restype::count>::search(
+    const std::string& file_path, const std::string& meta_file_path,
+    const std::string& pattern, int num_threads, int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));

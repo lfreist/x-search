@@ -48,6 +48,14 @@ class TaskManager {
     return _collector_task.getResult();
   }
 
+  void detach() {
+    if (_executed) {
+      for (auto& thread : _threads) {
+        thread.detach();
+      }
+    }
+  }
+
  private:
   void run() {
     bool done = false;
