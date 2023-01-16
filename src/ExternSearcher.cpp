@@ -20,13 +20,19 @@ CompressionType get_compression_type(MetaFile meta_file) {
 }
 
 template <>
-std::shared_ptr<Result<restype::count>> ExternSearcher<restype::count>::search(
-    const std::string& file_path, const std::string& meta_file_path,
-    const std::string& pattern, int num_threads, int max_readers) {
+std::shared_ptr<YieldResult<restype::count>>
+ExternSearcher<restype::count>::search(const std::string& file_path,
+                                       const std::string& meta_file_path,
+                                       const std::string& pattern,
+                                       int num_threads, int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));
-  xs::Result<restype::count> result_collector{};
+  // we create a shared pointer here because we want to return the result
+  //  so that the partial results can be accessed via the iterator
+  std::shared_ptr<xs::YieldResult<restype::count>> result_collector =
+      std::make_shared<xs::YieldResult<restype::count>>();
+
   std::vector<xs::pipeline::ProcessingTask> processors;
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
@@ -48,25 +54,31 @@ std::shared_ptr<Result<restype::count>> ExternSearcher<restype::count>::search(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
                                  max_readers),
       std::move(processors),
-      xs::pipeline::CollectorTask<size_t>(
+      xs::pipeline::CollectorTask(
           [&result_collector](auto&& PH1) {
-            result_collector.addPartialResult(std::forward<decltype(PH1)>(PH1));
+            result_collector->addPartialResult(
+                std::forward<decltype(PH1)>(PH1));
           },
-          [&result_collector]() -> size_t {
-            return result_collector.getResult();
-          }));
+          [&result_collector]() { result_collector->markAsDone(); }));
   task_manager.execute(num_threads);
-  return task_manager.join();
+  task_manager.join();
+  return result_collector;
 }
 
 template <>
-size_t ExternSearcher<restype::count_lines>::search(
-    const std::string& file_path, const std::string& meta_file_path,
-    const std::string& pattern, int num_threads, int max_readers) {
+std::shared_ptr<YieldResult<restype::count_lines>>
+ExternSearcher<restype::count_lines>::search(const std::string& file_path,
+                                             const std::string& meta_file_path,
+                                             const std::string& pattern,
+                                             int num_threads, int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));
-  xs::Result<restype::count_lines> result_collector{};
+  // we create a shared pointer here because we want to return the result
+  //  so that the partial results can be accessed via the iterator
+  std::shared_ptr<xs::YieldResult<restype::count_lines>> result_collector =
+      std::make_shared<xs::YieldResult<restype::count_lines>>();
+
   std::vector<xs::pipeline::ProcessingTask> processors;
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
@@ -89,25 +101,30 @@ size_t ExternSearcher<restype::count_lines>::search(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
                                  max_readers),
       std::move(processors),
-      xs::pipeline::CollectorTask<size_t>(
+      xs::pipeline::CollectorTask(
           [&result_collector](auto&& PH1) {
-            result_collector.addPartialResult(std::forward<decltype(PH1)>(PH1));
+            result_collector->addPartialResult(
+                std::forward<decltype(PH1)>(PH1));
           },
-          [&result_collector]() -> size_t {
-            return result_collector.getResult();
-          }));
+          [&result_collector]() { result_collector->markAsDone(); }));
   task_manager.execute(num_threads);
-  return task_manager.join();
+  task_manager.detach();
+  return result_collector;
 }
 
 template <>
-std::vector<size_t> ExternSearcher<restype::byte_positions>::search(
+std::shared_ptr<YieldResult<restype::byte_positions>>
+ExternSearcher<restype::byte_positions>::search(
     const std::string& file_path, const std::string& meta_file_path,
     const std::string& pattern, int num_threads, int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));
-  xs::Result<restype::byte_positions> result_collector{};
+  // we create a shared pointer here because we want to return the result
+  //  so that the partial results can be accessed via the iterator
+  std::shared_ptr<YieldResult<restype::byte_positions>> result_collector =
+      std::make_shared<YieldResult<restype::byte_positions>>();
+
   std::vector<xs::pipeline::ProcessingTask> processors;
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
@@ -123,32 +140,38 @@ std::vector<size_t> ExternSearcher<restype::byte_positions>::search(
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_match(PH1, false); });
+  processors.emplace_back([&searcher](auto&& PH1) { searcher.count(PH1); });
 
-  xs::pipeline::TaskManager<std::vector<size_t>> task_manager(
+  xs::pipeline::TaskManager<size_t> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
                                  max_readers),
       std::move(processors),
-      xs::pipeline::CollectorTask<std::vector<size_t>>(
+      xs::pipeline::CollectorTask(
           [&result_collector](auto&& PH1) {
-            result_collector.addPartialResult(std::forward<decltype(PH1)>(PH1));
+            result_collector->addPartialResult(
+                std::forward<decltype(PH1)>(PH1));
           },
-          [&result_collector]() -> std::vector<size_t> {
-            return result_collector.getResult();
-          }));
+          [&result_collector]() { result_collector->markAsDone(); }));
   task_manager.execute(num_threads);
-  return task_manager.join();
+  task_manager.detach();
+  return result_collector;
 }
 
 template <>
-std::vector<size_t> ExternSearcher<restype::line_numbers>::search(
-    const std::string& file_path, const std::string& meta_file_path,
-    const std::string& pattern, int num_threads, int max_readers) {
+std::shared_ptr<xs::YieldResult<restype::line_numbers>>
+ExternSearcher<restype::line_numbers>::search(const std::string& file_path,
+                                              const std::string& meta_file_path,
+                                              const std::string& pattern,
+                                              int num_threads,
+                                              int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));
-  xs::Result<restype::line_numbers> result_collector{};
+  // we create a shared pointer here because we want to return the result
+  //  so that the partial results can be accessed via the iterator
+  std::shared_ptr<YieldResult<restype::line_numbers>> result_collector =
+      std::make_shared<YieldResult<restype::line_numbers>>();
+
   std::vector<xs::pipeline::ProcessingTask> processors;
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
@@ -164,35 +187,38 @@ std::vector<size_t> ExternSearcher<restype::line_numbers>::search(
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_line(PH1); });
-  processors.emplace_back([&searcher](auto&& PH1) {
-    searcher.line_indices(std::forward<decltype(PH1)>(PH1));
-  });
+  processors.emplace_back([&searcher](auto&& PH1) { searcher.count(PH1); });
 
-  xs::pipeline::TaskManager<std::vector<size_t>> task_manager(
+  xs::pipeline::TaskManager<size_t> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
                                  max_readers),
       std::move(processors),
-      xs::pipeline::CollectorTask<std::vector<size_t>>(
+      xs::pipeline::CollectorTask(
           [&result_collector](auto&& PH1) {
-            result_collector.addPartialResult(std::forward<decltype(PH1)>(PH1));
+            result_collector->addPartialResult(
+                std::forward<decltype(PH1)>(PH1));
           },
-          [&result_collector]() -> std::vector<size_t> {
-            return result_collector.getResult();
-          }));
+          [&result_collector]() { result_collector->markAsDone(); }));
   task_manager.execute(num_threads);
-  return task_manager.join();
+  task_manager.detach();
+  return result_collector;
 }
 
 template <>
-std::vector<size_t> ExternSearcher<restype::line_indices>::search(
-    const std::string& file_path, const std::string& meta_file_path,
-    const std::string& pattern, int num_threads, int max_readers) {
+std::shared_ptr<xs::YieldResult<restype::line_indices>>
+ExternSearcher<restype::line_indices>::search(const std::string& file_path,
+                                              const std::string& meta_file_path,
+                                              const std::string& pattern,
+                                              int num_threads,
+                                              int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));
-  xs::Result<restype::line_indices> result_collector{};
+  // we create a shared pointer here because we want to return the result
+  //  so that the partial results can be accessed via the iterator
+  std::shared_ptr<YieldResult<restype::line_indices>> result_collector =
+      std::make_shared<YieldResult<restype::line_indices>>();
+
   std::vector<xs::pipeline::ProcessingTask> processors;
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
@@ -208,35 +234,37 @@ std::vector<size_t> ExternSearcher<restype::line_indices>::search(
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_line(PH1); });
-  processors.emplace_back([&searcher](auto&& PH1) {
-    searcher.line_indices(std::forward<decltype(PH1)>(PH1));
-  });
+  processors.emplace_back([&searcher](auto&& PH1) { searcher.count(PH1); });
 
-  xs::pipeline::TaskManager<std::vector<size_t>> task_manager(
+  xs::pipeline::TaskManager<size_t> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
                                  max_readers),
       std::move(processors),
-      xs::pipeline::CollectorTask<std::vector<size_t>>(
+      xs::pipeline::CollectorTask(
           [&result_collector](auto&& PH1) {
-            result_collector.addPartialResult(std::forward<decltype(PH1)>(PH1));
+            result_collector->addPartialResult(
+                std::forward<decltype(PH1)>(PH1));
           },
-          [&result_collector]() -> std::vector<size_t> {
-            return result_collector.getResult();
-          }));
+          [&result_collector]() { result_collector->markAsDone(); }));
   task_manager.execute(num_threads);
-  return task_manager.join();
+  task_manager.detach();
+  return result_collector;
 }
 
 template <>
-std::vector<std::string> ExternSearcher<restype::lines>::search(
-    const std::string& file_path, const std::string& meta_file_path,
-    const std::string& pattern, int num_threads, int max_readers) {
+std::shared_ptr<xs::YieldResult<restype::lines>>
+ExternSearcher<restype::lines>::search(const std::string& file_path,
+                                       const std::string& meta_file_path,
+                                       const std::string& pattern,
+                                       int num_threads, int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));
-  xs::Result<restype::lines> result_collector{};
+  // we create a shared pointer here because we want to return the result
+  //  so that the partial results can be accessed via the iterator
+  std::shared_ptr<YieldResult<restype::lines>> result_collector =
+      std::make_shared<YieldResult<restype::lines>>();
+
   std::vector<xs::pipeline::ProcessingTask> processors;
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
@@ -252,35 +280,37 @@ std::vector<std::string> ExternSearcher<restype::lines>::search(
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_line(PH1); });
-  processors.emplace_back([&searcher](auto&& PH1) {
-    searcher.line(std::forward<decltype(PH1)>(PH1));
-  });
+  processors.emplace_back([&searcher](auto&& PH1) { searcher.count(PH1); });
 
-  xs::pipeline::TaskManager<std::vector<std::string>> task_manager(
+  xs::pipeline::TaskManager<size_t> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
                                  max_readers),
       std::move(processors),
-      xs::pipeline::CollectorTask<std::vector<std::string>>(
+      xs::pipeline::CollectorTask(
           [&result_collector](auto&& PH1) {
-            result_collector.addPartialResult(std::forward<decltype(PH1)>(PH1));
+            result_collector->addPartialResult(
+                std::forward<decltype(PH1)>(PH1));
           },
-          [&result_collector]() -> std::vector<std::string> {
-            return result_collector.getResult();
-          }));
+          [&result_collector]() { result_collector->markAsDone(); }));
   task_manager.execute(num_threads);
-  return task_manager.join();
+  task_manager.detach();
+  return result_collector;
 }
 
 template <>
-std::vector<SearchResults> ExternSearcher<restype::full>::search(
-    const std::string& file_path, const std::string& meta_file_path,
-    const std::string& pattern, int num_threads, int max_readers) {
+std::shared_ptr<xs::YieldResult<restype::full>>
+ExternSearcher<restype::full>::search(const std::string& file_path,
+                                      const std::string& meta_file_path,
+                                      const std::string& pattern,
+                                      int num_threads, int max_readers) {
   xs::reader::BlockReader reader(file_path, meta_file_path, 10);
   xs::searcher::Searcher searcher(pattern,
                                   xs::utils::use_str_as_regex(pattern));
-  xs::Result<restype::full> result_collector{};
+  // we create a shared pointer here because we want to return the result
+  //  so that the partial results can be accessed via the iterator
+  std::shared_ptr<YieldResult<restype::full>> result_collector =
+      std::make_shared<YieldResult<restype::full>>();
+
   std::vector<xs::pipeline::ProcessingTask> processors;
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
@@ -296,31 +326,21 @@ std::vector<SearchResults> ExternSearcher<restype::full>::search(
       break;
   }
 
-  // required search tasks ---------------------------------------------------
-  processors.emplace_back([&searcher](auto&& PH1) {
-    searcher.byte_offsets_match(std::forward<decltype(PH1)>(PH1), false);
-  });
-  processors.emplace_back([&searcher](auto&& PH1) {
-    searcher.line_indices(std::forward<decltype(PH1)>(PH1));
-  });
-  processors.emplace_back([&searcher](auto&& PH1) {
-    searcher.line(std::forward<decltype(PH1)>(PH1));
-  });
-  // -------------------------------------------------------------------------
+  processors.emplace_back([&searcher](auto&& PH1) { searcher.count(PH1); });
 
-  xs::pipeline::TaskManager<std::vector<SearchResults>> task_manager(
+  xs::pipeline::TaskManager<size_t> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
                                  max_readers),
       std::move(processors),
-      xs::pipeline::CollectorTask<std::vector<SearchResults>>(
+      xs::pipeline::CollectorTask(
           [&result_collector](auto&& PH1) {
-            result_collector.addPartialResult(std::forward<decltype(PH1)>(PH1));
+            result_collector->addPartialResult(
+                std::forward<decltype(PH1)>(PH1));
           },
-          [&result_collector]() -> std::vector<SearchResults> {
-            return result_collector.getResult();
-          }));
+          [&result_collector]() { result_collector->markAsDone(); }));
   task_manager.execute(num_threads);
-  return task_manager.join();
+  task_manager.detach();
+  return result_collector;
 }
 
 }  // namespace xs

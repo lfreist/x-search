@@ -6,71 +6,83 @@
 
 TEST(ExternSearcherTest, count) {
   {  // plain text
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1, 1);
-    ASSERT_EQ(res, 152);
+    auto res = xs::ExternSearcher<xs::restype::count>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 1);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 152);
   }
   {  // regex
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|i]r", 1,
+    auto res = xs::ExternSearcher<xs::restype::count>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 1,
         1);
-    ASSERT_EQ(res, 156);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 156);
   }
   {  // multiple threads
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4, 1);
-    ASSERT_EQ(res, 152);
+    auto res = xs::ExternSearcher<xs::restype::count>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 1);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 152);
   }
   {  // multiple readers
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1, 2);
-    ASSERT_EQ(res, 152);
+    auto res = xs::ExternSearcher<xs::restype::count>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 2);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 152);
   }
   {  // multiple readers and threads
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4, 2);
-    ASSERT_EQ(res, 152);
+    auto res = xs::ExternSearcher<xs::restype::count>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 2);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 152);
   }
   {  // multiple readers and threads and regex pattern
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|i]r", 4,
+    auto res = xs::ExternSearcher<xs::restype::count>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 4,
         2);
-    ASSERT_EQ(res, 156);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 156);
   }
 }
 
 TEST(ExternSearcherTest, count_lines) {
   {  // plain text
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1, 1);
-    ASSERT_EQ(res, 133);
+    auto res = xs::ExternSearcher<xs::restype::count_lines>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 1);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 133);
   }
   {  // regex
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|i]r", 1,
+    auto res = xs::ExternSearcher<xs::restype::count_lines>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 1,
         1);
-    ASSERT_EQ(res, 137);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 137);
   }
   {  // multiple threads
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4, 1);
-    ASSERT_EQ(res, 133);
+    auto res = xs::ExternSearcher<xs::restype::count_lines>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 1);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 133);
   }
   {  // multiple readers
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1, 2);
-    ASSERT_EQ(res, 133);
+    auto res = xs::ExternSearcher<xs::restype::count_lines>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 2);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 133);
   }
   {  // multiple readers and threads
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4, 2);
-    ASSERT_EQ(res, 133);
+    auto res = xs::ExternSearcher<xs::restype::count_lines>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 2);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 133);
   }
   {  // multiple readers and threads and regex pattern
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|i]r", 4,
+    auto res = xs::ExternSearcher<xs::restype::count_lines>::search(
+        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 4,
         2);
-    ASSERT_EQ(res, 137);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult(), 137);
   }
 }
 
@@ -122,52 +134,58 @@ TEST(ExternSearcherTest, byte_positions) {
       165623, 169338, 169844, 171450, 174841, 176726, 177359, 178365, 178859,
       179278, 179375, 180045};
   {  // plain text
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::byte_positions>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1,
             1);
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 152);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // regex
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::byte_positions>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|i]r",
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r",
             1, 1);
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 156);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple threads
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::byte_positions>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4,
             1);
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 152);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple readers
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::byte_positions>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1,
             2);
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 152);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple readers and threads
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::byte_positions>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4,
             2);
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 152);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple readers and threads and regex pattern
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::byte_positions>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|qi]r",
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|qi]r",
             4, 2);
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 156);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
 }
 
@@ -194,51 +212,57 @@ TEST(ExternSearcherTest, line_numbers) {
       561, 562, 569, 574, 577, 580, 581, 587, 588, 593, 595, 597, 600, 611,
       612, 626, 627, 635, 646, 653, 654, 659, 660, 662, 665};
   {  // plain text
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::line_numbers>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1,
             1);
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 133);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // regex
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::line_numbers>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|i]r",
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r",
             1, 1);
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 137);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple threads
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::line_numbers>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4,
             1);
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 133);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple readers
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::line_numbers>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 1,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1,
             2);
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 133);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple readers and threads
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::line_numbers>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "over", 4,
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4,
             2);
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 133);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
   {  // multiple readers and threads and regex pattern
-    std::vector<size_t> res =
+    auto res =
         xs::ExternSearcher<xs::restype::line_numbers>::search(
-            "test/files/dummy.txt", "test/files/dummy.txt.sf.meta", "ov[e|qi]r",
+            "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|qi]r",
             4, 2);
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
+    for (auto i : *res) {}
+    ASSERT_EQ(res->getResult().size(), 137);
+    ASSERT_EQ(res->getResult(), plain_res);
   }
 }

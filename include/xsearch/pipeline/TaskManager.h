@@ -11,7 +11,7 @@ template <class ResType>
 class TaskManager {
  public:
   TaskManager(ProducerTask producer_task, std::vector<ProcessingTask> tasks,
-              CollectorTask<ResType> collector_task)
+              CollectorTask collector_task)
       : _producer_task(std::move(producer_task)),
         _tasks(std::move(tasks)),
         _collector_task(std::move(collector_task)) {}
@@ -35,9 +35,10 @@ class TaskManager {
       thread = std::thread(&TaskManager::run, this);
     }
     _executed = true;
+    _num_threads = num_threads;
   }
 
-  ResType join() {
+  void join() {
     if (_executed) {
       for (auto& thread : _threads) {
         if (thread.joinable()) {
@@ -45,7 +46,6 @@ class TaskManager {
         }
       }
     }
-    return _collector_task.getResult();
   }
 
   void detach() {
@@ -99,6 +99,11 @@ class TaskManager {
       }
       _collector_task.run_if_possible(&_collectors_queue);
     }
+    std::unique_lock locker(_mutex);
+    _num_threads--;
+    if (_num_threads == 0) {
+      _collector_task.done();
+    }
   }
 
   utils::TSQueue<DataChunk> _processors_queue;
@@ -106,8 +111,10 @@ class TaskManager {
   bool _executed = false;
   ProducerTask _producer_task;
   std::vector<ProcessingTask> _tasks;
-  CollectorTask<ResType> _collector_task;
+  CollectorTask _collector_task;
   std::vector<std::thread> _threads;
+  int _num_threads;
+  std::mutex _mutex;
 };
 
 }  // namespace xs::pipeline

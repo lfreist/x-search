@@ -42,19 +42,21 @@ meta_files=("tmp/$file_name.sf.meta" "tmp/$file_name.sflz4.meta" "tmp/$file_name
 echo " running grep"
 for i in "${keywords[@]}"; do
   echo "  keyword: $i"
-  grep "$i" "$file" >"tmp/$i.grep_.tmp"
-  grep "$i" "$file" -b >"tmp/$i.grep_b.tmp"
-  grep "$i" "$file" -b -o >"tmp/$i.grep_b_o.tmp"
-  grep "$i" "$file" -n >"tmp/$i.grep_n.tmp"
-  grep "$i" "$file" -n -o >"tmp/$i.grep_n_o.tmp"
-  grep "$i" "$file" -c >"tmp/$i.grep_c.tmp"
+  grep "$i" "$file" >"tmp/$i.grep_.tmp" &
+  grep "$i" "$file" -b >"tmp/$i.grep_b.tmp" &
+  grep "$i" "$file" -b -o >"tmp/$i.grep_b_o.tmp" &
+  grep "$i" "$file" -n >"tmp/$i.grep_n.tmp" &
+  grep "$i" "$file" -n -o >"tmp/$i.grep_n_o.tmp" &
+  grep "$i" "$file" -c >"tmp/$i.grep_c.tmp" &
+  wait
 done
 for i in "${regex_keywords[@]}"; do
   echo "  keyword: $i"
-  grep "$i" "$file" >"tmp/$i.r_grep_.tmp"
-  grep "$i" "$file" -b >"tmp/$i.r_grep_b.tmp"
-  grep "$i" "$file" -n >"tmp/$i.r_grep_n.tmp"
-  grep "$i" "$file" -c >"tmp/$i.r_grep_c.tmp"
+  grep "$i" "$file" >"tmp/$i.r_grep_.tmp" &
+  grep "$i" "$file" -b >"tmp/$i.r_grep_b.tmp" &
+  grep "$i" "$file" -n >"tmp/$i.r_grep_n.tmp" &
+  grep "$i" "$file" -c >"tmp/$i.r_grep_c.tmp" &
+  wait
 done
 # ---
 

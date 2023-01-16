@@ -25,8 +25,8 @@ namespace xs {
  * @tparam Enable
  */
 template <typename T, typename Enable = void>
-class Result {
-  Result() = default;
+class YieldResult {
+  YieldResult() = default;
 };
 
 /**
@@ -34,13 +34,13 @@ class Result {
  * @tparam T
  */
 template <typename T>
-class Result<T, typename std::enable_if<
+class YieldResult<T, typename std::enable_if<
                     std::is_same<T, restype::count>::value ||
                     std::is_same<T, restype::count_lines>::value>::type> {
  public:
-  class iterator : public std::iterator<std::forward_iterator_tag, size_t> {
+  class iterator {
    public:
-    explicit iterator(Result& r) : _result(r) {}
+    explicit iterator(YieldResult& r) : _result(r) {}
 
     size_t operator*() {
       std::unique_lock locker(*(_result._mutex));
@@ -49,9 +49,9 @@ class Result<T, typename std::enable_if<
 
     iterator& operator++() {
       std::unique_lock locker(*(_result._mutex));
-      _result->_cv.get()->wait(
+      _result._cv.get()->wait(
           locker, [&]() { return _result._changed || _result._done; });
-      _result->_changed = false;
+      _result._changed = false;
       return *this;
     }
 
@@ -61,10 +61,10 @@ class Result<T, typename std::enable_if<
     }
 
    private:
-    Result& _result;
+    YieldResult& _result;
   };
 
-  Result() = default;
+  YieldResult() = default;
 
   iterator begin() { return iterator(*this); }
 
@@ -82,6 +82,8 @@ class Result<T, typename std::enable_if<
    */
   void addPartialResult(DataChunk* data);
 
+  void markAsDone();
+
  private:
   size_t _result = 0;
   bool _changed = true;
@@ -96,14 +98,14 @@ class Result<T, typename std::enable_if<
  * @tparam T
  */
 template <typename T>
-class Result<T, typename std::enable_if<
+class YieldResult<T, typename std::enable_if<
                     std::is_same<T, restype::byte_positions>::value ||
                     std::is_same<T, restype::line_numbers>::value ||
                     std::is_same<T, restype::line_indices>::value>::type> {
  public:
-  class iterator : public std::iterator<std::forward_iterator_tag, size_t> {
+  class iterator {
    public:
-    explicit iterator(Result& r) : _result(r) {}
+    explicit iterator(YieldResult& r) : _result(r) {}
 
     size_t operator*() {
       std::unique_lock locker(*(_result._mutex));
@@ -112,9 +114,9 @@ class Result<T, typename std::enable_if<
 
     iterator& operator++() {
       std::unique_lock locker(*(_result._mutex));
-      _result->_cv.get()->wait(
+      _result._cv.get()->wait(
           locker, [&]() { return _result._changed || _result._done; });
-      _result->_changed = false;
+      _result._changed = false;
       return *this;
     }
 
@@ -124,10 +126,14 @@ class Result<T, typename std::enable_if<
     }
 
    private:
-    Result& _result;
+    YieldResult& _result;
   };
 
-  Result() = default;
+  YieldResult() = default;
+
+  iterator begin() { return iterator(*this); }
+
+  iterator end() { return iterator(*this); }
 
   /**
    * Get a merged result of collected partial results.
@@ -151,6 +157,8 @@ class Result<T, typename std::enable_if<
    */
   void addPartialResult(DataChunk* data);
 
+  void markAsDone();
+
  private:
   std::vector<size_t> _result;
   bool _changed = true;
@@ -165,13 +173,12 @@ class Result<T, typename std::enable_if<
  * @tparam T
  */
 template <typename T>
-class Result<
+class YieldResult<
     T, typename std::enable_if<std::is_same<T, restype::lines>::value>::type> {
  public:
-  class iterator
-      : public std::iterator<std::forward_iterator_tag, std::string> {
+  class iterator {
    public:
-    explicit iterator(Result& r) : _result(r) {}
+    explicit iterator(YieldResult& r) : _result(r) {}
 
     std::string& operator*() {
       std::unique_lock locker(*(_result._mutex));
@@ -180,9 +187,9 @@ class Result<
 
     iterator& operator++() {
       std::unique_lock locker(*(_result._mutex));
-      _result->_cv.get()->wait(
+      _result._cv.get()->wait(
           locker, [&]() { return _result._changed || _result._done; });
-      _result->_changed = false;
+      _result._changed = false;
       return *this;
     }
 
@@ -192,10 +199,14 @@ class Result<
     }
 
    private:
-    Result& _result;
+    YieldResult& _result;
   };
 
-  Result() = default;
+  YieldResult() = default;
+
+  iterator begin() { return iterator(*this); }
+
+  iterator end() { return iterator(*this); }
 
   /**
    * Get the merged result of collected partial results.
@@ -223,6 +234,8 @@ class Result<
    */
   void addPartialResult(DataChunk* data);
 
+  void markAsDone();
+
  private:
   std::vector<std::string> _result;
   bool _changed = true;
@@ -237,13 +250,12 @@ class Result<
  * @tparam T
  */
 template <typename T>
-class Result<
+class YieldResult<
     T, typename std::enable_if<std::is_same<T, restype::full>::value>::type> {
  public:
-  class iterator
-      : public std::iterator<std::forward_iterator_tag, SearchResults> {
+  class iterator {
    public:
-    explicit iterator(Result& r) : _result(r) {}
+    explicit iterator(YieldResult& r) : _result(r) {}
 
     SearchResults operator*() {
       std::unique_lock locker(*(_result._mutex));
@@ -252,9 +264,9 @@ class Result<
 
     iterator& operator++() {
       std::unique_lock locker(*(_result._mutex));
-      _result->_cv.get()->wait(
+      _result._cv.get()->wait(
           locker, [&]() { return _result._changed || _result._done; });
-      _result->_changed = false;
+      _result._changed = false;
       return *this;
     }
 
@@ -264,10 +276,14 @@ class Result<
     }
 
    private:
-    Result& _result;
+    YieldResult& _result;
   };
 
-  Result() = default;
+  YieldResult() = default;
+
+  iterator begin() { return iterator(*this); }
+
+  iterator end() { return iterator(*this); }
 
   /**
    * Get a std::vector of collected partial results.
@@ -294,6 +310,8 @@ class Result<
    * @param data
    */
   void addPartialResult(DataChunk* data);
+
+  void markAsDone();
 
  private:
   std::vector<SearchResults> _result;

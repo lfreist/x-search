@@ -52,13 +52,12 @@ class ProducerTask {
 };
 
 // _____________________________________________________________________________
-template <class ResType>
 class CollectorTask {
  public:
   explicit CollectorTask(std::function<void(DataChunk*)> collecting_func,
-                         std::function<ResType()> result_provider_func) {
+                         std::function<void()> done_call_func = []() {}) {
     _collecting_func = std::move(collecting_func);
-    _result_provider_func = result_provider_func;
+    _done_call_func = done_call_func;
   }
 
   void run_if_possible(utils::TSQueue<DataChunk>* queue) {
@@ -87,11 +86,13 @@ class CollectorTask {
     }
   }
 
-  ResType getResult() { return _result_provider_func(); }
+  void done() {
+    _done_call_func();
+  }
 
  private:
   std::function<void(DataChunk*)> _collecting_func;
-  std::function<ResType()> _result_provider_func;
+  std::function<void()> _done_call_func;
   std::unique_ptr<std::condition_variable> _cv =
       std::make_unique<std::condition_variable>();
   std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
