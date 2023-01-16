@@ -7,57 +7,36 @@ namespace xs {
 
 // ===== restype::count implementation =========================================
 template <>
-void YieldResult<restype::count>::addPartialResult(DataChunk* data) {
+void Result<restype::count>::addPartialResult(DataChunk* data) {
   _result += data->results._match_count;
-}
-
-// _____________________________________________________________________________
-template <>
-void YieldResult<restype::count>::markAsDone() {
-  std::unique_lock locker(*_mutex);
-  _done = true;
 }
 
 // ===== restype::count_lines implementation
 // =========================================
 template <>
-void YieldResult<restype::count_lines>::addPartialResult(DataChunk* data) {
+void Result<restype::count_lines>::addPartialResult(DataChunk* data) {
   _result += data->results._match_count;
-}
-
-// _____________________________________________________________________________
-template <>
-void YieldResult<restype::count_lines>::markAsDone() {
-  std::unique_lock locker(*_mutex);
-  _done = true;
 }
 
 // ===== restype::byte_positions implementation ================================
 // _____________________________________________________________________________
 template <>
-void YieldResult<restype::byte_positions>::addPartialResult(DataChunk* data) {
+void Result<restype::byte_positions>::addPartialResult(DataChunk* data) {
   if (!data->results._local_byte_offsets.has_value()) {
     throw std::runtime_error("ERROR: No byte offset result data provided.");
   }
   auto& data_bo = data->results._local_byte_offsets.value();
   std::transform(data_bo.begin(), data_bo.end(), data_bo.begin(),
-                 [](auto v) { return v; });
+                 [&data](auto v) { return v + data->getOffset(); });
   _result.reserve(_result.size() + data_bo.size());
   _result.insert(_result.end(), std::make_move_iterator(data_bo.begin()),
                  std::make_move_iterator(data_bo.end()));
 }
 
-// _____________________________________________________________________________
-template <>
-void YieldResult<restype::byte_positions>::markAsDone() {
-  std::unique_lock locker(*_mutex);
-  _done = true;
-}
-
 // ===== restype::line_numbers implementation ================================
 // _____________________________________________________________________________
 template <>
-void YieldResult<restype::line_numbers>::addPartialResult(DataChunk* data) {
+void Result<restype::line_numbers>::addPartialResult(DataChunk* data) {
   if (!data->results._global_line_indices.has_value()) {
     throw std::runtime_error("ERROR: No line indices data provided.");
   }
@@ -69,17 +48,10 @@ void YieldResult<restype::line_numbers>::addPartialResult(DataChunk* data) {
                  std::make_move_iterator(data_bo.end()));
 }
 
-// _____________________________________________________________________________
-template <>
-void YieldResult<restype::line_numbers>::markAsDone() {
-  std::unique_lock locker(*_mutex);
-  _done = true;
-}
-
 // ===== restype::line_indices implementation ================================
 // _____________________________________________________________________________
 template <>
-void YieldResult<restype::line_indices>::addPartialResult(DataChunk* data) {
+void Result<restype::line_indices>::addPartialResult(DataChunk* data) {
   if (!data->results._global_line_indices.has_value()) {
     throw std::runtime_error("ERROR: No line indices data provided.");
   }
@@ -89,17 +61,10 @@ void YieldResult<restype::line_indices>::addPartialResult(DataChunk* data) {
                  std::make_move_iterator(data_bo.end()));
 }
 
+// ===== restype::lines implementation ================================
 // _____________________________________________________________________________
 template <>
-void YieldResult<restype::line_indices>::markAsDone() {
-  std::unique_lock locker(*_mutex);
-  _done = true;
-}
-
-// ===== restype::lines implementation =========================================
-// _____________________________________________________________________________
-template <>
-void YieldResult<restype::lines>::addPartialResult(DataChunk* data) {
+void Result<restype::lines>::addPartialResult(DataChunk* data) {
   if (!data->results._matching_lines.has_value()) {
     throw std::runtime_error("ERROR: No lines data provided.");
   }
@@ -109,25 +74,11 @@ void YieldResult<restype::lines>::addPartialResult(DataChunk* data) {
                  std::make_move_iterator(data_bo.end()));
 }
 
+// ===== restype::full implementation ================================
 // _____________________________________________________________________________
 template <>
-void YieldResult<restype::lines>::markAsDone() {
-  std::unique_lock locker(*_mutex);
-  _done = true;
-}
-
-// ===== restype::full implementation ==========================================
-// _____________________________________________________________________________
-template <>
-void YieldResult<restype::full>::addPartialResult(DataChunk* data) {
+void Result<restype::full>::addPartialResult(DataChunk* data) {
   _result.push_back(std::move(data->results));
-}
-
-// _____________________________________________________________________________
-template <>
-void YieldResult<restype::full>::markAsDone() {
-  std::unique_lock locker(*_mutex);
-  _done = true;
 }
 
 }  // namespace xs

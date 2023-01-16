@@ -8,9 +8,9 @@ namespace xs {
 
 TEST(MetaFileTest, constructor) {
   {
-    MetaFile meta_file("test/files/dummy.txt.sfzst.meta", std::ios::in);
+    MetaFile meta_file("test/files/dummy.sf.meta", std::ios::in);
 
-    ASSERT_EQ(meta_file._filePath, "test/files/dummy.sfzst.meta");
+    ASSERT_EQ(meta_file._filePath, "test/files/dummy.sf.meta");
     ASSERT_EQ(meta_file._openMode, std::ios::in | std::ios::binary);
     ASSERT_TRUE(meta_file._metaFileStream.is_open());
   }
@@ -24,31 +24,31 @@ TEST(MetaFileTest, constructor) {
 }
 
 TEST(MetaFileTest, nextChunkMetaData) {
-  MetaFile meta_file("test/files/dummy.sfzst.meta", std::ios::in);
+  MetaFile meta_file("test/files/dummy.sflz4.meta", std::ios::in);
 
   std::optional<ChunkMetaData> chunk_size = meta_file.nextChunkMetaData();
   ASSERT_TRUE(chunk_size.has_value());
   ChunkMetaData cs = chunk_size.value();
   ASSERT_EQ(cs.original_offset, 0);
   ASSERT_EQ(cs.actual_offset, 0);
-  ASSERT_EQ(cs.original_size, 1375);
-  ASSERT_EQ(cs.actual_size, 839);
+  ASSERT_EQ(cs.original_size, 8193);
+  ASSERT_EQ(cs.actual_size, 7150);
 
   chunk_size = meta_file.nextChunkMetaData();
   ASSERT_TRUE(chunk_size.has_value());
   cs = chunk_size.value();
-  ASSERT_EQ(cs.original_offset, 1375);
-  ASSERT_EQ(cs.actual_offset, 839);
-  ASSERT_EQ(cs.original_size, 1132);
-  ASSERT_EQ(cs.actual_size, 719);
+  ASSERT_EQ(cs.original_offset, 8193);
+  ASSERT_EQ(cs.actual_offset, 7150);
+  ASSERT_EQ(cs.original_size, 8271);
+  ASSERT_EQ(cs.actual_size, 7155);
 
   chunk_size = meta_file.nextChunkMetaData();
   ASSERT_TRUE(chunk_size.has_value());
   cs = chunk_size.value();
-  ASSERT_EQ(cs.original_offset, 2507);
-  ASSERT_EQ(cs.actual_offset, 1558);
-  ASSERT_EQ(cs.original_size, 1119);
-  ASSERT_EQ(cs.actual_size, 692);
+  ASSERT_EQ(cs.original_offset, 16464);
+  ASSERT_EQ(cs.actual_offset, 14305);
+  ASSERT_EQ(cs.original_size, 8540);
+  ASSERT_EQ(cs.actual_size, 7434);
 
   // get last chunk
   while (true) {
@@ -58,28 +58,28 @@ TEST(MetaFileTest, nextChunkMetaData) {
     }
     cs = tmp.value();
   }
-  ASSERT_EQ(cs.original_offset, 180348);
-  ASSERT_EQ(cs.actual_offset, 111830);
-  ASSERT_EQ(cs.original_size, 60);
-  ASSERT_EQ(cs.actual_size, 69);
+  ASSERT_EQ(cs.original_offset, 175147);
+  ASSERT_EQ(cs.actual_offset, 152219);
+  ASSERT_EQ(cs.original_size, 5261);
+  ASSERT_EQ(cs.actual_size, 4734);
 }
 
 TEST(MetaFileTest, nextChunkMetaDataMultiple) {
-  MetaFile meta_file("test/files/dummy.sfzst.meta", std::ios::in);
+  MetaFile meta_file("test/files/dummy.sflz4.meta", std::ios::in);
 
   std::vector<ChunkMetaData> chunk_sizes = meta_file.nextChunkMetaData(5);
   ASSERT_EQ(chunk_sizes.size(), 5);
   ASSERT_EQ(chunk_sizes[0].original_offset, 0);
   ASSERT_EQ(chunk_sizes[0].actual_offset, 0);
-  ASSERT_EQ(chunk_sizes[0].original_size, 1375);
-  ASSERT_EQ(chunk_sizes[0].actual_size, 839);
+  ASSERT_EQ(chunk_sizes[0].original_size, 8193);
+  ASSERT_EQ(chunk_sizes[0].actual_size, 7150);
 
   chunk_sizes = meta_file.nextChunkMetaData(150);
-  ASSERT_EQ(chunk_sizes.size(), 149);
-  ASSERT_EQ(chunk_sizes[148].original_offset, 180348);
-  ASSERT_EQ(chunk_sizes[148].actual_offset, 111830);
-  ASSERT_EQ(chunk_sizes[148].original_size, 60);
-  ASSERT_EQ(chunk_sizes[148].actual_size, 69);
+  ASSERT_EQ(chunk_sizes.size(), 17);
+  ASSERT_EQ(chunk_sizes[16].original_offset, 175147);
+  ASSERT_EQ(chunk_sizes[16].actual_offset, 152219);
+  ASSERT_EQ(chunk_sizes[16].original_size, 5261);
+  ASSERT_EQ(chunk_sizes[16].actual_size, 4734);
 }
 
 TEST(MetaFileTest, writeChunkMetaData) {

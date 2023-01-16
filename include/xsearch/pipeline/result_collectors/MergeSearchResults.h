@@ -25,8 +25,8 @@ namespace xs {
  * @tparam Enable
  */
 template <typename T, typename Enable = void>
-class YieldResult {
-  YieldResult() = default;
+class Result {
+  Result() = default;
 };
 
 /**
@@ -34,41 +34,11 @@ class YieldResult {
  * @tparam T
  */
 template <typename T>
-class YieldResult<T, typename std::enable_if<
+class Result<T, typename std::enable_if<
                     std::is_same<T, restype::count>::value ||
                     std::is_same<T, restype::count_lines>::value>::type> {
  public:
-  class iterator {
-   public:
-    explicit iterator(YieldResult& r) : _result(r) {}
-
-    size_t operator*() {
-      std::unique_lock locker(*(_result._mutex));
-      return _result._result;
-    }
-
-    iterator& operator++() {
-      std::unique_lock locker(*(_result._mutex));
-      _result._cv.get()->wait(
-          locker, [&]() { return _result._changed || _result._done; });
-      _result._changed = false;
-      return *this;
-    }
-
-    bool operator!=(const iterator&) {
-      std::unique_lock locker(*(_result._mutex));
-      return !_result._done;
-    }
-
-   private:
-    YieldResult& _result;
-  };
-
-  YieldResult() = default;
-
-  iterator begin() { return iterator(*this); }
-
-  iterator end() { return iterator(*this); }
+  Result() = default;
 
   /**
    * Get the sum of collected partial count results.
@@ -82,15 +52,8 @@ class YieldResult<T, typename std::enable_if<
    */
   void addPartialResult(DataChunk* data);
 
-  void markAsDone();
-
  private:
-  size_t _result = 0;
-  bool _changed = true;
-  bool _done = false;
-  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
-  std::unique_ptr<std::condition_variable> _cv =
-      std::make_unique<std::condition_variable>();
+  size_t _result;
 };
 
 /**
@@ -98,42 +61,12 @@ class YieldResult<T, typename std::enable_if<
  * @tparam T
  */
 template <typename T>
-class YieldResult<T, typename std::enable_if<
+class Result<T, typename std::enable_if<
                     std::is_same<T, restype::byte_positions>::value ||
                     std::is_same<T, restype::line_numbers>::value ||
                     std::is_same<T, restype::line_indices>::value>::type> {
  public:
-  class iterator {
-   public:
-    explicit iterator(YieldResult& r) : _result(r) {}
-
-    size_t operator*() {
-      std::unique_lock locker(*(_result._mutex));
-      return _result._result.back();
-    }
-
-    iterator& operator++() {
-      std::unique_lock locker(*(_result._mutex));
-      _result._cv.get()->wait(
-          locker, [&]() { return _result._changed || _result._done; });
-      _result._changed = false;
-      return *this;
-    }
-
-    bool operator!=(const iterator&) {
-      std::unique_lock locker(*(_result._mutex));
-      return !_result._done;
-    }
-
-   private:
-    YieldResult& _result;
-  };
-
-  YieldResult() = default;
-
-  iterator begin() { return iterator(*this); }
-
-  iterator end() { return iterator(*this); }
+  Result() = default;
 
   /**
    * Get a merged result of collected partial results.
@@ -157,15 +90,8 @@ class YieldResult<T, typename std::enable_if<
    */
   void addPartialResult(DataChunk* data);
 
-  void markAsDone();
-
  private:
   std::vector<size_t> _result;
-  bool _changed = true;
-  bool _done = false;
-  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
-  std::unique_ptr<std::condition_variable> _cv =
-      std::make_unique<std::condition_variable>();
 };
 
 /**
@@ -173,40 +99,10 @@ class YieldResult<T, typename std::enable_if<
  * @tparam T
  */
 template <typename T>
-class YieldResult<
+class Result<
     T, typename std::enable_if<std::is_same<T, restype::lines>::value>::type> {
  public:
-  class iterator {
-   public:
-    explicit iterator(YieldResult& r) : _result(r) {}
-
-    std::string& operator*() {
-      std::unique_lock locker(*(_result._mutex));
-      return _result._result.back();
-    }
-
-    iterator& operator++() {
-      std::unique_lock locker(*(_result._mutex));
-      _result._cv.get()->wait(
-          locker, [&]() { return _result._changed || _result._done; });
-      _result._changed = false;
-      return *this;
-    }
-
-    bool operator!=(const iterator&) {
-      std::unique_lock locker(*(_result._mutex));
-      return !_result._done;
-    }
-
-   private:
-    YieldResult& _result;
-  };
-
-  YieldResult() = default;
-
-  iterator begin() { return iterator(*this); }
-
-  iterator end() { return iterator(*this); }
+  Result() = default;
 
   /**
    * Get the merged result of collected partial results.
@@ -234,15 +130,8 @@ class YieldResult<
    */
   void addPartialResult(DataChunk* data);
 
-  void markAsDone();
-
  private:
   std::vector<std::string> _result;
-  bool _changed = true;
-  bool _done = false;
-  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
-  std::unique_ptr<std::condition_variable> _cv =
-      std::make_unique<std::condition_variable>();
 };
 
 /**
@@ -250,40 +139,10 @@ class YieldResult<
  * @tparam T
  */
 template <typename T>
-class YieldResult<
+class Result<
     T, typename std::enable_if<std::is_same<T, restype::full>::value>::type> {
  public:
-  class iterator {
-   public:
-    explicit iterator(YieldResult& r) : _result(r) {}
-
-    SearchResults operator*() {
-      std::unique_lock locker(*(_result._mutex));
-      return _result._result.back();
-    }
-
-    iterator& operator++() {
-      std::unique_lock locker(*(_result._mutex));
-      _result._cv.get()->wait(
-          locker, [&]() { return _result._changed || _result._done; });
-      _result._changed = false;
-      return *this;
-    }
-
-    bool operator!=(const iterator&) {
-      std::unique_lock locker(*(_result._mutex));
-      return !_result._done;
-    }
-
-   private:
-    YieldResult& _result;
-  };
-
-  YieldResult() = default;
-
-  iterator begin() { return iterator(*this); }
-
-  iterator end() { return iterator(*this); }
+  Result() = default;
 
   /**
    * Get a std::vector of collected partial results.
@@ -311,15 +170,8 @@ class YieldResult<
    */
   void addPartialResult(DataChunk* data);
 
-  void markAsDone();
-
  private:
   std::vector<SearchResults> _result;
-  bool _changed = true;
-  bool _done = false;
-  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
-  std::unique_ptr<std::condition_variable> _cv =
-      std::make_unique<std::condition_variable>();
 };
 
 }  // namespace xs

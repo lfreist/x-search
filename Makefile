@@ -40,7 +40,7 @@ test: lib_test sfgrep_test
 lib_test: build init_test_runs
 	ctest -C Release --test-dir build 2>/dev/null
 
-exe_test: build init_test_runs
+sfgrep_test: build init_test_runs
 	if [ ! -f tmp/1gb.dummy.txt ]; then python3 ./scripts/createTestFile.py --size 1 files/words.txt --output tmp/1gb.dummy.txt --progress; fi
 	bash ./test/test_sfgrep.sh ./build tmp/1gb.dummy.txt
 

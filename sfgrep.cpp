@@ -131,8 +131,9 @@ int main(int argc, char** argv) {
       searcher.count(std::forward<decltype(PH1)>(PH1));
     });
     // output task
-    xs::pipeline::CollectorTask oTask(
-        [&grep](auto&& PH1) { grep.print(std::forward<decltype(PH1)>(PH1)); });
+    xs::pipeline::CollectorTask<uint64_t> oTask(
+        [&grep](auto&& PH1) { grep.print(std::forward<decltype(PH1)>(PH1)); },
+        [&grep]() -> uint64_t { return grep.getCount(); });
     xs::pipeline::TaskManager<uint64_t> task_manager(
         std::move(rTask), std::move(processors), std::move(oTask));
     task_manager.execute(num_threads);
@@ -163,8 +164,9 @@ int main(int argc, char** argv) {
       searcher.line(std::forward<decltype(PH1)>(PH1));
     });
     // output task
-    xs::pipeline::CollectorTask oTask(
-        [&grep](auto&& PH1) { grep.print(std::forward<decltype(PH1)>(PH1)); });
+    xs::pipeline::CollectorTask<void> oTask(
+        [&grep](auto&& PH1) { grep.print(std::forward<decltype(PH1)>(PH1)); },
+        []() -> void { return; });
 
     xs::pipeline::TaskManager<void> task_manager(
         std::move(rTask), std::move(processors), std::move(oTask));
