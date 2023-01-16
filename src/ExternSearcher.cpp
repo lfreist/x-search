@@ -33,18 +33,23 @@ size_t ExternSearcher<restype::count>::search(const std::string& file_path,
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1));
+      });
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_zstd(
+            std::forward<decltype(PH1)>(PH1));
+      });
       break;
     default:
       break;
   }
 
-  processors.emplace_back([&searcher](auto&& PH1) { searcher.count(std::forward<decltype(PH1)>(PH1)); });
+  processors.emplace_back([&searcher](auto&& PH1) {
+    searcher.count(std::forward<decltype(PH1)>(PH1));
+  });
 
   xs::pipeline::TaskManager<size_t> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
@@ -73,19 +78,23 @@ size_t ExternSearcher<restype::count_lines>::search(
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1));
+      });
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_zstd(
+            std::forward<decltype(PH1)>(PH1));
+      });
       break;
     default:
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.count_lines(std::forward<decltype(PH1)>(PH1)); });
+  processors.emplace_back([&searcher](auto&& PH1) {
+    searcher.count_lines(std::forward<decltype(PH1)>(PH1));
+  });
 
   xs::pipeline::TaskManager<size_t> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
@@ -114,19 +123,23 @@ std::vector<size_t> ExternSearcher<restype::byte_positions>::search(
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1));
+      });
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_zstd(
+            std::forward<decltype(PH1)>(PH1));
+      });
       break;
     default:
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_match(std::forward<decltype(PH1)>(PH1), false); });
+  processors.emplace_back([&searcher](auto&& PH1) {
+    searcher.byte_offsets_match(std::forward<decltype(PH1)>(PH1), false);
+  });
 
   xs::pipeline::TaskManager<std::vector<size_t>> task_manager(
       xs::pipeline::ProducerTask([&reader] { return reader.read(); },
@@ -155,19 +168,23 @@ std::vector<size_t> ExternSearcher<restype::line_numbers>::search(
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1));
+      });
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_zstd(
+            std::forward<decltype(PH1)>(PH1));
+      });
       break;
     default:
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1)); });
+  processors.emplace_back([&searcher](auto&& PH1) {
+    searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1));
+  });
   processors.emplace_back([&searcher](auto&& PH1) {
     searcher.line_indices(std::forward<decltype(PH1)>(PH1));
   });
@@ -199,19 +216,23 @@ std::vector<size_t> ExternSearcher<restype::line_indices>::search(
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1));
+      });
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_zstd(
+            std::forward<decltype(PH1)>(PH1));
+      });
       break;
     default:
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1)); });
+  processors.emplace_back([&searcher](auto&& PH1) {
+    searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1));
+  });
   processors.emplace_back([&searcher](auto&& PH1) {
     searcher.line_indices(std::forward<decltype(PH1)>(PH1));
   });
@@ -243,19 +264,23 @@ std::vector<std::string> ExternSearcher<restype::lines>::search(
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1));
+      });
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_zstd(
+            std::forward<decltype(PH1)>(PH1));
+      });
       break;
     default:
       break;
   }
 
-  processors.emplace_back(
-      [&searcher](auto&& PH1) { searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1)); });
+  processors.emplace_back([&searcher](auto&& PH1) {
+    searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1));
+  });
   processors.emplace_back([&searcher](auto&& PH1) {
     searcher.line(std::forward<decltype(PH1)>(PH1));
   });
@@ -287,12 +312,15 @@ std::vector<SearchResults> ExternSearcher<restype::full>::search(
 
   switch (get_compression_type(MetaFile(meta_file_path, std::ios::in))) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_lz4(std::forward<decltype(PH1)>(PH1));
+      });
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(std::forward<decltype(PH1)>(PH1)); });
+      processors.emplace_back([](auto&& PH1) {
+        xs::processors::decompress::using_zstd(
+            std::forward<decltype(PH1)>(PH1));
+      });
       break;
     default:
       break;
