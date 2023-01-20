@@ -54,32 +54,6 @@ TEST(offset_mapping, to_line_indices) {
   ASSERT_EQ(map::bytes::to_line_indices(&str, byte_offsets), line_indices);
 }
 
-TEST(offset_mapping, to_line_index) {
-  {
-    DataChunk str(0, 0,
-                  {{176, 3}, {393, 7}, {801, 14}, {1066, 19}, {1240, 22}});
-    str.assign(dummy_text);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 12), 0);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 180), 3);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 250), 4);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 392), 6);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 801), 14);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 1240), 22);
-    ASSERT_THROW(xs::map::byte::to_line_index(&str, 1241), std::runtime_error);
-  }
-  {
-    DataChunk str(0, 0, {{176, 3}, {393, 7}, {801, 14}, {1066, 19}});
-    str.assign(dummy_text);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 12), 0);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 180), 3);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 250), 4);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 392), 6);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 801), 14);
-    ASSERT_EQ(xs::map::byte::to_line_index(&str, 1240), 22);
-    ASSERT_THROW(xs::map::byte::to_line_index(&str, 1241), std::runtime_error);
-  }
-}
-
 TEST(offset_mapping, to_line) {
   DataChunk str(0, 0, {{176, 3}, {393, 7}, {801, 14}, {1066, 19}, {1240, 23}});
   str.assign(dummy_text);

@@ -9,17 +9,17 @@ namespace xs::map::bytes {
 // _____________________________________________________________________________
 std::vector<uint64_t> to_line_indices(
     const xs::DataChunk* data,
-    const std::vector<uint64_t>& match_local_byte_offsets) {
+    const std::vector<uint64_t>& match_global_byte_offsets) {
   const auto& mapping_data = data->getNewLineIndices();
   auto first = mapping_data.begin();
   auto last = mapping_data.end();
   std::vector<uint64_t> result;
-  result.reserve(match_local_byte_offsets.size());
-  for (auto& bo : match_local_byte_offsets) {
+  result.reserve(match_global_byte_offsets.size());
+  for (auto& bo : match_global_byte_offsets) {
     int increase_by_one = -1;
-    if (bo + data->getOffset() > first->globalByteOffset) {
+    if (bo > first->globalByteOffset) {
       first = std::lower_bound(
-          first, last, bo + data->getOffset(),
+          first, last, bo,
           [](const ByteToNewLineMappingInfo& element, uint64_t value) -> bool {
             return element.globalByteOffset < value;
           });
@@ -35,7 +35,7 @@ std::vector<uint64_t> to_line_indices(
       if (data->str()[current_global_byte_offset - data->getOffset()] == '\n') {
         line_index += increase_by_one;
       }
-      if (current_global_byte_offset == bo + data->getOffset()) {
+      if (current_global_byte_offset == bo) {
         result.push_back(line_index);
         break;
       }
@@ -50,63 +50,9 @@ std::vector<uint64_t> to_line_indices(
 namespace xs::map::byte {
 
 // _____________________________________________________________________________
-uint64_t to_line_index(const xs::DataChunk* data,
-                       const uint64_t match_local_byte_offset) {
-  if (match_local_byte_offset > data->size()) {
-    throw std::runtime_error("ERROR: byte offset out of range.");
-  }
-  const auto& mapping_data = data->getNewLineIndices();
-  if (mapping_data.empty()) {
-    // mapping data obviously are required for mappings...
-    throw std::runtime_error(
-        "ERROR: meta data containing new line indices must be provided for "
-        "line index searching");
-  }
-  // get the mapping data that is closest to the byte offset of the match
-  const auto lower = std::lower_bound(
-      mapping_data.begin(), mapping_data.end(),
-      match_local_byte_offset + data->getOffset(),
-      [](const ByteToNewLineMappingInfo& element, uint64_t value) -> bool {
-        return element.globalByteOffset < value;
-      });
-  int increase_by_one;
-  uint64_t line_index;
-  uint64_t current_global_byte_offset;
-  // Check if the line number we are looking for is closer when we count line
-  //  numbers forwards or backwards. This way we achieve to manually count the
-  //  minimum number of new line chars possible.
-  if (lower == mapping_data.end()) {
-    // count line numbers and byte offsets forwards
-    increase_by_one = 1;
-    line_index = mapping_data.back().globalLineIndex;
-    current_global_byte_offset = mapping_data.back().globalByteOffset;
-  } else {
-    // count line numbers and byte offsets backwards
-    increase_by_one = -1;
-    line_index = lower->globalLineIndex;
-    current_global_byte_offset = lower->globalByteOffset;
-  }
-  while (true) {
-    if (current_global_byte_offset - data->getOffset() > data->size()) {
-      // TODO: check if this is correct!
-      //  We previously threw a runtime error here but I think it should be fine
-      //  this way...
-      break;
-    }
-    if (data->str()[current_global_byte_offset - data->getOffset()] == '\n') {
-      line_index += increase_by_one;
-    }
-    if (current_global_byte_offset ==
-        match_local_byte_offset + data->getOffset()) {
-      break;
-    }
-    current_global_byte_offset += increase_by_one;
-  }
-  return line_index;
-}
-
-// _____________________________________________________________________________
-std::string to_line(xs::DataChunk* data, uint64_t match_local_byte_offset) {
+std::string to_line(xs::DataChunk* data, uint64_t match_global_byte_offset) {
+  uint64_t match_local_byte_offset =
+      match_global_byte_offset - data->getOffset();
   std::string result;
   char* data_p = data->data();
   if (match_local_byte_offset > data->size()) {

@@ -85,12 +85,6 @@ class MetaFile {
    */
   void writeChunkMetaData(const ChunkMetaData& chunk);
 
-  /**
-   * Reopen meta file aka moving file pointer to start aka starting at first
-   * chunk again
-   */
-  void reset();
-
   CompressionType getCompressionType() const;
 
   static CompressionType getCompressionType(const std::string& metaFilePath);

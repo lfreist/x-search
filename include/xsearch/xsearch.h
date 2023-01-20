@@ -8,12 +8,6 @@
 #include <xsearch/FilePreprocessing.h>
 #include <xsearch/MetaFile.h>
 #include <xsearch/ResultTypes.h>
-#include <xsearch/pipeline/Task.h>
-#include <xsearch/pipeline/TaskManager.h>
-#include <xsearch/pipeline/processors/decompressors.h>
-#include <xsearch/pipeline/reader/BlockReader.h>
-#include <xsearch/pipeline/result_collectors/grep.h>
-#include <xsearch/pipeline/searchers/Searchers.h>
 #include <xsearch/string_search/offset_mappings.h>
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
@@ -23,3 +17,7 @@
 #include <xsearch/utils/compression/Lz4Wrapper.h>
 #include <xsearch/utils/compression/ZstdWrapper.h>
 #include <xsearch/utils/utils.h>
+#include <xsearch/tasks/DataProvider.h>
+#include <xsearch/tasks/Processor.h>
+#include <xsearch/tasks/ResultCollector.h>
+#include <xsearch/tasks/Searcher.h>

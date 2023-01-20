@@ -1,2 +1,0 @@
-add_executable(DecompressorsTestMain decompressorsTest.cpp)
-target_link_libraries(DecompressorsTestMain PUBLIC DefaultTasks gtest_main)

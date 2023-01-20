@@ -14,7 +14,7 @@ namespace xs::utils {
  * @param pattern
  * @return bool: true if regex, else false
  */
-bool use_str_as_regex(const std::string& pattern) {
+inline bool use_str_as_regex(const std::string& pattern) {
   try {
     std::regex r(pattern);
     return !(std::regex_match(pattern, std::regex("^" + pattern + "$")));

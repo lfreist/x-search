@@ -1,0 +1,1 @@
+#include <xsearch/ResultTypes.h>

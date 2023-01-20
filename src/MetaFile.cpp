@@ -152,12 +152,6 @@ void MetaFile::writeChunkMetaData(const ChunkMetaData& chunk) {
 }
 
 // _____________________________________________________________________________
-void MetaFile::reset() {
-  _metaFileStream.close();
-  _metaFileStream.open(_filePath, _openMode);
-}
-
-// _____________________________________________________________________________
 CompressionType MetaFile::getCompressionType() const {
   return _compressionType;
 }

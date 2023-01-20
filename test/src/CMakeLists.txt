@@ -1,4 +1,3 @@
-add_subdirectory(pipeline)
 add_subdirectory(string_search)
 add_subdirectory(utils)
 

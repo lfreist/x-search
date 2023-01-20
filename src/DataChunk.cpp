@@ -15,7 +15,6 @@ DataChunk::DataChunk(strtype data, uint64_t offset,
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _offset = offset;
   _originalSize = 0;
-  results.offset = offset;
 }
 
 // _____________________________________________________________________________
@@ -25,7 +24,6 @@ DataChunk::DataChunk(uint64_t data_size, uint64_t offset,
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _offset = offset;
   _originalSize = 0;
-  results.offset = offset;
 }
 
 // _____________________________________________________________________________
@@ -35,7 +33,6 @@ DataChunk::DataChunk(strtype data, uint64_t originalSize, uint64_t offset,
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _originalSize = originalSize;
   _offset = offset;
-  results.offset = offset;
 }
 
 // _____________________________________________________________________________
@@ -45,7 +42,6 @@ DataChunk::DataChunk(uint64_t data_size, uint64_t originalSize, uint64_t offset,
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _originalSize = originalSize;
   _offset = offset;
-  results.offset = offset;
 }
 
 // _____________________________________________________________________________
@@ -60,7 +56,6 @@ uint64_t DataChunk::getOriginalSize() const { return _originalSize; }
 // _____________________________________________________________________________
 void DataChunk::setOffset(uint64_t offset) {
   _offset = offset;
-  results.offset = offset;
 }
 
 // _____________________________________________________________________________

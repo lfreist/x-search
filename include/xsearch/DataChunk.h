@@ -91,8 +91,6 @@ class DataChunk {
 
   void pop_back();
 
-  SearchResults results;
-
  private:
   strtype _content;
   // indicating position of _content's first byte relative to start of all data

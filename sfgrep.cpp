@@ -6,7 +6,6 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <numeric>
-#include <regex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -94,84 +93,42 @@ int main(int argc, char** argv) {
   num_threads = num_threads == 0 ? 1 : num_threads;
   // ---------------------------------------------------------------------------
 
-  // check if provided pattern is regex ----------------------------------------
-  bool regex = xs::utils::use_str_as_regex(pattern);
-  // ---------------------------------------------------------------------------
-
   // creating TaskManager with its tasks and run it ----------------------------
-  std::vector<xs::pipeline::ProcessingTask> processors;
+  std::vector<std::unique_ptr<xs::tasks::BaseProcessor<xs::DataChunk>>> processors;
 
   // check for compression and add decompression task --------------------------
   xs::MetaFile metaFile(meta_file_path, std::ios::in);
   switch (metaFile.getCompressionType()) {
     case xs::CompressionType::LZ4:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_lz4(PH1); });
+      processors.push_back(std::make_unique<xs::tasks::LZ4Decompressor>());
       break;
     case xs::CompressionType::ZSTD:
-      processors.emplace_back(
-          [](auto&& PH1) { xs::processors::decompress::using_zstd(PH1); });
+      processors.emplace_back(std::make_unique<xs::tasks::ZSTDDecompressor>());
       break;
     default:
       break;
   }
   // ---------------------------------------------------------------------------
-  xs::reader::BlockReader reader(std::move(file_path),
-                                 std::move(meta_file_path), 10);
-  xs::searcher::Searcher searcher(std::move(pattern), regex);
-  xs::collector::GrepOutput grep(byte_offset, line_number, only_matching, count,
-                                 !no_color);
-
-  // reader task
-  xs::pipeline::ProducerTask rTask([&reader] { return reader.read(); }, 2);
+  auto reader = std::make_unique<xs::tasks::ExternBlockReader>(file_path, meta_file_path);
+  std::vector<std::unique_ptr<xs::tasks::BaseSearcher<xs::DataChunk, xs::PartialResult>>> searchers;
 
   if (count) {
     // count set -> count results and output number in the end -----------------
-    processors.emplace_back([&searcher](auto&& PH1) {
-      searcher.count(std::forward<decltype(PH1)>(PH1));
-    });
-    // output task
-    xs::pipeline::CollectorTask<uint64_t> oTask(
-        [&grep](auto&& PH1) { grep.print(std::forward<decltype(PH1)>(PH1)); },
-        [&grep]() -> uint64_t { return grep.getCount(); });
-    xs::pipeline::TaskManager<uint64_t> task_manager(
-        std::move(rTask), std::move(processors), std::move(oTask));
-    task_manager.execute(num_threads);
-    task_manager.join();
+    searchers.push_back(std::make_unique<xs::tasks::MatchCounter>());
+
+    auto extern_searcher = xs::ExternSearcher<>(pattern, num_threads, 2, std::move(reader), std::move(processors), std::move(searchers));
+    extern_searcher.join();
+    std::cout << extern_searcher.getResult().getResult()._count << std::endl;
     // -------------------------------------------------------------------------
   } else {
     // no count set -> run grep and output results
     // -------------------------------
     if ((byte_offset || line_number) && only_matching) {
-      processors.emplace_back([&searcher](auto&& PH1) {
-        searcher.byte_offsets_match(std::forward<decltype(PH1)>(PH1), false);
-      });
     } else if ((byte_offset || line_number) && !only_matching) {
-      processors.emplace_back([&searcher](auto&& PH1) {
-        searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1));
-      });
     } else {
-      processors.emplace_back([&searcher](auto&& PH1) {
-        searcher.byte_offsets_line(std::forward<decltype(PH1)>(PH1));
-      });
     }
     if (line_number) {
-      processors.emplace_back([&searcher](auto&& PH1) {
-        searcher.line_indices(std::forward<decltype(PH1)>(PH1));
-      });
     }
-    processors.emplace_back([&searcher](auto&& PH1) {
-      searcher.line(std::forward<decltype(PH1)>(PH1));
-    });
-    // output task
-    xs::pipeline::CollectorTask<void> oTask(
-        [&grep](auto&& PH1) { grep.print(std::forward<decltype(PH1)>(PH1)); },
-        []() -> void { return; });
-
-    xs::pipeline::TaskManager<void> task_manager(
-        std::move(rTask), std::move(processors), std::move(oTask));
-    task_manager.execute(num_threads);
-    task_manager.join();
   }
   // ---------------------------------------------------------------------------
 

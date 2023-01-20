@@ -50,6 +50,9 @@ IF(${MAIN_PROJECT})
     add_executable(sfgrep sfgrep.cpp)
     target_link_libraries(sfgrep PUBLIC xsearch boost_program_options)
 
+    add_executable(testMain test.cpp)
+    target_link_libraries(testMain PUBLIC ExternSearcher)
+
     add_executable(FilePreprocessor FilePreprocessorMain.cpp)
     target_link_libraries(FilePreprocessor PUBLIC xsearch boost_program_options)
 endif()

@@ -1,6 +1,9 @@
 // Copyright 2022, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
+// TODO: all functions here require an additional argument holding additional
+//  information like byte offsets for line_indices or lines etc.
+
 #pragma once
 
 #include <re2/re2.h>
@@ -75,6 +78,9 @@ std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
  */
 std::vector<uint64_t> line_indices(xs::DataChunk* data,
                                    const std::string& pattern);
+
+// TODO: write docs
+std::vector<std::string> lines(xs::DataChunk* data, const std::string& pattern);
 
 /**
  * Count the numbers of lines containing a match of pattern in data.
@@ -153,6 +159,9 @@ std::vector<uint64_t> global_byte_offsets_match(const xs::DataChunk* data,
  */
 std::vector<uint64_t> line_indices(xs::DataChunk* data,
                                    const re2::RE2& pattern);
+
+// TODO: write docs
+std::vector<std::string> lines(xs::DataChunk* data, const re2::RE2& pattern);
 
 /**
  * Count the numbers of lines containing a regex match of pattern in data.

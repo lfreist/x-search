@@ -132,6 +132,13 @@ std::vector<uint64_t> line_indices(xs::DataChunk* data,
 }
 
 // _____________________________________________________________________________
+std::vector<std::string> lines(xs::DataChunk* data,
+                                   const std::string& pattern) {
+  // TODO: implement
+  return {};
+}
+
+// _____________________________________________________________________________
 uint64_t count(xs::DataChunk* data, const std::string& pattern,
                bool skip_to_nl) {
   uint64_t result = 0;
@@ -193,6 +200,13 @@ std::vector<uint64_t> regex::global_byte_offsets_line(const xs::DataChunk* data,
 std::vector<uint64_t> regex::line_indices(xs::DataChunk* data,
                                           const re2::RE2& pattern) {
   return map::bytes::to_line_indices(data, _regex_byte_offsets(data, pattern));
+}
+
+// _____________________________________________________________________________
+std::vector<std::string> lines(xs::DataChunk* data,
+                               const re2::RE2& pattern) {
+  // TODO: implement
+  return {};
 }
 
 // _____________________________________________________________________________

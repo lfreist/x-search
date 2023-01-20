@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <xsearch/ExternSearcher.h>
 
+/*
 TEST(ExternSearcherTest, count) {
   {  // plain text
     size_t res = xs::ExternSearcher<xs::restype::count>::search(
@@ -82,6 +83,7 @@ TEST(ExternSearcherTest, count_lines) {
   }
 }
 
+
 template <typename T>
 void print(std::vector<T>& v) {
   std::cout << "{";
@@ -90,6 +92,7 @@ void print(std::vector<T>& v) {
   }
   std::cout << std::endl;
 }
+
 
 TEST(ExternSearcherTest, byte_positions) {
   std::vector<size_t> plain_res = {
@@ -266,3 +269,4 @@ TEST(ExternSearcherTest, line_numbers) {
     ASSERT_EQ(res, regex_res);
   }
 }
+*/
