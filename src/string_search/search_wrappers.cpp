@@ -126,16 +126,10 @@ std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
 }
 
 // _____________________________________________________________________________
-std::vector<uint64_t> line_indices(xs::DataChunk* data,
-                                   const std::string& pattern) {
-  return map::bytes::to_line_indices(data, _byte_offsets(data, pattern));
-}
-
-// _____________________________________________________________________________
-std::vector<std::string> lines(xs::DataChunk* data,
-                                   const std::string& pattern) {
-  // TODO: implement
-  return {};
+std::vector<uint64_t> line_indices(
+    xs::DataChunk* data, const std::vector<uint64_t>& global_byte_offsets,
+    const std::string& pattern) {
+  return map::bytes::to_line_indices(data, global_byte_offsets);
 }
 
 // _____________________________________________________________________________
@@ -197,16 +191,10 @@ std::vector<uint64_t> regex::global_byte_offsets_line(const xs::DataChunk* data,
 }
 
 // _____________________________________________________________________________
-std::vector<uint64_t> regex::line_indices(xs::DataChunk* data,
-                                          const re2::RE2& pattern) {
-  return map::bytes::to_line_indices(data, _regex_byte_offsets(data, pattern));
-}
-
-// _____________________________________________________________________________
-std::vector<std::string> lines(xs::DataChunk* data,
-                               const re2::RE2& pattern) {
-  // TODO: implement
-  return {};
+std::vector<uint64_t> regex::line_indices(
+    xs::DataChunk* data, const std::vector<uint64_t>& global_byte_offsets,
+    const re2::RE2& pattern) {
+  return map::bytes::to_line_indices(data, global_byte_offsets);
 }
 
 // _____________________________________________________________________________

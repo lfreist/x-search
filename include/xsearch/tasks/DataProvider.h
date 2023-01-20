@@ -20,7 +20,6 @@ class BaseDataProvider {
 };
 // -----------------------------------------------------------------------------
 
-
 class ExternBlockReader : public BaseDataProvider<DataChunk> {
  public:
   ExternBlockReader(std::string file_path, const std::string& meta_file_path);
@@ -32,4 +31,4 @@ class ExternBlockReader : public BaseDataProvider<DataChunk> {
   MetaFile _meta_file;
 };
 
-}
+}  // namespace xs::tasks

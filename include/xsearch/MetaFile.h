@@ -38,6 +38,7 @@ struct ByteToNewLineMappingInfo {
  * @attribute compressedSize: number of of compressed data
  */
 struct ChunkMetaData {
+  size_t chunk_index;
   size_t original_offset;
   size_t actual_offset;
   size_t original_size;
@@ -94,6 +95,7 @@ class MetaFile {
   std::string _filePath;
   std::fstream _metaFileStream;
   std::ios::openmode _openMode;
+  size_t _chunk_index = 0;
 
   std::mutex _getChunkMutex;
 };

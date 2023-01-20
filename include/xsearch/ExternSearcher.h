@@ -8,7 +8,7 @@
 #include <xsearch/tasks/DataProvider.h>
 #include <xsearch/tasks/Processor.h>
 #include <xsearch/tasks/Searcher.h>
-#include <xsearch/utils/TSQueue.h>
+#include <xsearch/utils/utils.h>
 
 #include <memory>
 #include <semaphore>
@@ -56,8 +56,10 @@ class ExternSearcher {
       std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
       std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
       std::vector<std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>>>
-          searchers)
-      : _reader(std::move(reader)),
+          searchers,
+      ResType initial_result)
+      : _result(std::move(initial_result)),
+        _reader(std::move(reader)),
         _processors(std::move(processors)),
         _searchers(std::move(searchers)) {
     if (max_readers > num_threads) {
@@ -66,6 +68,10 @@ class ExternSearcher {
     _threads.resize(num_threads);
     _max_readers = max_readers;
     _pattern = std::move(pattern);
+    _regex = xs::utils::use_str_as_regex(_pattern);
+    if (_regex) {
+      _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
+    }
     _running = true;
     for (auto& t : _threads) {
       t = std::thread(&ExternSearcher::main_task, this);

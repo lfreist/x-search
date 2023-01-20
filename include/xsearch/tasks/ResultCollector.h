@@ -20,4 +20,4 @@ class BaseResultCollector {
   virtual void addPartialResult() = 0;
 };
 
-}
+}  // namespace xs::tasks

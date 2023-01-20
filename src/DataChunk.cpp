@@ -10,38 +10,46 @@ namespace xs {
 // ----- public ----------------------------------------------------------------
 // _____________________________________________________________________________
 DataChunk::DataChunk(strtype data, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping)
+                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
+                     size_t index)
     : _content(std::move(data)),
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _offset = offset;
   _originalSize = 0;
+  _index = index;
 }
 
 // _____________________________________________________________________________
 DataChunk::DataChunk(uint64_t data_size, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping)
+                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
+                     size_t index)
     : _content(data_size),
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _offset = offset;
   _originalSize = 0;
+  _index = index;
 }
 
 // _____________________________________________________________________________
 DataChunk::DataChunk(strtype data, uint64_t originalSize, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping)
+                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
+                     size_t index)
     : _content(std::move(data)),
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _originalSize = originalSize;
   _offset = offset;
+  _index = index;
 }
 
 // _____________________________________________________________________________
 DataChunk::DataChunk(uint64_t data_size, uint64_t originalSize, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping)
+                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
+                     size_t index)
     : _content(data_size),
       _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
   _originalSize = originalSize;
   _offset = offset;
+  _index = index;
 }
 
 // _____________________________________________________________________________
@@ -54,9 +62,7 @@ uint64_t DataChunk::getOffset() const { return _offset; }
 uint64_t DataChunk::getOriginalSize() const { return _originalSize; }
 
 // _____________________________________________________________________________
-void DataChunk::setOffset(uint64_t offset) {
-  _offset = offset;
-}
+void DataChunk::setOffset(uint64_t offset) { _offset = offset; }
 
 // _____________________________________________________________________________
 void DataChunk::setOriginalSize(uint64_t original_size) {
@@ -99,5 +105,8 @@ void DataChunk::assign(std::string data) {
 
 // _____________________________________________________________________________
 void DataChunk::pop_back() { return _content.pop_back(); }
+
+// _____________________________________________________________________________
+size_t DataChunk::getIndex() const { return _index; }
 
 }  // namespace xs

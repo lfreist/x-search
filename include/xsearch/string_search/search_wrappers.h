@@ -76,11 +76,9 @@ std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
  * @param pattern const std::string&: pattern to be searched for
  * @return std::vector<uint64_t>: vector of all found line indices
  */
-std::vector<uint64_t> line_indices(xs::DataChunk* data,
-                                   const std::string& pattern);
-
-// TODO: write docs
-std::vector<std::string> lines(xs::DataChunk* data, const std::string& pattern);
+std::vector<uint64_t> line_indices(
+    xs::DataChunk* data, const std::vector<uint64_t>& global_byte_offsets,
+    const std::string& pattern);
 
 /**
  * Count the numbers of lines containing a match of pattern in data.
@@ -157,11 +155,9 @@ std::vector<uint64_t> global_byte_offsets_match(const xs::DataChunk* data,
  * @param pattern const re2::RE2&: pattern to be searched for
  * @return std::vector<uint64_t>: vector of all found line indices
  */
-std::vector<uint64_t> line_indices(xs::DataChunk* data,
-                                   const re2::RE2& pattern);
-
-// TODO: write docs
-std::vector<std::string> lines(xs::DataChunk* data, const re2::RE2& pattern);
+std::vector<uint64_t> line_indices(
+    xs::DataChunk* data, const std::vector<uint64_t>& global_byte_offsets,
+    const re2::RE2& pattern);
 
 /**
  * Count the numbers of lines containing a regex match of pattern in data.

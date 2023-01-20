@@ -83,8 +83,8 @@ TEST(MetaFileTest, nextChunkMetaDataMultiple) {
 }
 
 TEST(MetaFileTest, writeChunkMetaData) {
-  ChunkMetaData original_cs_0{0, 10, 100, 50, {{1, 2}, {2, 3}}};
-  ChunkMetaData original_cs_1{51, 100, 112, 42, {{4, 5}, {7, 2354}}};
+  ChunkMetaData original_cs_0{0, 0, 10, 100, 50, {{1, 2}, {2, 3}}};
+  ChunkMetaData original_cs_1{0, 51, 100, 112, 42, {{4, 5}, {7, 2354}}};
   {  // write data to meta file
     MetaFile meta_file_write("test/files/tmp.meta", std::ios::out);
     meta_file_write.writeChunkMetaData(original_cs_0);

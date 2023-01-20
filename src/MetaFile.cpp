@@ -61,7 +61,7 @@ void ChunkMetaData::serialize(std::fstream* stream) const {
 
 // _____________________________________________________________________________
 ChunkMetaData readChunkMetaData(std::fstream* stream) {
-  ChunkMetaData cmd{0, 0, 0, 0, {}};
+  ChunkMetaData cmd{0, 0, 0, 0, 0, {}};
   stream->read(reinterpret_cast<char*>(&cmd.original_offset),
                sizeof(cmd.original_offset));
   if (stream->eof()) {
@@ -126,6 +126,7 @@ std::optional<ChunkMetaData> MetaFile::nextChunkMetaData() {
   if (_metaFileStream.eof()) {
     return {};
   }
+  cs.chunk_index = _chunk_index++;
   return cs;
 }
 
@@ -139,6 +140,7 @@ std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
     if (_metaFileStream.eof()) {
       break;
     }
+    cmd.chunk_index = _chunk_index++;
     cs.emplace_back(cmd);
   }
   return cs;

@@ -37,16 +37,18 @@ class DataChunk {
 
  public:
   DataChunk() = default;
-  explicit DataChunk(
-      strtype data, uint64_t offset = 0,
-      std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {});
+  explicit DataChunk(strtype data, uint64_t offset = 0,
+                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {},
+                     size_t index = 0);
   DataChunk(strtype data, uint64_t originalSize, uint64_t offset,
-            std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {});
-  explicit DataChunk(
-      uint64_t data_size, uint64_t offset = 0,
-      std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {});
+            std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {},
+            size_t index = 0);
+  explicit DataChunk(uint64_t data_size, uint64_t offset = 0,
+                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {},
+                     size_t index = 0);
   DataChunk(uint64_t data_size, uint64_t original_size, uint64_t offset = 0,
-            std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {});
+            std::vector<ByteToNewLineMappingInfo> byte_nl_mapping = {},
+            size_t index = 0);
 
   // delete copy constructor
   DataChunk(const DataChunk&) = delete;
@@ -91,7 +93,10 @@ class DataChunk {
 
   void pop_back();
 
+  size_t getIndex() const;
+
  private:
+  size_t _index = 0;
   strtype _content;
   // indicating position of _content's first byte relative to start of all data
   uint64_t _offset = 0;

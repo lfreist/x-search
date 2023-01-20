@@ -96,19 +96,19 @@ TEST(search, line_indices) {
     DataChunk data(0, 0, {{176, 3}, {393, 7}});
     data.assign(dummy_text);
     std::vector<uint64_t> res{0, 2, 3, 8};
-    ASSERT_EQ(::search::line_indices(&data, "ant"), res);
+    ASSERT_EQ(::search::line_indices(&data, {2, 151, 197, 507}, "ant"), res);
   }
   {
     DataChunk data(0, 10, {{186, 3}, {403, 7}});
     data.assign(dummy_text);
     std::vector<uint64_t> res{0, 2, 3, 8};
-    ASSERT_EQ(::search::line_indices(&data, "ant"), res);
+    ASSERT_EQ(::search::line_indices(&data, {12, 161, 207, 517}, "ant"), res);
   }
   {
     DataChunk data(0, 100, {{276, 3}, {493, 7}});
     data.assign(dummy_text);
     std::vector<uint64_t> res{0, 2, 3, 8};
-    ASSERT_EQ(::search::line_indices(&data, "ant"), res);
+    ASSERT_EQ(::search::line_indices(&data, {102, 251, 297, 607}, "ant"), res);
   }
 }
 
@@ -217,19 +217,25 @@ TEST(search_regex, line_indices) {
     DataChunk data(0, 0, {{176, 3}, {393, 7}});
     data.assign(dummy_text);
     std::vector<uint64_t> res{0, 2, 3, 8};
-    ASSERT_EQ(::search::regex::line_indices(&data, re2::RE2("(a[n|m]t)")), res);
+    ASSERT_EQ(::search::regex::line_indices(&data, {2, 151, 197, 507},
+                                            re2::RE2("(a[n|m]t)")),
+              res);
   }
   {
     DataChunk data(0, 10, {{186, 3}, {403, 7}});
     data.assign(dummy_text);
     std::vector<uint64_t> res{0, 2, 3, 8};
-    ASSERT_EQ(::search::regex::line_indices(&data, re2::RE2("(a[n|m]t)")), res);
+    ASSERT_EQ(::search::regex::line_indices(&data, {12, 161, 207, 517},
+                                            re2::RE2("(a[n|m]t)")),
+              res);
   }
   {
     DataChunk data(0, 100, {{276, 3}, {493, 7}});
     data.assign(dummy_text);
     std::vector<uint64_t> res{0, 2, 3, 8};
-    ASSERT_EQ(::search::regex::line_indices(&data, re2::RE2("(a[n|m]t)")), res);
+    ASSERT_EQ(::search::regex::line_indices(&data, {102, 251, 297, 607},
+                                            re2::RE2("(a[n|m]t)")),
+              res);
   }
 }
 

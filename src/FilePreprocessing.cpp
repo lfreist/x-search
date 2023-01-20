@@ -84,8 +84,12 @@ void FilePreprocessor::preprocess(
         // no technical reasons and is just a design decision because it is
         // more intuitive...
         byteNLMappingVector.push_back({read_offset + 1, line_index + 1});
-        ChunkMetaData cmd{original_offset, actual_offset, buffer_length,
-                          buffer_length, byteNLMappingVector};
+        ChunkMetaData cmd{0,
+                          original_offset,
+                          actual_offset,
+                          buffer_length,
+                          buffer_length,
+                          byteNLMappingVector};
         meta_file.writeChunkMetaData(cmd);
         original_offset = read_offset;
         actual_offset = write_offset;
@@ -103,8 +107,12 @@ void FilePreprocessor::preprocess(
       line_index++;
     }
     byteNLMappingVector.push_back({read_offset, line_index});
-    ChunkMetaData cmd{original_offset, actual_offset, buffer_length,
-                      buffer_length, byteNLMappingVector};
+    ChunkMetaData cmd{0,
+                      original_offset,
+                      actual_offset,
+                      buffer_length,
+                      buffer_length,
+                      byteNLMappingVector};
     meta_file.writeChunkMetaData(cmd);
   } else {
     std::ofstream out_stream(outFile.empty()
@@ -150,8 +158,12 @@ void FilePreprocessor::preprocess(
         }
         write_offset += compressed.size();
         byteNLMappingVector.push_back({read_offset + 1, line_index + 1});
-        ChunkMetaData cmd{original_offset, actual_offset, buffer.size(),
-                          compressed.size(), byteNLMappingVector};
+        ChunkMetaData cmd{0,
+                          original_offset,
+                          actual_offset,
+                          buffer.size(),
+                          compressed.size(),
+                          byteNLMappingVector};
         out_stream.write(compressed.data(),
                          static_cast<std::streamsize>(compressed.size()));
         meta_file.writeChunkMetaData(cmd);
@@ -175,8 +187,12 @@ void FilePreprocessor::preprocess(
         compressed = xs::utils::compression::LZ4::compress(
             buffer.data(), static_cast<int>(buffer.size()), compressionLevel);
       }
-      ChunkMetaData cmd{original_offset, actual_offset, buffer.size(),
-                        compressed.size(), byteNLMappingVector};
+      ChunkMetaData cmd{0,
+                        original_offset,
+                        actual_offset,
+                        buffer.size(),
+                        compressed.size(),
+                        byteNLMappingVector};
       out_stream.write(compressed.data(),
                        static_cast<std::streamsize>(compressed.size()));
       meta_file.writeChunkMetaData(cmd);
