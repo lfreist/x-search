@@ -12,9 +12,9 @@ ExternBlockReader::ExternBlockReader(std::string file_path,
       _meta_file(meta_file_path, std::ios::in) {}
 
 std::vector<DataChunk> ExternBlockReader::getNextData(int num) {
-  INLINE_BENCHMARK_WALL_START("stream");
+  INLINE_BENCHMARK_WALL_START("construct stream");
   std::ifstream stream(_file_path);
-  INLINE_BENCHMARK_WALL_STOP("stream");
+  INLINE_BENCHMARK_WALL_STOP("construct stream");
   INLINE_BENCHMARK_WALL_START("reading");
   std::vector<ChunkMetaData> cmds = _meta_file.nextChunkMetaData(num);
   if (cmds.empty()) {
@@ -24,7 +24,9 @@ std::vector<DataChunk> ExternBlockReader::getNextData(int num) {
   std::vector<DataChunk> dcs;
   dcs.reserve(cmds.size());
   for (auto& cmd : cmds) {
+    INLINE_BENCHMARK_WALL_START("seek file position");
     stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
+    INLINE_BENCHMARK_WALL_STOP("seeking file position");
     xs::DataChunk chunk(cmd.actual_size, cmd.original_size, cmd.original_offset,
                         std::move(cmd.line_mapping_data), cmd.chunk_index);
     stream.read(chunk.data(), static_cast<int64_t>(cmd.actual_size));

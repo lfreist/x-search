@@ -95,7 +95,7 @@ class GrepResult : public xs::BaseResult<xs::PartialResult> {
         _match_only(match_only) {}
 
   void addPartialResult(xs::PartialResult& part_res) override {
-    INLINE_BENCHMARK_WALL_START("printing");
+    INLINE_BENCHMARK_WALL_START("formatting and printing");
     if (part_res._index == _next_index) {
       output_helper(_pattern, part_res, _regex, _line_number, _byte_offset,
                     _match_only, _color);
@@ -103,6 +103,7 @@ class GrepResult : public xs::BaseResult<xs::PartialResult> {
         _next_index++;
         auto search = _buffer.find(_next_index);
         if (search == _buffer.end()) {
+          INLINE_BENCHMARK_WALL_STOP("formatting and printing");
           break;
         }
         output_helper(_pattern, search->second, _regex, _line_number,
@@ -112,7 +113,7 @@ class GrepResult : public xs::BaseResult<xs::PartialResult> {
     } else {
       _buffer.insert({part_res._index, {std::move(part_res)}});
     }
-    INLINE_BENCHMARK_WALL_STOP("printing");
+    INLINE_BENCHMARK_WALL_STOP("formatting and printing");
   }
 
   // only because we must implement it...

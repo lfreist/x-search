@@ -22,11 +22,11 @@ fi
 # preprocessing file:
 echo " Processing $file..."
 echo "  no compression: $file_name.sf.meta"
-"$HOME/CLionProjects/stringFinder/cmake-build-benchmarked/SFPreprocessorMain" "$file" -a none -d 500 -m "tmp/$file_name.sf.meta" >/dev/null &
+"$sf_binaries/FilePreprocessor" "$file" -a none -d 500 -m "tmp/$file_name.sf.meta" >/dev/null &
 echo "  lz4 compression: $file_name.sflz4.meta | $file_name.sflz4"
-"$HOME/CLionProjects/stringFinder/cmake-build-benchmarked/SFPreprocessorMain" "$file" -a lz4 -d 500 -m "tmp/$file_name.sflz4.meta" -o "tmp/$file_name.sflz4" >/dev/null &
+"$sf_binaries/FilePreprocessor" "$file" -a lz4 -d 500 -m "tmp/$file_name.sflz4.meta" -o "tmp/$file_name.sflz4" >/dev/null &
 echo "  zst compression: $file_name.sfzst.meta | $file_name.sfzst"
-"$HOME/CLionProjects/stringFinder/cmake-build-benchmarked/SFPreprocessorMain" "$file" -a zst -d 500 -m "tmp/$file_name.sfzst.meta" -o "tmp/$file_name.sfzst" >/dev/null &
+"$sf_binaries/FilePreprocessor" "$file" -a zst -d 500 -m "tmp/$file_name.sfzst.meta" -o "tmp/$file_name.sfzst" >/dev/null &
 
 echo " ..."
 wait
