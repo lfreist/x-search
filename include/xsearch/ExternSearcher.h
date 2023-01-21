@@ -95,16 +95,23 @@ class ExternSearcher {
 
  private:
   void main_task() {
+    size_t num_chunks_read = 0;
     while (true) {
       auto chunks = reader_task();
       if (chunks.empty()) {
         break;
       }
+      num_chunks_read += chunks.size();
       processors_task(chunks);
       auto partial_results = searchers_task(chunks);
       results_join_task(partial_results);
     }
+    _m.lock();
+    std::cout << std::this_thread::get_id() << ": " << num_chunks_read << std::endl;
+    _m.unlock();
   }
+
+  std::mutex _m;
 
   std::vector<DataT> reader_task() {
     std::unique_lock reader_lock(_reader_worker_mutex);
