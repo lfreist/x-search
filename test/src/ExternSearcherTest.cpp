@@ -2,7 +2,7 @@
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
 #include <gtest/gtest.h>
-#include <xsearch/ExternSearcher.h>
+#include <xsearch/xsearch.h>
 
 /*
 TEST(ExternSearcherTest, count) {

@@ -21,3 +21,18 @@
 #include <xsearch/utils/compression/Lz4Wrapper.h>
 #include <xsearch/utils/compression/ZstdWrapper.h>
 #include <xsearch/utils/utils.h>
+
+#include <memory>
+
+namespace xs {
+
+typedef ExternSearcher<xs::DataChunk, CountResult, uint64_t> count;
+typedef ExternSearcher<xs::DataChunk, FullResult, FullPartialResult> full;
+
+template <class T>
+std::shared_ptr<T> extern_search(const std::string& pattern,
+                                 const std::string& file_path,
+                                 const std::string& meta_file_path,
+                                 int num_threads, int num_readers = 1);
+
+}  // namespace xs

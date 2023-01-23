@@ -18,38 +18,9 @@
 
 namespace xs {
 
-template <class DataT = DataChunk, class ResType = DefaultResult,
-          class PartResT = PartialResult>
+template <class DataT, class ResType, class PartResT>
 class ExternSearcher {
  public:
-  // ===== iterator class ======================================================
-  // TODO: implement an iterator for iterating over the results.
-  //  template the iterator and the begin()/end() methods for
-  //  - count
-  //  - byte_offsets
-  //  - line_indices
-  //  - lines
-  //  We could also implement an iterator on the result class...
-  /*
-  class iterator {
-   public:
-    explicit iterator(ExternSearcher<DataT, ResType, PartResT>& x_searcher,
-                      size_t index = 0)
-        : _x_searcher(x_searcher) {
-      _index = index;
-    }
-
-    size_t operator*() {}
-
-    iterator& operator++() {}
-
-    bool operator!=(const iterator& other) {}
-
-   private:
-    ExternSearcher<DataT, ResType, PartResT>& _x_searcher;
-    size_t _index;
-  };
-   */
   // ---------------------------------------------------------------------------
   ExternSearcher(
       std::string pattern, int num_threads, int max_readers,
@@ -57,7 +28,7 @@ class ExternSearcher {
       std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
       std::vector<std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>>>
           searchers,
-      ResType initial_result)
+      std::unique_ptr<ResType> initial_result)
       : _result(std::move(initial_result)),
         _reader(std::move(reader)),
         _processors(std::move(processors)),
@@ -73,12 +44,15 @@ class ExternSearcher {
       _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
     }
     _running = true;
+    _workers = num_threads;
     for (auto& t : _threads) {
       t = std::thread(&ExternSearcher::main_task, this);
     }
   }
 
-  ResType& getResult() { return _result; }
+  ~ExternSearcher() { join(); }
+
+  ResType* getResult() { return _result.get(); }
 
   bool isRunning() { return _running; }
 
@@ -106,8 +80,12 @@ class ExternSearcher {
       auto partial_results = searchers_task(chunks);
       results_join_task(partial_results);
     }
+    if (_workers.fetch_sub(1) == 1) {
+      _result->markAsDone();
+    }
     _m.lock();
-    std::cout << std::this_thread::get_id() << ": " << num_chunks_read << std::endl;
+    std::cout << std::this_thread::get_id() << ": " << num_chunks_read
+              << std::endl;
     _m.unlock();
   }
 
@@ -159,7 +137,7 @@ class ExternSearcher {
   void results_join_task(std::vector<PartResT>& partial_results) {
     std::unique_lock locker(_merge_results_mutex);
     for (auto& part_res : partial_results) {
-      _result.addPartialResult(part_res);
+      _result->addPartialResult(part_res);
     }
   }
 
@@ -169,7 +147,7 @@ class ExternSearcher {
   bool _regex = false;
   std::unique_ptr<re2::RE2> _regex_pattern;
 
-  ResType _result;
+  std::unique_ptr<ResType> _result;
   std::mutex _merge_results_mutex;
 
   std::unique_ptr<tasks::BaseDataProvider<DataT>> _reader;
@@ -186,6 +164,7 @@ class ExternSearcher {
   int _max_readers = 2;
 
   bool _running = false;
+  std::atomic<int> _workers;
 };
 
 }  // namespace xs

@@ -52,6 +52,9 @@ IF(${MAIN_PROJECT})
 
     add_executable(FilePreprocessor FilePreprocessorMain.cpp)
     target_link_libraries(FilePreprocessor PUBLIC xsearch boost_program_options)
+
+    add_executable(checkit checkit.cpp)
+    target_link_libraries(checkit PUBLIC xsearch)
 endif()
 
 IF(${MAIN_PROJECT})

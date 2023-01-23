@@ -24,10 +24,10 @@ std::string get_regex_match_(const char* data, size_t size,
 }
 
 // _____________________________________________________________________________
-void output_helper(const std::string& pattern, xs::PartialResult& results,
+void output_helper(const std::string& pattern, xs::FullPartialResult& results,
                    bool regex, bool line_number, bool byte_offset,
                    bool only_matching, bool color) {
-  for (size_t i = 0; i < results._byte_offsets.size(); ++i) {
+  for (size_t i = 0; i < results._byte_offsets_line.size(); ++i) {
     if (line_number) {
       if (color) {
         std::cout << GREEN << results._line_indices.at(i) + 1 << CYAN << ":"
@@ -38,10 +38,10 @@ void output_helper(const std::string& pattern, xs::PartialResult& results,
     }
     if (byte_offset) {
       if (color) {
-        std::cout << GREEN << results._byte_offsets.at(i) << CYAN << ":"
+        std::cout << GREEN << results._byte_offsets_line.at(i) << CYAN << ":"
                   << COLOR_RESET;
       } else {
-        std::cout << results._byte_offsets.at(i) << ":";
+        std::cout << results._byte_offsets_line.at(i) << ":";
       }
     }
     const std::string& line = results._lines.at(i);
@@ -83,7 +83,7 @@ void output_helper(const std::string& pattern, xs::PartialResult& results,
 
 // _____________________________________________________________________________
 
-class GrepResult : public xs::BaseResult<xs::PartialResult> {
+class GrepResult : public xs::BaseResult<xs::FullPartialResult> {
  public:
   GrepResult(std::string pattern, bool regex, bool line_number,
              bool byte_offset, bool match_only, bool color = true)
@@ -94,7 +94,7 @@ class GrepResult : public xs::BaseResult<xs::PartialResult> {
         _byte_offset(byte_offset),
         _match_only(match_only) {}
 
-  void addPartialResult(xs::PartialResult& part_res) override {
+  void addPartialResult(xs::FullPartialResult part_res) override {
     INLINE_BENCHMARK_WALL_START("formatting and printing");
     if (part_res._index == _next_index) {
       output_helper(_pattern, part_res, _regex, _line_number, _byte_offset,
@@ -117,7 +117,9 @@ class GrepResult : public xs::BaseResult<xs::PartialResult> {
   }
 
   // only because we must implement it...
-  xs::PartialResult& getResult() override { return _merged_result; }
+  std::vector<xs::FullPartialResult>& getResult() override { return _merged_result; }
+
+  xs::FullPartialResult& getEmpty() override { return _merged_result.back(); }
 
  private:
   std::string _pattern;
@@ -127,7 +129,7 @@ class GrepResult : public xs::BaseResult<xs::PartialResult> {
   bool _byte_offset;
   bool _match_only;
   uint64_t _next_index = 0;
-  std::unordered_map<uint64_t, xs::PartialResult> _buffer;
+  std::unordered_map<uint64_t, xs::FullPartialResult> _buffer;
 };
 
 // -----------------------------------------------------------------------------
@@ -233,17 +235,18 @@ int main(int argc, char** argv) {
   auto reader =
       std::make_unique<xs::tasks::ExternBlockReader>(file_path, meta_file_path);
   std::vector<std::unique_ptr<
-      xs::tasks::BaseSearcher<xs::DataChunk, xs::PartialResult>>>
+      xs::tasks::BaseSearcher<xs::DataChunk, xs::FullPartialResult>>>
       searchers;
 
   if (count) {
     // count set -> count results and output number in the end -----------------
-    searchers.push_back(std::make_unique<xs::tasks::LineCounter>());
-    auto extern_searcher = xs::ExternSearcher<>(
+    std::vector<std::unique_ptr<xs::tasks::BaseSearcher<xs::DataChunk, uint64_t>>> searcher;
+    searcher.push_back(std::make_unique<xs::tasks::LineCounter>());
+    auto extern_searcher = xs::ExternSearcher<xs::DataChunk, xs::CountResult, uint64_t>(
         pattern, num_threads, 2, std::move(reader), std::move(processors),
-        std::move(searchers), xs::DefaultResult());
+        std::move(searcher), std::make_unique<xs::CountResult>());
     extern_searcher.join();
-    std::cout << extern_searcher.getResult().getResult()._count << std::endl;
+    std::cout << extern_searcher.getResult()->getCount() << std::endl;
     // -------------------------------------------------------------------------
   } else {
     // no count set -> run grep and output results
@@ -270,10 +273,10 @@ int main(int argc, char** argv) {
     }
     searchers.push_back(std::make_unique<xs::tasks::LinesSearcher>());
     auto extern_searcher =
-        xs::ExternSearcher<xs::DataChunk, GrepResult, xs::PartialResult>(
+        xs::ExternSearcher<xs::DataChunk, GrepResult, xs::FullPartialResult>(
             pattern, num_threads, 2, std::move(reader), std::move(processors),
             std::move(searchers),
-            GrepResult(pattern, xs::utils::use_str_as_regex(pattern),
+            std::make_unique<GrepResult>(pattern, xs::utils::use_str_as_regex(pattern),
                        line_number, byte_offset, only_matching, !no_color));
     extern_searcher.join();
   }
