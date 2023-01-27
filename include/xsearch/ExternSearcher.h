@@ -54,17 +54,15 @@ class ExternSearcher {
 
   ResType* getResult() { return _result.get(); }
 
-  bool isRunning() { return _running; }
+  bool isRunning() { return _running.load(); }
 
   void join() {
-    if (_running) {
-      for (auto& t : _threads) {
-        if (t.joinable()) {
-          t.join();
-        }
+    for (auto& t : _threads) {
+      if (t.joinable()) {
+        t.join();
       }
     }
-    _running = false;
+    _running.store(false);
   }
 
  private:
@@ -82,14 +80,9 @@ class ExternSearcher {
     }
     if (_workers.fetch_sub(1) == 1) {
       _result->markAsDone();
+      _running.store(false);
     }
-    _m.lock();
-    std::cout << std::this_thread::get_id() << ": " << num_chunks_read
-              << std::endl;
-    _m.unlock();
   }
-
-  std::mutex _m;
 
   std::vector<DataT> reader_task() {
     std::unique_lock reader_lock(_reader_worker_mutex);
@@ -163,7 +156,7 @@ class ExternSearcher {
   std::condition_variable _reader_cv;
   int _max_readers = 2;
 
-  bool _running = false;
+  std::atomic<bool> _running = false;
   std::atomic<int> _workers;
 };
 

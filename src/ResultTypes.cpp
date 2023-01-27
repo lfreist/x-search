@@ -5,7 +5,6 @@ namespace xs {
 // ===== FullPartialResult =====================================================
 // _____________________________________________________________________________
 void FullPartialResult::merge(FullPartialResult& other) {
-  _count += other._count;
   _byte_offsets_line.insert(
       _byte_offsets_line.end(),
       std::move_iterator(other._byte_offsets_line.begin()),
@@ -26,11 +25,6 @@ void FullPartialResult::merge(FullPartialResult& other) {
 void FullResult::addPartialResult(FullPartialResult partial_result) {
   std::unique_lock locker(*_mutex);
   this->_merged_result.push_back(std::move(partial_result));
-}
-
-// _____________________________________________________________________________
-std::vector<FullPartialResult>& FullResult::getResult() {
-  return this->_merged_result;
 }
 
 // _____________________________________________________________________________
@@ -56,12 +50,6 @@ void CountResult::addPartialResult(uint64_t partial_result) {
 }
 
 // _____________________________________________________________________________
-std::vector<uint64_t>& CountResult::getResult() {
-  std::unique_lock locker(*_mutex);
-  return _merged_result;
-}
-
-// _____________________________________________________________________________
 uint64_t CountResult::getCount() {
   std::unique_lock locker(*_mutex);
   return _sum_result;
@@ -79,5 +67,56 @@ ResultIterator<CountResult, uint64_t> CountResult::end() {
 
 // _____________________________________________________________________________
 uint64_t& CountResult::getEmpty() { return _empty; }
+
+// ===== ByteOffsetsPartialResult ==============================================
+void IndexPartialResult::merge(IndexPartialResult other) {
+  indices.resize(indices.size() + other.indices.size());
+  indices.insert(indices.end(),
+                      std::make_move_iterator(other.indices.begin()),
+                      std::make_move_iterator(other.indices.end()));
+}
+
+// ===== MatchByteOffsetsResult ================================================
+// _____________________________________________________________________________
+void MatchByteOffsetsResult::addPartialResult(
+    IndexPartialResult partial_result) {
+  _merged_result.push_back(std::move(partial_result));
+}
+
+// _____________________________________________________________________________
+ResultIterator<MatchByteOffsetsResult, IndexPartialResult> MatchByteOffsetsResult::begin() {
+  return {*this, 0};
+}
+
+// _____________________________________________________________________________
+ResultIterator<MatchByteOffsetsResult, IndexPartialResult> MatchByteOffsetsResult::end() {
+  return {*this, std::numeric_limits<size_t>::max()};
+}
+
+// _____________________________________________________________________________
+IndexPartialResult& MatchByteOffsetsResult::getEmpty() {
+  return _empty;
+}
+
+// ===== MatchByteOffsetsResult ================================================
+// _____________________________________________________________________________
+void LinesResult::addPartialResult(LinesPartialResult partial_result) {
+  _merged_result.push_back(std::move(partial_result));
+}
+
+// _____________________________________________________________________________
+ResultIterator<LinesResult, LinesPartialResult> LinesResult::begin() {
+  return {*this, 0};
+}
+
+// _____________________________________________________________________________
+ResultIterator<LinesResult, LinesPartialResult> LinesResult::end() {
+  return {*this, std::numeric_limits<size_t>::max()};
+}
+
+// _____________________________________________________________________________
+LinesPartialResult& LinesResult::getEmpty() {
+  return _empty;
+}
 
 }  // namespace xs

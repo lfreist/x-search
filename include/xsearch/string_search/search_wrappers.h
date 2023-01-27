@@ -15,6 +15,14 @@
 namespace xs::search {
 
 /**
+ * Get the new line index of the previous line relative to the match
+ * @param data
+ * @param match_local_byte_offset
+ * @return
+ */
+uint64_t previous_new_line_offset_relative_to_match(const xs::DataChunk* data, uint64_t match_local_byte_offset);
+
+/**
  * Search byte offsets (relative to start of data) of matches of pattern within
  * data. If a match was found, 'skip_to_nl' decides whether to continue search
  * in the next line or right behind the found pattern.

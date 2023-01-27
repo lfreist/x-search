@@ -2,89 +2,106 @@
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
 #include <gtest/gtest.h>
-#include <xsearch/ExternSearcher.h>
 #include <xsearch/xsearch.h>
 
-/*
+static const std::string pattern("over");
+static const std::string re_pattern("ov[e|i]r");
+static const std::string file_path("test/files/dummy.txt");
+static const std::string meta_file_path("test/files/dummy.sf.meta");
+
 TEST(ExternSearcherTest, count) {
   {  // plain text
-    size_t res = xs::count::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 1);
-    ASSERT_EQ(res, 152);
+    auto res =
+        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // regex
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 1, 1);
-    ASSERT_EQ(res, 156);
+    auto res = xs::extern_search<xs::count>(re_pattern, file_path,
+                                            meta_file_path, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 156);
   }
   {  // multiple threads
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 1);
-    ASSERT_EQ(res, 152);
+    auto res =
+        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 4, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // multiple readers
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 2);
-    ASSERT_EQ(res, 152);
+    auto res =
+        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 1, 2);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // multiple readers and threads
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 2);
-    ASSERT_EQ(res, 152);
+    auto res =
+        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 4, 2);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // multiple readers and threads and regex pattern
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 4, 2);
-    ASSERT_EQ(res, 156);
+    auto res = xs::extern_search<xs::count>(re_pattern, file_path,
+                                            meta_file_path, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 156);
   }
   {  // compression
-    size_t res = xs::ExternSearcher<xs::restype::count>::search(
-        "test/files/dummy.sflz4", "test/files/dummy.sflz4.meta", "ov[e|i]r", 4,
-        2);
-    ASSERT_EQ(res, 156);
+    auto res =
+        xs::extern_search<xs::count>(re_pattern, "test/files/dummy.sflz4",
+                                     "test/files/dummy.sflz4.meta", 4, 2);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 156);
   }
 }
 
 TEST(ExternSearcherTest, count_lines) {
   {  // plain text
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 1);
-    ASSERT_EQ(res, 133);
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 133);
   }
   {  // regex
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 1, 1);
-    ASSERT_EQ(res, 137);
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 137);
   }
   {  // multiple threads
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 1);
-    ASSERT_EQ(res, 133);
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, 4, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 133);
   }
   {  // multiple readers
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 1, 2);
-    ASSERT_EQ(res, 133);
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, 1, 2);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 133);
   }
   {  // multiple readers and threads
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "over", 4, 2);
-    ASSERT_EQ(res, 133);
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, 4, 2);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 133);
   }
   {  // multiple readers and threads and regex pattern
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.txt", "test/files/dummy.sf.meta", "ov[e|i]r", 4, 2);
-    ASSERT_EQ(res, 137);
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 137);
   }
   {  // compression
-    size_t res = xs::ExternSearcher<xs::restype::count_lines>::search(
-        "test/files/dummy.sfzst", "test/files/dummy.sfzst.meta", "ov[e|i]r", 4,
-        2);
-    ASSERT_EQ(res, 137);
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, "test/files/dummy.sflz4",
+                                           "test/files/dummy.sflz4.meta", 4, 2);
+    res->join();
+    ASSERT_EQ(res->getResult()->getCount(), 137);
   }
 }
 
-
+/*
 template <typename T>
 void print(std::vector<T>& v) {
   std::cout << "{";
@@ -93,7 +110,6 @@ void print(std::vector<T>& v) {
   }
   std::cout << std::endl;
 }
-
 
 TEST(ExternSearcherTest, byte_positions) {
   std::vector<size_t> plain_res = {

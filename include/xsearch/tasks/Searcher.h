@@ -10,83 +10,82 @@
 
 namespace xs::tasks {
 
-using count = uint64_t;
-using byte_positions = std::vector<uint64_t>;
-using line_numbers = std::vector<uint64_t>;
-using line_indices = std::vector<uint64_t>;
-
-template <class DataT, class ResultT>
+template <class DataT, class PartResT>
 class BaseSearcher {
  public:
   BaseSearcher() = default;
   virtual ~BaseSearcher() = default;
 
   virtual void search(const std::string& pattern, DataT* data,
-                      ResultT* result) const = 0;
+                      PartResT* result) const = 0;
   virtual void search(re2::RE2* pattern, DataT* data,
-                      ResultT* result) const = 0;
+                      PartResT* result) const = 0;
 };
 
-class MatchCounter : public BaseSearcher<DataChunk, FullPartialResult> {
+template <class PartResT>
+class MatchCounter : public BaseSearcher<DataChunk, PartResT> {
  public:
   MatchCounter() = default;
 
   void search(const std::string& pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
   void search(re2::RE2* pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
 };
 
-class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
+template <class PartResT>
+class LineCounter : public BaseSearcher<DataChunk, PartResT> {
  public:
   LineCounter() = default;
 
   void search(const std::string& pattern, DataChunk* data,
-              uint64_t* result) const override;
+              PartResT* result) const override;
   void search(re2::RE2* pattern, DataChunk* data,
-              uint64_t* result) const override;
+              PartResT* result) const override;
 };
 
-class MatchBytePositionSearcher
-    : public BaseSearcher<DataChunk, FullPartialResult> {
+template <class PartResT>
+class MatchBytePositionSearcher : public BaseSearcher<DataChunk, PartResT> {
  public:
   MatchBytePositionSearcher() = default;
 
   void search(const std::string& pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
   void search(re2::RE2* pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
 };
 
-class LineBytePositionSearcher
-    : public BaseSearcher<DataChunk, FullPartialResult> {
+template <class PartResT>
+class LineBytePositionSearcher : public BaseSearcher<DataChunk, PartResT> {
  public:
   LineBytePositionSearcher() = default;
 
   void search(const std::string& pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
   void search(re2::RE2* pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
 };
 
-class LineIndexSearcher : public BaseSearcher<DataChunk, FullPartialResult> {
+template <class PartResT>
+class LineIndexSearcher : public BaseSearcher<DataChunk, PartResT> {
  public:
   LineIndexSearcher() = default;
 
   void search(const std::string& pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
   void search(re2::RE2* pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
 };
 
-class LinesSearcher : public BaseSearcher<DataChunk, FullPartialResult> {
+template <class PartResT>
+class LineSearcher : public BaseSearcher<DataChunk, PartResT> {
  public:
-  LinesSearcher() = default;
+  LineSearcher() = default;
 
   void search(const std::string& pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
   void search(re2::RE2* pattern, DataChunk* data,
-              FullPartialResult* result) const override;
+              PartResT* result) const override;
 };
 
 }  // namespace xs::tasks

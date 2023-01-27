@@ -70,7 +70,7 @@ std::vector<uint64_t> _regex_byte_offsets(
 }
 
 // _____________________________________________________________________________
-uint64_t _previous_new_line_offset_relative_to_match(
+uint64_t previous_new_line_offset_relative_to_match(
     const xs::DataChunk* data, uint64_t match_local_byte_offset) {
   uint64_t relative_offset = 0;
   while (true) {
@@ -84,6 +84,7 @@ uint64_t _previous_new_line_offset_relative_to_match(
   }
 }
 
+// _____________________________________________________________________________
 std::string _get_regex_match(const char* line, size_t size,
                              const re2::RE2& pattern) {
   re2::StringPiece input(line, size);
@@ -112,7 +113,7 @@ std::vector<uint64_t> global_byte_offsets_match(xs::DataChunk* data,
 std::vector<uint64_t> local_byte_offsets_line(xs::DataChunk* data,
                                               const std::string& pattern) {
   return _byte_offsets(data, pattern, true, [data](uint64_t v) {
-    return v - _previous_new_line_offset_relative_to_match(data, v);
+    return v - previous_new_line_offset_relative_to_match(data, v);
   });
 }
 
@@ -120,7 +121,7 @@ std::vector<uint64_t> local_byte_offsets_line(xs::DataChunk* data,
 std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
                                                const std::string& pattern) {
   return _byte_offsets(data, pattern, true, [data](uint64_t v) {
-    return v - _previous_new_line_offset_relative_to_match(data, v) +
+    return v - previous_new_line_offset_relative_to_match(data, v) +
            data->getOffset();
   });
 }
@@ -177,7 +178,7 @@ std::vector<uint64_t> regex::global_byte_offsets_match(
 std::vector<uint64_t> regex::local_byte_offsets_line(const xs::DataChunk* data,
                                                      const re2::RE2& pattern) {
   return _regex_byte_offsets(data, pattern, true, [data](uint64_t v) {
-    return v - _previous_new_line_offset_relative_to_match(data, v);
+    return v - previous_new_line_offset_relative_to_match(data, v);
   });
 }
 
@@ -185,7 +186,7 @@ std::vector<uint64_t> regex::local_byte_offsets_line(const xs::DataChunk* data,
 std::vector<uint64_t> regex::global_byte_offsets_line(const xs::DataChunk* data,
                                                       const re2::RE2& pattern) {
   return _regex_byte_offsets(data, pattern, true, [data](uint64_t v) {
-    return v - _previous_new_line_offset_relative_to_match(data, v) +
+    return v - previous_new_line_offset_relative_to_match(data, v) +
            data->getOffset();
   });
 }
