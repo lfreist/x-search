@@ -20,7 +20,8 @@ namespace xs::search {
  * @param match_local_byte_offset
  * @return
  */
-uint64_t previous_new_line_offset_relative_to_match(const xs::DataChunk* data, uint64_t match_local_byte_offset);
+uint64_t previous_new_line_offset_relative_to_match(
+    const xs::DataChunk* data, uint64_t match_local_byte_offset);
 
 /**
  * Search byte offsets (relative to start of data) of matches of pattern within

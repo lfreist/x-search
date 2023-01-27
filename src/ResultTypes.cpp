@@ -71,9 +71,8 @@ uint64_t& CountResult::getEmpty() { return _empty; }
 // ===== ByteOffsetsPartialResult ==============================================
 void IndexPartialResult::merge(IndexPartialResult other) {
   indices.resize(indices.size() + other.indices.size());
-  indices.insert(indices.end(),
-                      std::make_move_iterator(other.indices.begin()),
-                      std::make_move_iterator(other.indices.end()));
+  indices.insert(indices.end(), std::make_move_iterator(other.indices.begin()),
+                 std::make_move_iterator(other.indices.end()));
 }
 
 // ===== MatchByteOffsetsResult ================================================
@@ -84,19 +83,19 @@ void MatchByteOffsetsResult::addPartialResult(
 }
 
 // _____________________________________________________________________________
-ResultIterator<MatchByteOffsetsResult, IndexPartialResult> MatchByteOffsetsResult::begin() {
+ResultIterator<MatchByteOffsetsResult, IndexPartialResult>
+MatchByteOffsetsResult::begin() {
   return {*this, 0};
 }
 
 // _____________________________________________________________________________
-ResultIterator<MatchByteOffsetsResult, IndexPartialResult> MatchByteOffsetsResult::end() {
+ResultIterator<MatchByteOffsetsResult, IndexPartialResult>
+MatchByteOffsetsResult::end() {
   return {*this, std::numeric_limits<size_t>::max()};
 }
 
 // _____________________________________________________________________________
-IndexPartialResult& MatchByteOffsetsResult::getEmpty() {
-  return _empty;
-}
+IndexPartialResult& MatchByteOffsetsResult::getEmpty() { return _empty; }
 
 // ===== MatchByteOffsetsResult ================================================
 // _____________________________________________________________________________
@@ -115,8 +114,6 @@ ResultIterator<LinesResult, LinesPartialResult> LinesResult::end() {
 }
 
 // _____________________________________________________________________________
-LinesPartialResult& LinesResult::getEmpty() {
-  return _empty;
-}
+LinesPartialResult& LinesResult::getEmpty() { return _empty; }
 
 }  // namespace xs
