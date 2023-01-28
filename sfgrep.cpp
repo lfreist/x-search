@@ -116,7 +116,9 @@ class GrepResult : public xs::BaseResult<xs::FullPartialResult> {
   }
 
   // only because we must implement it...
-  std::vector<xs::FullPartialResult>& getResult() override { return _merged_result; }
+  std::vector<xs::FullPartialResult>& getResult() override {
+    return _merged_result;
+  }
 
   xs::FullPartialResult& getEmpty() override { return _merged_result.back(); }
 
@@ -239,11 +241,14 @@ int main(int argc, char** argv) {
 
   if (count) {
     // count set -> count results and output number in the end -----------------
-    std::vector<std::unique_ptr<xs::tasks::BaseSearcher<xs::DataChunk, uint64_t>>> searcher;
+    std::vector<
+        std::unique_ptr<xs::tasks::BaseSearcher<xs::DataChunk, uint64_t>>>
+        searcher;
     searcher.push_back(std::make_unique<xs::tasks::LineCounter<uint64_t>>());
-    auto extern_searcher = xs::ExternSearcher<xs::DataChunk, xs::CountResult, uint64_t>(
-        pattern, num_threads, 2, std::move(reader), std::move(processors),
-        std::move(searcher), std::make_unique<xs::CountResult>());
+    auto extern_searcher =
+        xs::ExternSearcher<xs::DataChunk, xs::CountResult, uint64_t>(
+            pattern, num_threads, 2, std::move(reader), std::move(processors),
+            std::move(searcher), std::make_unique<xs::CountResult>());
     extern_searcher.join();
     std::cout << extern_searcher.getResult()->getCount() << std::endl;
     // -------------------------------------------------------------------------
@@ -253,30 +258,38 @@ int main(int argc, char** argv) {
     if ((byte_offset || line_number) && only_matching) {
       // -b -o || -n -o
       searchers.push_back(
-          std::make_unique<xs::tasks::MatchBytePositionSearcher<xs::FullPartialResult>>());
+          std::make_unique<
+              xs::tasks::MatchBytePositionSearcher<xs::FullPartialResult>>());
     } else if ((byte_offset || line_number) && !only_matching) {
       // -b || -n
       searchers.push_back(
-          std::make_unique<xs::tasks::LineBytePositionSearcher<xs::FullPartialResult>>());
+          std::make_unique<
+              xs::tasks::LineBytePositionSearcher<xs::FullPartialResult>>());
     } else if (only_matching) {
       // -o
       searchers.push_back(
-          std::make_unique<xs::tasks::MatchBytePositionSearcher<xs::FullPartialResult>>());
+          std::make_unique<
+              xs::tasks::MatchBytePositionSearcher<xs::FullPartialResult>>());
     } else {
       // no command line options
       searchers.push_back(
-          std::make_unique<xs::tasks::LineBytePositionSearcher<xs::FullPartialResult>>());
+          std::make_unique<
+              xs::tasks::LineBytePositionSearcher<xs::FullPartialResult>>());
     }
     if (line_number) {
-      searchers.push_back(std::make_unique<xs::tasks::LineIndexSearcher<xs::FullPartialResult>>());
+      searchers.push_back(
+          std::make_unique<
+              xs::tasks::LineIndexSearcher<xs::FullPartialResult>>());
     }
-    searchers.push_back(std::make_unique<xs::tasks::LineSearcher<xs::FullPartialResult>>());
+    searchers.push_back(
+        std::make_unique<xs::tasks::LineSearcher<xs::FullPartialResult>>());
     auto extern_searcher =
         xs::ExternSearcher<xs::DataChunk, GrepResult, xs::FullPartialResult>(
             pattern, num_threads, 2, std::move(reader), std::move(processors),
             std::move(searchers),
-            std::make_unique<GrepResult>(pattern, xs::utils::use_str_as_regex(pattern),
-                       line_number, byte_offset, only_matching, !no_color));
+            std::make_unique<GrepResult>(
+                pattern, xs::utils::use_str_as_regex(pattern), line_number,
+                byte_offset, only_matching, !no_color));
     extern_searcher.join();
   }
   // ---------------------------------------------------------------------------

@@ -33,3 +33,38 @@ External string searching library (x-search) written in C++ (C++20)
 
 > You can also use the `Makefile` provided within the repository to
 > build, test, benchmark, ... x-search.
+
+## API
+`x-search` provides a simple one-function API call to search on external files.
+
+### Preprocess a file:
+```cpp
+#include <xsearch/xsearch.h>
+
+xs::FilePreprocessor::preprocess(
+      source_file_path, output_path, meta_file_path, compression_alg,
+      compression_level, bytesNewLineMappingDistance, minBlockSize, overflow_size,
+      display_progress);
+```
+
+### Perform Searches
+```cpp
+#include <xsearch/xsearch.h>
+
+// count number of matches:
+auto res = xs::extern_search<xs::count>(pattern, file_path, meta_file_path, num_threads, max_num_readers);
+```
+
+> Besides `xs::count`, `xs::extern_search` is specialized for the following template arguments:
+>
+> - `xs::count_lines`: count lines containing a match
+> - `xs::match_byte_offsets`: a vector of the byte offsets of all matches
+> - `xs::line_byte_offsets`: a vector of the byte offsets of matching lines
+> - `xs::line_indices`: a vector of the line indices of matching lines
+> - `xs::lines`: a vector of lines (as std::string) containing the match
+> - `xs::full`: a combined result of the above
+
+After calling `xs::extern_search`, the returned shared_ptr of the ExternSearcher instance can be...
+- ... joined (`res->join()`): the main threads sleeps until the search process finished
+- ... used to access already created results using the iterator (`for (auto& part_res : res->getResult()) {...}`)
+- ... ignored: the threads started for the search by `ExternSearcher` are joined on destruction.

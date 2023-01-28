@@ -33,6 +33,7 @@ namespace xs {
  *    - count_lines: count lines containing a match
  *    - match_byte_offsets: a vector of the byte offsets of all matches
  *    - line_byte_offsets: a vector of the byte offsets of matching lines
+ *    - line_indices: a vector of the line indices of matching lines
  *    - lines: a vector of lines (as std::string) containing the match
  *    - full: a combined result of the above
  *  The user can easily call the extern_search function using one of the types
