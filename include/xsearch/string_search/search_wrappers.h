@@ -1,9 +1,6 @@
 // Copyright 2022, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
-// TODO: all functions here require an additional argument holding additional
-//  information like byte offsets for line_indices or lines etc.
-
 #pragma once
 
 #include <re2/re2.h>

@@ -13,16 +13,6 @@
 
 namespace xs {
 
-struct SearchResults {
-  std::string pattern;
-  bool regex;
-  size_t offset;
-  std::optional<std::vector<size_t>> _local_byte_offsets{};
-  std::optional<std::vector<size_t>> _global_line_indices{};
-  std::optional<std::vector<std::string>> _matching_lines{};
-  uint64_t _match_count = 0;
-};
-
 using strtype = std::vector<char, xs::utils::just_allocator<char>>;
 
 /**
@@ -34,6 +24,12 @@ using strtype = std::vector<char, xs::utils::just_allocator<char>>;
  */
 class DataChunk {
   FRIEND_TEST(DataChunk, constructor);
+  FRIEND_TEST(DataChunk, MoveConstructor);
+  FRIEND_TEST(DataChunk, size);
+  FRIEND_TEST(DataChunk, resize);
+  FRIEND_TEST(DataChunk, push_back);
+  FRIEND_TEST(DataChunk, assign);
+  FRIEND_TEST(DataChunk, data);
 
  public:
   DataChunk() = default;
@@ -64,39 +60,62 @@ class DataChunk {
   [[nodiscard]] const strtype& str() const;
 
   [[nodiscard]] uint64_t getOffset() const;
-  [[nodiscard]] uint64_t getOriginalSize() const;
   void setOffset(uint64_t offset);
+  [[nodiscard]] uint64_t getOriginalSize() const;
   void setOriginalSize(uint64_t original_size);
+  [[nodiscard]] size_t getIndex() const;
 
   /**
-   * Access to the internally hold std::basic_string using a pointer.
-   * @return Pointer to _content
+   * wrapper method for this->_content.data()
    */
   char* data();
 
+  /**
+   * wrapper method for this->_content.data()
+   */
   [[nodiscard]] const char* data() const;
 
+  /**
+   * wrapper method for this->_content.size()
+   */
   [[nodiscard]] size_t size() const;
 
+  /**
+   * wrapper method for this->_content.resize()
+   */
   void resize(size_t size);
 
-  [[nodiscard]] const std::vector<ByteToNewLineMappingInfo>& getNewLineIndices()
+  [[nodiscard]] const std::vector<ByteToNewLineMappingInfo>& getMappingData()
       const;
 
-  std::vector<ByteToNewLineMappingInfo> moveNewLineIndices();
+  /**
+   * Move mapping data.
+   * !! MARK: mappiing data are no available for this DataChunk instance
+   *     afterwards !!
+   * @return
+   */
+  std::vector<ByteToNewLineMappingInfo> moveMappingData();
 
+  /**
+   * wrapper method for this->_content.push_back()
+   */
   void push_back(char c);
 
+  /**
+   * wrapper method for this->_content.reserve()
+   */
   void reserve(size_t size);
 
+  /**
+   * wrapper method for this->_content.assign()
+   */
   void assign(std::string data);
 
-  void pop_back();
-
-  size_t getIndex() const;
-
  private:
+  // index of the DataChunk (e.g. if a file is read in chunks, _index is the
+  //  index of the chunk corresponding to the file)
   size_t _index = 0;
+  // actual text like content
   strtype _content;
   // indicating position of _content's first byte relative to start of all data
   uint64_t _offset = 0;

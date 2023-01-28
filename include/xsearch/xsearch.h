@@ -48,6 +48,8 @@ typedef ExternSearcher<xs::DataChunk, MatchByteOffsetsResult,
     match_byte_offsets;
 typedef ExternSearcher<xs::DataChunk, LineByteOffsetsResult, IndexPartialResult>
     line_byte_offsets;
+typedef ExternSearcher<xs::DataChunk, LineIndexResult, IndexPartialResult>
+    line_indices;
 typedef ExternSearcher<xs::DataChunk, LinesResult, LinesPartialResult> lines;
 typedef ExternSearcher<xs::DataChunk, FullResult, FullPartialResult> full;
 

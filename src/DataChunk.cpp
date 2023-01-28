@@ -82,13 +82,12 @@ size_t DataChunk::size() const { return _content.size(); }
 void DataChunk::resize(size_t size) { _content.resize(size); }
 
 // _____________________________________________________________________________
-const std::vector<ByteToNewLineMappingInfo>& DataChunk::getNewLineIndices()
-    const {
+const std::vector<ByteToNewLineMappingInfo>& DataChunk::getMappingData() const {
   return _byte_to_nl_mapping_data;
 }
 
 // _____________________________________________________________________________
-std::vector<ByteToNewLineMappingInfo> DataChunk::moveNewLineIndices() {
+std::vector<ByteToNewLineMappingInfo> DataChunk::moveMappingData() {
   return std::move(_byte_to_nl_mapping_data);
 }
 
@@ -102,9 +101,6 @@ void DataChunk::reserve(size_t size) { _content.reserve(size); }
 void DataChunk::assign(std::string data) {
   _content.assign(data.begin(), data.end());
 }
-
-// _____________________________________________________________________________
-void DataChunk::pop_back() { return _content.pop_back(); }
 
 // _____________________________________________________________________________
 size_t DataChunk::getIndex() const { return _index; }

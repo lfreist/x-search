@@ -122,9 +122,11 @@ void LineBytePositionSearcher<FullPartialResult>::search(
     result->_byte_offsets_line.reserve(result->_byte_offsets_match.size());
     for (size_t bo : result->_byte_offsets_match) {
       // byte offset of line is byte offset of match (bo) - func + 1
-      result->_byte_offsets_line.push_back(
-          bo - search::previous_new_line_offset_relative_to_match(data, bo) +
-          1);
+      size_t bo_line = bo - search::previous_new_line_offset_relative_to_match(
+                                data, bo - data->getOffset());
+      if (result->_byte_offsets_line.back() != bo_line) {
+        result->_byte_offsets_line.push_back(bo_line);
+      }
     }
   } else {
     result->_byte_offsets_line =

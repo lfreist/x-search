@@ -10,8 +10,7 @@ namespace xs::tasks {
 
 void LZ4Decompressor::process(DataChunk* data) {
   DataChunk chunk(data->getOriginalSize(), data->getOriginalSize(),
-                  data->getOffset(), data->moveNewLineIndices(),
-                  data->getIndex());
+                  data->getOffset(), data->moveMappingData(), data->getIndex());
   INLINE_BENCHMARK_WALL_START("decompression");
   xs::utils::compression::LZ4::decompressToBuffer(data->data(), data->size(),
                                                   chunk.data(), chunk.size());
@@ -21,8 +20,7 @@ void LZ4Decompressor::process(DataChunk* data) {
 
 void ZSTDDecompressor::process(DataChunk* data) {
   DataChunk chunk(data->getOriginalSize(), data->getOriginalSize(),
-                  data->getOffset(), data->moveNewLineIndices(),
-                  data->getIndex());
+                  data->getOffset(), data->moveMappingData(), data->getIndex());
   INLINE_BENCHMARK_WALL_START("decompression");
   xs::utils::compression::ZSTD::decompressToBuffer(data->data(), data->size(),
                                                    chunk.data(), chunk.size());

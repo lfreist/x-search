@@ -60,6 +60,19 @@ class ResultIterator {
 struct BasePartialResult {
   // index of the data chunk from which the results were collected
   size_t _index = 0;
+
+  bool operator>(const BasePartialResult& other) const {
+    return _index > other._index;
+  }
+  bool operator<(const BasePartialResult& other) const {
+    return _index < other._index;
+  }
+  bool operator==(const BasePartialResult& other) const {
+    return _index == other._index;
+  }
+  bool operator!=(const BasePartialResult& other) const {
+    return _index != other._index;
+  }
 };
 
 template <class PartResT>
@@ -180,6 +193,8 @@ class MatchByteOffsetsResult : public BaseResult<IndexPartialResult> {
 //  However, we need them to be different types to activate different
 //  extern_search() templates...
 class LineByteOffsetsResult : public MatchByteOffsetsResult {};
+
+class LineIndexResult : public MatchByteOffsetsResult {};
 
 // ===== searching lines that contain a match ==================================
 struct LinesPartialResult : BasePartialResult {
