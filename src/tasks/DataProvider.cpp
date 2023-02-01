@@ -12,14 +12,15 @@ ExternBlockReader::ExternBlockReader(std::string file_path,
       _meta_file(meta_file_path, std::ios::in) {}
 
 std::vector<DataChunk> ExternBlockReader::getNextData(int num) {
+  INLINE_BENCHMARK_WALL_START("reading");
   INLINE_BENCHMARK_WALL_START("construct stream");
   std::ifstream stream(_file_path);
   INLINE_BENCHMARK_WALL_STOP("construct stream");
   std::vector<ChunkMetaData> cmds = _meta_file.nextChunkMetaData(num);
   if (cmds.empty()) {
+    INLINE_BENCHMARK_WALL_STOP("reading");
     return {};
   }
-  INLINE_BENCHMARK_WALL_START("reading");
   std::vector<DataChunk> dcs;
   dcs.reserve(cmds.size());
   for (auto& cmd : cmds) {

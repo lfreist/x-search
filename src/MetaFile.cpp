@@ -2,6 +2,7 @@
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
 #include <xsearch/MetaFile.h>
+#include <xsearch/utils/InlineBench.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -132,6 +133,7 @@ std::optional<ChunkMetaData> MetaFile::nextChunkMetaData() {
 
 // _____________________________________________________________________________
 std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
+  INLINE_BENCHMARK_WALL_START("read meta data");
   std::unique_lock _getChunkLock(_getChunkMutex);
   std::vector<ChunkMetaData> cs;
   cs.reserve(num);
@@ -143,6 +145,7 @@ std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
     cmd.chunk_index = _chunk_index++;
     cs.emplace_back(cmd);
   }
+  INLINE_BENCHMARK_WALL_STOP("read meta data");
   return cs;
 }
 

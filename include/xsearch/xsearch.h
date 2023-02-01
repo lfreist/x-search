@@ -4,10 +4,10 @@
 #pragma once
 
 #include <xsearch/DataChunk.h>
-#include <xsearch/ExternSearcher.h>
 #include <xsearch/FilePreprocessing.h>
 #include <xsearch/MetaFile.h>
 #include <xsearch/ResultTypes.h>
+#include <xsearch/Searcher.h>
 #include <xsearch/string_search/offset_mappings.h>
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
@@ -27,7 +27,7 @@
 namespace xs {
 
 /**
- * By defining full ExternSearcher<> types, we allow the user to get easy access
+ * By defining full Searcher<> types, we allow the user to get easy access
  *  to basic search functionalities including:
  *    - count: count matches
  *    - count_lines: count lines containing a match
@@ -42,17 +42,17 @@ namespace xs {
  *  E.g.: extern_search<count>(...) will start and return an ExternSearch object
  *  initialized with everything needed for counting matches.
  */
-typedef ExternSearcher<xs::DataChunk, CountResult, uint64_t> count;
-typedef ExternSearcher<xs::DataChunk, CountLinesResult, uint64_t> count_lines;
-typedef ExternSearcher<xs::DataChunk, MatchByteOffsetsResult,
+typedef Searcher<xs::DataChunk, CountResult, uint64_t> count;
+typedef Searcher<xs::DataChunk, CountLinesResult, uint64_t> count_lines;
+typedef Searcher<xs::DataChunk, MatchByteOffsetsResult,
                        IndexPartialResult>
     match_byte_offsets;
-typedef ExternSearcher<xs::DataChunk, LineByteOffsetsResult, IndexPartialResult>
+typedef Searcher<xs::DataChunk, LineByteOffsetsResult, IndexPartialResult>
     line_byte_offsets;
-typedef ExternSearcher<xs::DataChunk, LineIndexResult, IndexPartialResult>
+typedef Searcher<xs::DataChunk, LineIndexResult, IndexPartialResult>
     line_indices;
-typedef ExternSearcher<xs::DataChunk, LinesResult, LinesPartialResult> lines;
-typedef ExternSearcher<xs::DataChunk, FullResult, FullPartialResult> full;
+typedef Searcher<xs::DataChunk, LinesResult, LinesPartialResult> lines;
+typedef Searcher<xs::DataChunk, FullResult, FullPartialResult> full;
 
 /**
  * A simple one-function API call to ExternSearcher.

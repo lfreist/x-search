@@ -8,6 +8,7 @@
 #include <xsearch/tasks/DataProvider.h>
 #include <xsearch/tasks/Processor.h>
 #include <xsearch/tasks/Searcher.h>
+#include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/utils.h>
 
 #include <memory>
@@ -19,16 +20,15 @@
 namespace xs {
 
 template <class DataT, class ResType, class PartResT>
-class ExternSearcher {
+class Searcher {
  public:
   // ---------------------------------------------------------------------------
-  ExternSearcher(
-      std::string pattern, int num_threads, int max_readers,
-      std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
-      std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
-      std::vector<std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>>>
-          searchers,
-      std::unique_ptr<ResType> initial_result)
+  Searcher(std::string pattern, int num_threads, int max_readers,
+           std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
+           std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
+           std::vector<std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>>>
+               searchers,
+           std::unique_ptr<ResType> initial_result)
       : _result(std::move(initial_result)),
         _reader(std::move(reader)),
         _processors(std::move(processors)),
@@ -46,13 +46,16 @@ class ExternSearcher {
     _running = true;
     _workers = num_threads;
     for (auto& t : _threads) {
-      t = std::thread(&ExternSearcher::main_task, this);
+      t = std::thread(&Searcher::main_task, this);
     }
   }
 
-  ~ExternSearcher() { join(); }
+  ~Searcher() { join(); }
 
-  ResType* getResult() { return _result.get(); }
+  ResType* getResult() {
+    std::unique_lock lock(_merge_results_mutex);
+    return _result.get();
+  }
 
   bool isRunning() { return _running.load(); }
 
@@ -97,7 +100,9 @@ class ExternSearcher {
     }
     _max_readers--;
     reader_lock.unlock();
-    auto chunks = _reader->getNextData(10);
+    INLINE_BENCHMARK_WALL_START("reader task");
+    auto chunks = _reader->getNextData(1);
+    INLINE_BENCHMARK_WALL_STOP("reader task");
     reader_lock.lock();
     _max_readers++;
     _reader_cv.notify_one();
@@ -105,14 +110,17 @@ class ExternSearcher {
   }
 
   void processors_task(std::vector<DataT>& chunks) {
+    INLINE_BENCHMARK_WALL_START("processor task");
     for (auto& chunk : chunks) {
       for (auto& processor : _processors) {
         processor->process(&chunk);
       }
     }
+    INLINE_BENCHMARK_WALL_STOP("processor task");
   }
 
   std::vector<PartResT> searchers_task(std::vector<DataT>& chunks) {
+    INLINE_BENCHMARK_WALL_START("searcher task");
     std::vector<PartResT> partial_results(chunks.size());
     for (size_t index = 0; index < chunks.size(); ++index) {
       for (auto& searcher : _searchers) {
@@ -124,14 +132,17 @@ class ExternSearcher {
         }
       }
     }
+    INLINE_BENCHMARK_WALL_STOP("searcher task");
     return partial_results;
   }
 
   void results_join_task(std::vector<PartResT>& partial_results) {
+    INLINE_BENCHMARK_WALL_START("results join task");
     std::unique_lock locker(_merge_results_mutex);
     for (auto& part_res : partial_results) {
       _result->addPartialResult(part_res);
     }
+    INLINE_BENCHMARK_WALL_STOP("results join task");
   }
 
   std::string _file_path;

@@ -245,11 +245,13 @@ int main(int argc, char** argv) {
         std::unique_ptr<xs::tasks::BaseSearcher<xs::DataChunk, uint64_t>>>
         searcher;
     searcher.push_back(std::make_unique<xs::tasks::LineCounter<uint64_t>>());
+    INLINE_BENCHMARK_WALL_START("total");
     auto extern_searcher =
-        xs::ExternSearcher<xs::DataChunk, xs::CountResult, uint64_t>(
-            pattern, num_threads, 2, std::move(reader), std::move(processors),
+        xs::Searcher<xs::DataChunk, xs::CountResult, uint64_t>(
+            pattern, num_threads, num_threads, std::move(reader), std::move(processors),
             std::move(searcher), std::make_unique<xs::CountResult>());
     extern_searcher.join();
+    INLINE_BENCHMARK_WALL_STOP("total");
     std::cout << extern_searcher.getResult()->getCount() << std::endl;
     // -------------------------------------------------------------------------
   } else {
@@ -284,8 +286,8 @@ int main(int argc, char** argv) {
     searchers.push_back(
         std::make_unique<xs::tasks::LineSearcher<xs::FullPartialResult>>());
     auto extern_searcher =
-        xs::ExternSearcher<xs::DataChunk, GrepResult, xs::FullPartialResult>(
-            pattern, num_threads, 2, std::move(reader), std::move(processors),
+        xs::Searcher<xs::DataChunk, GrepResult, xs::FullPartialResult>(
+            pattern, num_threads, 8, std::move(reader), std::move(processors),
             std::move(searchers),
             std::make_unique<GrepResult>(
                 pattern, xs::utils::use_str_as_regex(pattern), line_number,

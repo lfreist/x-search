@@ -7,7 +7,7 @@
 
 namespace xs::tasks {
 
-template <class DataT = DataChunk>
+template <class DataT>
 class BaseProcessor {
  public:
   BaseProcessor() = default;

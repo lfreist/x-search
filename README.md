@@ -64,7 +64,7 @@ auto res = xs::extern_search<xs::count>(pattern, file_path, meta_file_path, num_
 > - `xs::lines`: a vector of lines (as std::string) containing the match
 > - `xs::full`: a combined result of the above
 
-After calling `xs::extern_search`, the returned shared_ptr of the ExternSearcher instance can be...
+After calling `xs::extern_search`, the returned shared_ptr of the Searcher instance can be...
 - ... joined (`res->join()`): the main threads sleeps until the search process finished
 - ... used to access already created results using the iterator (`for (auto& part_res : res->getResult()) {...}`)
-- ... ignored: the threads started for the search by `ExternSearcher` are joined on destruction.
+- ... ignored: the threads started for the search by `Searcher` are joined on destruction.
