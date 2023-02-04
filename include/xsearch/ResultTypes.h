@@ -13,6 +13,7 @@
 
 namespace xs {
 
+/*
 // ----- Iterator class for Results --------------------------------------------
 template <class ResultT, class PartResT>
 class ResultIterator {
@@ -22,7 +23,7 @@ class ResultIterator {
   }
 
   PartResT& operator*() {
-    std::unique_lock locker(*_result._mutex);
+    std::unique_lock locker(*_result._res_vec_mutex);
     while (_index >= _result._merged_result.size()) {
       if (_result._done) {
         // TODO: this is pretty ugly. I just need to stop the iterator one step
@@ -31,6 +32,7 @@ class ResultIterator {
       }
       _result._cv->wait(locker);
     }
+    locker.unlock();
     return _result[_index];
   }
 
@@ -56,6 +58,7 @@ class ResultIterator {
   size_t _index;
 };
 // -----------------------------------------------------------------------------
+*/
 
 struct BasePartialResult {
   // index of the data chunk from which the results were collected
@@ -85,19 +88,31 @@ class BaseResult {
    * @param partial_result
    */
   virtual void addPartialResult(PartResT partial_result) = 0;
-  virtual std::vector<PartResT>& getResult() { return _merged_result; }
 
-  PartResT& operator[](size_t index) { return _merged_result[index]; }
+  virtual std::vector<PartResT>& getResult() {
+    std::unique_lock lock(*_res_vec_mutex);
+    return _merged_result;
+  }
+
+  PartResT& operator[](size_t index) {
+    std::unique_lock lock(*_res_vec_mutex);
+    return _merged_result[index];
+  }
 
   void markAsDone() {
-    std::unique_lock locker(*_mutex);
+    std::unique_lock locker(*_done_mutex);
     _done = true;
     _cv->notify_all();
   }
 
   bool isDone() {
-    std::unique_lock locker(*_mutex);
+    std::unique_lock locker(*_done_mutex);
     return _done;
+  }
+
+  [[nodiscard]] size_t size() const {
+    std::unique_lock lock(*_res_vec_mutex);
+    return _merged_result.size();
   }
 
   // TODO: this corresponds to the issue of the iterator. remove this method as
@@ -105,7 +120,8 @@ class BaseResult {
   virtual PartResT& getEmpty() = 0;
 
  protected:
-  std::unique_ptr<std::mutex> _mutex = std::make_unique<std::mutex>();
+  std::unique_ptr<std::mutex> _res_vec_mutex = std::make_unique<std::mutex>();
+  std::unique_ptr<std::mutex> _done_mutex = std::make_unique<std::mutex>();
   std::unique_ptr<std::condition_variable> _cv =
       std::make_unique<std::condition_variable>();
   std::vector<PartResT> _merged_result;
@@ -125,15 +141,11 @@ struct FullPartialResult : BasePartialResult {
 
 // ----- full result -----------------------------------------------------------
 class FullResult : public BaseResult<FullPartialResult> {
-  friend class ResultIterator<FullResult, FullPartialResult>;
 
  public:
   FullResult() = default;
 
   void addPartialResult(FullPartialResult partial_result) override;
-
-  ResultIterator<FullResult, FullPartialResult> begin();
-  ResultIterator<FullResult, FullPartialResult> end();
 
   FullPartialResult& getEmpty() override;
 
@@ -143,16 +155,12 @@ class FullResult : public BaseResult<FullPartialResult> {
 
 // ----- count matches ---------------------------------------------------------
 class CountResult : public BaseResult<uint64_t> {
-  friend class ResultIterator<CountResult, uint64_t>;
 
  public:
   CountResult() = default;
 
   void addPartialResult(uint64_t partial_result) override;
   uint64_t getCount();
-
-  ResultIterator<CountResult, uint64_t> begin();
-  ResultIterator<CountResult, uint64_t> end();
 
   uint64_t& getEmpty() override;
 
@@ -173,15 +181,11 @@ struct IndexPartialResult : BasePartialResult {
 };
 
 class MatchByteOffsetsResult : public BaseResult<IndexPartialResult> {
-  friend class ResultIterator<MatchByteOffsetsResult, IndexPartialResult>;
 
  public:
   MatchByteOffsetsResult() = default;
 
   void addPartialResult(IndexPartialResult partial_result) override;
-
-  ResultIterator<MatchByteOffsetsResult, IndexPartialResult> begin();
-  ResultIterator<MatchByteOffsetsResult, IndexPartialResult> end();
 
   IndexPartialResult& getEmpty() override;
 
@@ -202,15 +206,11 @@ struct LinesPartialResult : BasePartialResult {
 };
 
 class LinesResult : public BaseResult<LinesPartialResult> {
-  friend class ResultIterator<LinesResult, LinesPartialResult>;
 
  public:
   LinesResult() = default;
 
   void addPartialResult(LinesPartialResult partial_result) override;
-
-  ResultIterator<LinesResult, LinesPartialResult> begin();
-  ResultIterator<LinesResult, LinesPartialResult> end();
 
   LinesPartialResult& getEmpty() override;
 

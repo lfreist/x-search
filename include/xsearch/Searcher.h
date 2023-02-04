@@ -22,6 +22,11 @@ namespace xs {
 template <class DataT, class ResType, class PartResT>
 class Searcher {
  public:
+  class iterator {
+    iterator()
+  };
+
+ public:
   // ---------------------------------------------------------------------------
   Searcher(std::string pattern, int num_threads, int max_readers,
            std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
@@ -53,7 +58,7 @@ class Searcher {
   ~Searcher() { join(); }
 
   ResType* getResult() {
-    std::unique_lock lock(_merge_results_mutex);
+    std::unique_lock lock(_results_mutex);
     return _result.get();
   }
 
@@ -138,7 +143,7 @@ class Searcher {
 
   void results_join_task(std::vector<PartResT>& partial_results) {
     INLINE_BENCHMARK_WALL_START("results join task");
-    std::unique_lock locker(_merge_results_mutex);
+    std::unique_lock locker(_results_mutex);
     for (auto& part_res : partial_results) {
       _result->addPartialResult(part_res);
     }
@@ -152,7 +157,7 @@ class Searcher {
   std::unique_ptr<re2::RE2> _regex_pattern;
 
   std::unique_ptr<ResType> _result;
-  std::mutex _merge_results_mutex;
+  std::mutex _results_mutex;
 
   std::unique_ptr<tasks::BaseDataProvider<DataT>> _reader;
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> _processors;
