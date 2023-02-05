@@ -66,5 +66,5 @@ auto res = xs::extern_search<xs::count>(pattern, file_path, meta_file_path, num_
 
 After calling `xs::extern_search`, the returned shared_ptr of the Searcher instance can be...
 - ... joined (`res->join()`): the main threads sleeps until the search process finished
-- ... used to access already created results using the iterator (`for (auto& part_res : res->getResult()) {...}`)
+- ... used to access already created results using the iterator (`for (auto& part_res : res->getMergedResult()) {...}`)
 - ... ignored: the threads started for the search by `Searcher` are joined on destruction.

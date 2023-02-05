@@ -5,6 +5,7 @@
 #include <xsearch/string_search/simd_search.h>
 
 #include <cstring>
+#include <iostream>
 
 namespace xs::search::simd {
 
@@ -83,6 +84,9 @@ char* strstr(char* str, size_t str_len, const char* pattern,
     str_len -= 32;
     // shift str pointer to new start
     str += 32;
+  }
+  if (str_len <= 0) {
+    std::cout << "help!" << std::endl;
   }
   return std::strstr(str, pattern);
 }

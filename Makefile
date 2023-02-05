@@ -13,7 +13,7 @@ help:
 	@echo "Supervisor: Johannes Kalmbach"
 	@echo "--------------------------------------------------------------------------------"
 	@echo "The following commands are available:"
-	@echo " - 'make build')"
+	@echo " - 'make build'"
 	@echo " - 'make benchmark'"
 	@echo " - 'make test'"
 	@echo " - ..."

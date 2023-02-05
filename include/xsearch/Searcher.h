@@ -23,9 +23,38 @@ template <class DataT, class ResType, class PartResT>
 class Searcher {
  public:
   class iterator {
-    iterator()
-  };
+   public:
+    iterator(Searcher<DataT, ResType, PartResT>& searcher, size_t index) : _searcher(searcher), _index(index) {}
 
+    PartResT& operator*() {
+      std::unique_lock lock(_searcher._results_mutex);
+      return _searcher._result[_index];
+    }
+
+    iterator& operator++() {
+      _index++;
+      return *this;
+    }
+
+    bool operator!=(const iterator& other) {
+      std::unique_lock locker(_searcher._results_mutex);
+      while (_index >= _searcher._result._merged_result.size()) {
+        if (!_searcher.isRunning()) {
+          // no results will be added and index is out of range
+          return false;
+        }
+        _searcher._results_condition_variable.wait(locker);
+      }
+      if (!_searcher.isRunning()) {
+        return _index <= _searcher._result._merged_result.size();
+      }
+      return true;
+    }
+
+   private:
+    Searcher<DataT, ResType, PartResT>& _searcher;
+    size_t _index;
+  };
  public:
   // ---------------------------------------------------------------------------
   Searcher(std::string pattern, int num_threads, int max_readers,
@@ -87,8 +116,9 @@ class Searcher {
       results_join_task(partial_results);
     }
     if (_workers.fetch_sub(1) == 1) {
-      _result->markAsDone();
       _running.store(false);
+      std::unique_lock locker(_results_mutex);
+      _results_condition_variable.notify_all();
     }
   }
 
@@ -146,6 +176,7 @@ class Searcher {
     std::unique_lock locker(_results_mutex);
     for (auto& part_res : partial_results) {
       _result->addPartialResult(part_res);
+      _results_condition_variable.notify_one();
     }
     INLINE_BENCHMARK_WALL_STOP("results join task");
   }
@@ -158,6 +189,7 @@ class Searcher {
 
   std::unique_ptr<ResType> _result;
   std::mutex _results_mutex;
+  std::condition_variable _results_condition_variable;
 
   std::unique_ptr<tasks::BaseDataProvider<DataT>> _reader;
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> _processors;

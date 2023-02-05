@@ -116,11 +116,9 @@ class GrepResult : public xs::BaseResult<xs::FullPartialResult> {
   }
 
   // only because we must implement it...
-  std::vector<xs::FullPartialResult>& getResult() override {
+  std::vector<xs::FullPartialResult>& getMergedResult() override {
     return _merged_result;
   }
-
-  xs::FullPartialResult& getEmpty() override { return _merged_result.back(); }
 
  private:
   std::string _pattern;

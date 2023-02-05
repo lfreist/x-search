@@ -44,8 +44,7 @@ namespace xs {
  */
 typedef Searcher<xs::DataChunk, CountResult, uint64_t> count;
 typedef Searcher<xs::DataChunk, CountLinesResult, uint64_t> count_lines;
-typedef Searcher<xs::DataChunk, MatchByteOffsetsResult,
-                       IndexPartialResult>
+typedef Searcher<xs::DataChunk, MatchByteOffsetsResult, IndexPartialResult>
     match_byte_offsets;
 typedef Searcher<xs::DataChunk, LineByteOffsetsResult, IndexPartialResult>
     line_byte_offsets;

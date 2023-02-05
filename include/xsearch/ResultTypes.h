@@ -13,53 +13,6 @@
 
 namespace xs {
 
-/*
-// ----- Iterator class for Results --------------------------------------------
-template <class ResultT, class PartResT>
-class ResultIterator {
- public:
-  ResultIterator(ResultT& result, size_t index) : _result(result) {
-    _index = index;
-  }
-
-  PartResT& operator*() {
-    std::unique_lock locker(*_result._res_vec_mutex);
-    while (_index >= _result._merged_result.size()) {
-      if (_result._done) {
-        // TODO: this is pretty ugly. I just need to stop the iterator one step
-        //  earlier. Need to figure out how and where to implement it.
-        return _result.getEmpty();
-      }
-      _result._cv->wait(locker);
-    }
-    locker.unlock();
-    return _result[_index];
-  }
-
-  ResultIterator<ResultT, PartResT>& operator++() {
-    _index++;
-    return *this;
-  }
-
-  ResultIterator<ResultT, PartResT>& operator--() {
-    _index--;
-    return *this;
-  }
-
-  bool operator!=(const ResultIterator<ResultT, PartResT>& other) {
-    if (_result.isDone()) {
-      return _index <= _result._merged_result.size();
-    }
-    return true;
-  }
-
- private:
-  ResultT& _result;
-  size_t _index;
-};
-// -----------------------------------------------------------------------------
-*/
-
 struct BasePartialResult {
   // index of the data chunk from which the results were collected
   size_t _index = 0;
@@ -89,7 +42,9 @@ class BaseResult {
    */
   virtual void addPartialResult(PartResT partial_result) = 0;
 
-  virtual std::vector<PartResT>& getResult() {
+  // TODO: merged result name is ambitious since the result is not really merged
+  //  but just a vector of part res
+  virtual std::vector<PartResT>& getMergedResult() {
     std::unique_lock lock(*_res_vec_mutex);
     return _merged_result;
   }
@@ -99,33 +54,14 @@ class BaseResult {
     return _merged_result[index];
   }
 
-  void markAsDone() {
-    std::unique_lock locker(*_done_mutex);
-    _done = true;
-    _cv->notify_all();
-  }
-
-  bool isDone() {
-    std::unique_lock locker(*_done_mutex);
-    return _done;
-  }
-
   [[nodiscard]] size_t size() const {
     std::unique_lock lock(*_res_vec_mutex);
     return _merged_result.size();
   }
 
-  // TODO: this corresponds to the issue of the iterator. remove this method as
-  //  soon as i have fixed the iterator issue.
-  virtual PartResT& getEmpty() = 0;
-
  protected:
   std::unique_ptr<std::mutex> _res_vec_mutex = std::make_unique<std::mutex>();
-  std::unique_ptr<std::mutex> _done_mutex = std::make_unique<std::mutex>();
-  std::unique_ptr<std::condition_variable> _cv =
-      std::make_unique<std::condition_variable>();
   std::vector<PartResT> _merged_result;
-  bool _done = false;
 };
 
 // ===== Useful result types ===================================================
@@ -147,8 +83,6 @@ class FullResult : public BaseResult<FullPartialResult> {
 
   void addPartialResult(FullPartialResult partial_result) override;
 
-  FullPartialResult& getEmpty() override;
-
  private:
   FullPartialResult _empty{};
 };
@@ -161,8 +95,6 @@ class CountResult : public BaseResult<uint64_t> {
 
   void addPartialResult(uint64_t partial_result) override;
   uint64_t getCount();
-
-  uint64_t& getEmpty() override;
 
  protected:
   uint64_t _sum_result = 0;
@@ -187,8 +119,6 @@ class MatchByteOffsetsResult : public BaseResult<IndexPartialResult> {
 
   void addPartialResult(IndexPartialResult partial_result) override;
 
-  IndexPartialResult& getEmpty() override;
-
  protected:
   IndexPartialResult _empty{};
 };
@@ -211,8 +141,6 @@ class LinesResult : public BaseResult<LinesPartialResult> {
   LinesResult() = default;
 
   void addPartialResult(LinesPartialResult partial_result) override;
-
-  LinesPartialResult& getEmpty() override;
 
  protected:
   LinesPartialResult _empty{};
