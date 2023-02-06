@@ -51,7 +51,7 @@ typedef Searcher<xs::DataChunk, LineByteOffsetsResult, IndexPartialResult>
 typedef Searcher<xs::DataChunk, LineIndexResult, IndexPartialResult>
     line_indices;
 typedef Searcher<xs::DataChunk, LinesResult, LinesPartialResult> lines;
-typedef Searcher<xs::DataChunk, FullResult, FullPartialResult> full;
+// typedef Searcher<xs::DataChunk, FullResult, FullPartialResult> full;
 
 /**
  * A simple one-function API call to ExternSearcher.

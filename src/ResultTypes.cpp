@@ -2,6 +2,7 @@
 
 namespace xs {
 
+/*
 // ===== FullPartialResult =====================================================
 // _____________________________________________________________________________
 void FullPartialResult::merge(FullPartialResult& other) {
@@ -26,39 +27,30 @@ void FullResult::addPartialResult(FullPartialResult partial_result) {
   std::unique_lock locker(*_res_vec_mutex);
   _merged_result.push_back(std::move(partial_result));
 }
+ */
 
 // ===== CountResult ===========================================================
 // _____________________________________________________________________________
 void CountResult::addPartialResult(uint64_t partial_result) {
-  std::unique_lock locker(*_res_vec_mutex);
-  _sum_result += partial_result;
-  _merged_result.push_back(partial_result);
+  _sum_result.fetch_add(partial_result);
 }
 
 // _____________________________________________________________________________
 uint64_t CountResult::getCount() {
-  std::unique_lock locker(*_res_vec_mutex);
-  return _sum_result;
-}
-
-// ===== ByteOffsetsPartialResult ==============================================
-void IndexPartialResult::merge(IndexPartialResult other) {
-  indices.resize(indices.size() + other.indices.size());
-  indices.insert(indices.end(), std::make_move_iterator(other.indices.begin()),
-                 std::make_move_iterator(other.indices.end()));
+  return _sum_result.load();
 }
 
 // ===== MatchByteOffsetsResult ================================================
 // _____________________________________________________________________________
 void MatchByteOffsetsResult::addPartialResult(
     IndexPartialResult partial_result) {
-  _merged_result.push_back(std::move(partial_result));
+  _merged_result.wlock()->push_back(std::move(partial_result));
 }
 
 // ===== MatchByteOffsetsResult ================================================
 // _____________________________________________________________________________
 void LinesResult::addPartialResult(LinesPartialResult partial_result) {
-  _merged_result.push_back(std::move(partial_result));
+  _merged_result.wlock()->push_back(std::move(partial_result));
 }
 
 }  // namespace xs

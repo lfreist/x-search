@@ -85,9 +85,6 @@ char* strstr(char* str, size_t str_len, const char* pattern,
     // shift str pointer to new start
     str += 32;
   }
-  if (str_len <= 0) {
-    std::cout << "help!" << std::endl;
-  }
   return std::strstr(str, pattern);
 }
 

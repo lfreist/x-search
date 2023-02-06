@@ -208,6 +208,7 @@ void LineIndexSearcher<FullPartialResult>::search(
       search::regex::line_indices(data, result->_byte_offsets_line, *pattern);
   INLINE_BENCHMARK_WALL_STOP("mapping line index");
 }
+
 // -----------------------------------------------------------------------------
 
 // ===== LinesSearcher =========================================================

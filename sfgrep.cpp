@@ -115,11 +115,6 @@ class GrepResult : public xs::BaseResult<xs::FullPartialResult> {
     INLINE_BENCHMARK_WALL_STOP("formatting and printing");
   }
 
-  // only because we must implement it...
-  std::vector<xs::FullPartialResult>& getMergedResult() override {
-    return _merged_result;
-  }
-
  private:
   std::string _pattern;
   bool _regex;

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <xsearch/utils/ad_utility/Synchronized.h>
+
 #include <condition_variable>
 #include <iostream>
 #include <memory>
@@ -44,24 +46,32 @@ class BaseResult {
 
   // TODO: merged result name is ambitious since the result is not really merged
   //  but just a vector of part res
-  virtual std::vector<PartResT>& getMergedResult() {
-    std::unique_lock lock(*_res_vec_mutex);
-    return _merged_result;
+  std::vector<PartResT> copyResultSafe() {
+    std::vector<PartResT> tmp(_merged_result.rlock()->size());
+    _merged_result.withWriteLock([&](auto& mr) {
+                    tmp.assign(mr.begin(), mr.end());
+                  });
+    return tmp;
   }
 
-  PartResT& operator[](size_t index) {
-    std::unique_lock lock(*_res_vec_mutex);
-    return _merged_result[index];
+  auto* getSynchronizedResultPtr() {
+    return &_merged_result;
+  }
+
+  auto getLockedResult() {
+    return _merged_result.wlock();
+  }
+
+  const PartResT& operator[](size_t index) {
+    return _merged_result.rlock()->at(index);
   }
 
   [[nodiscard]] size_t size() const {
-    std::unique_lock lock(*_res_vec_mutex);
-    return _merged_result.size();
+    return _merged_result.rlock()->size();
   }
 
  protected:
-  std::unique_ptr<std::mutex> _res_vec_mutex = std::make_unique<std::mutex>();
-  std::vector<PartResT> _merged_result;
+  ad_utility::Synchronized<std::vector<PartResT>> _merged_result;
 };
 
 // ===== Useful result types ===================================================
@@ -75,6 +85,7 @@ struct FullPartialResult : BasePartialResult {
   void merge(FullPartialResult& other);
 };
 
+/*
 // ----- full result -----------------------------------------------------------
 class FullResult : public BaseResult<FullPartialResult> {
 
@@ -86,10 +97,10 @@ class FullResult : public BaseResult<FullPartialResult> {
  private:
   FullPartialResult _empty{};
 };
+ */
 
 // ----- count matches ---------------------------------------------------------
 class CountResult : public BaseResult<uint64_t> {
-
  public:
   CountResult() = default;
 
@@ -97,8 +108,7 @@ class CountResult : public BaseResult<uint64_t> {
   uint64_t getCount();
 
  protected:
-  uint64_t _sum_result = 0;
-  uint64_t _empty = 0;
+  std::atomic<uint64_t> _sum_result {0};
 };
 
 // This is actually the same as CountResult, but we need a different type for
@@ -108,19 +118,13 @@ class CountLinesResult : public CountResult {};
 // ----- byte positions --------------------------------------------------------
 struct IndexPartialResult : BasePartialResult {
   std::vector<size_t> indices;
-
-  void merge(IndexPartialResult other);
 };
 
 class MatchByteOffsetsResult : public BaseResult<IndexPartialResult> {
-
  public:
   MatchByteOffsetsResult() = default;
 
   void addPartialResult(IndexPartialResult partial_result) override;
-
- protected:
-  IndexPartialResult _empty{};
 };
 
 // NOTE: LineByteOffsetsResult is actually the same as MatchByteOffsetsResult.
@@ -136,14 +140,10 @@ struct LinesPartialResult : BasePartialResult {
 };
 
 class LinesResult : public BaseResult<LinesPartialResult> {
-
  public:
   LinesResult() = default;
 
   void addPartialResult(LinesPartialResult partial_result) override;
-
- protected:
-  LinesPartialResult _empty{};
 };
 
 }  // namespace xs

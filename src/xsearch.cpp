@@ -221,6 +221,7 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
       std::make_unique<LineIndexResult>());
 }
 
+/*
 // _____________________________________________________________________________
 // implementation for collecting all results
 template <>
@@ -267,5 +268,6 @@ std::shared_ptr<full> extern_search(const std::string& pattern,
                                 std::move(searcher),
                                 std::make_unique<FullResult>());
 }
+ */
 
 }  // namespace xs

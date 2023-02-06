@@ -12,7 +12,7 @@
 
 namespace xs::tasks {
 
-template <class RT = FullResult, class DT = DataChunk>
+template <class RT, class DT = DataChunk>
 class BaseResultCollector {
  public:
   BaseResultCollector() = default;
