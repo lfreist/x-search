@@ -9,6 +9,25 @@
 
 namespace xs::search::simd {
 
+/// simple strstr implementation for char* that is not null terminated
+char* std_strstr(char* str, size_t str_len, const char* pattern, size_t pat_len) {
+  size_t shift = 0;
+  while (shift < str_len) {
+    if (str_len - shift < pat_len) { return nullptr; }  // not found
+    bool flag = true;
+    size_t str_index = shift;
+    for (size_t p_i = 0; p_i < pat_len; ++p_i) {
+      if (str[str_index++] != pattern[p_i]) {
+        flag = false;
+        break;
+      }
+    }
+    shift = str_index;
+    if (flag) { return str + shift; }  // match found
+  }
+  return nullptr;
+}
+
 char* strchr(char* str, size_t str_len, char c) {
   // we are using 256 bits (32 bytes) vectors. If str_len is smaller than 32, we
   // just perform std::strchr
@@ -45,8 +64,8 @@ char* strstr(char* str, size_t str_len, const char* pattern,
              size_t pattern_len) {
   // we are using 256 bits (32 bytes) vectors. If str_len is smaller than 32, we
   // just perform std::strstr
-  if (str_len < 32) {
-    return std::strstr(str, pattern);
+  if (str_len < 32 + pattern_len) {
+    return std_strstr(str, str_len, pattern, pattern_len);
   }
   // load first char of pattern
   const __m256i first = _mm256_set1_epi8(pattern[0]);
@@ -55,7 +74,7 @@ char* strstr(char* str, size_t str_len, const char* pattern,
 
   // we are using 256 bits (32 bytes) vectors. If remaining str is smaller than
   // 32, we stop and perform std::strstr on the remaining str
-  while (str_len >= 32) {
+  while (str_len >= 32 + pattern_len) {
     // load next 32 bytes
     const __m256i block_first =
         _mm256_loadu_si256(reinterpret_cast<const __m256i*>(str));
@@ -85,7 +104,7 @@ char* strstr(char* str, size_t str_len, const char* pattern,
     // shift str pointer to new start
     str += 32;
   }
-  return std::strstr(str, pattern);
+  return std_strstr(str, str_len, pattern, pattern_len);
 }
 
 int64_t findNext(const char* pattern, size_t pattern_len, char* str,
