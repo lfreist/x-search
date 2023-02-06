@@ -8,7 +8,7 @@
 //  The following command never fails...:
 //  ---
 //   for i in {1..10000}; do value=$(./build/checkit over test/files/dummy.txt
-//   test/files/dummy.sf.meta 4); if [ "$value" != "152" ]; then echo "$value";
+//   test/files/dummy.xs.meta 4); if [ "$value" != "152" ]; then echo "$value";
 //   fi; done
 //  ---
 //  This is checkit.cpp:
@@ -65,8 +65,8 @@ TEST(ExternSearcherTest, count) {
   }
   {  // compression
     auto res =
-        xs::extern_search<xs::count>(re_pattern, "test/files/dummy.sflz4",
-                                     "test/files/dummy.sflz4.meta", 4, 2);
+        xs::extern_search<xs::count>(re_pattern, "test/files/dummy.xslz4",
+                                     "test/files/dummy.xslz4.meta", 4, 2);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 156);
   }
@@ -111,8 +111,8 @@ TEST(ExternSearcherTest, count_lines) {
   }
   {  // compression
     auto res =
-        xs::extern_search<xs::count_lines>(re_pattern, "test/files/dummy.sflz4",
-                                           "test/files/dummy.sflz4.meta", 4, 2);
+        xs::extern_search<xs::count_lines>(re_pattern, "test/files/dummy.xslz4",
+                                           "test/files/dummy.xslz4.meta", 4, 2);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 137);
   }
@@ -230,7 +230,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
   }
   {  // compression
     auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        re_pattern, "test/files/dummy.sflz4", "test/files/dummy.sflz4.meta", 4,
+        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta", 4,
         2);
     _xs->join();
     std::vector<size_t> res;
@@ -351,7 +351,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
   }
   {  // compression
     auto _xs = xs::extern_search<xs::line_byte_offsets>(
-        re_pattern, "test/files/dummy.sflz4", "test/files/dummy.sflz4.meta", 4,
+        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta", 4,
         2);
     _xs->join();
     std::vector<size_t> res;
@@ -553,8 +553,8 @@ TEST(ExternSearcherTest, lines) {
   }
   {  // compression
     auto _xs =
-        xs::extern_search<xs::lines>(re_pattern, "test/files/dummy.sflz4",
-                                     "test/files/dummy.sflz4.meta", 4, 2);
+        xs::extern_search<xs::lines>(re_pattern, "test/files/dummy.xslz4",
+                                     "test/files/dummy.xslz4.meta", 4, 2);
     _xs->join();
     std::vector<std::string> res;
     auto tmp = _xs->getResult()->getMergedResult();
@@ -835,8 +835,8 @@ TEST(ExternSearcherTest, full) {
     ASSERT_EQ(lines.size(), 137);
   }
   {  // compression
-    auto _xs = xs::extern_search<xs::full>(re_pattern, "test/files/dummy.sflz4",
-                                           "test/files/dummy.sflz4.meta", 4, 2);
+    auto _xs = xs::extern_search<xs::full>(re_pattern, "test/files/dummy.xslz4",
+                                           "test/files/dummy.xslz4.meta", 4, 2);
     _xs->join();
     std::vector<size_t> match_bo;
     std::vector<size_t> line_bo;
