@@ -23,7 +23,7 @@ std::vector<uint64_t> to_line_indices(
 
   // perform binary search to the mapping data that is closest to the byte
   //  offset that we work for
-  for (auto& bo : match_global_byte_offsets) {
+  for (const auto bo : match_global_byte_offsets) {
     // indicates whether we need to search new line indices forwards or
     //  backwards later (depends on the relative position of the closest mapping
     //  data...)
@@ -45,12 +45,12 @@ std::vector<uint64_t> to_line_indices(
 
     // Search new lines starting from the result of the binary search above.
     while (true) {
-      if (data->str()[current_global_byte_offset - data->getOffset()] == '\n') {
+      if (data->data()[current_global_byte_offset - data->getOffset()] == '\n') {
         line_index += continue_by_one;
       }
       if (current_global_byte_offset == bo) {
         // line index found
-        result.push_back(line_index);
+        result.push_back(line_index + 1);
         break;
       }
       current_global_byte_offset += continue_by_one;

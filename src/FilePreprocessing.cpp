@@ -79,11 +79,7 @@ void FilePreprocessor::preprocess(
           throw std::runtime_error(
               "Could not find new line. Increase maxOverflowSize value.");
         }
-        // we save the first byte of a line together with its line index
-        // rather than the last byte of the previous line. However, this has
-        // no technical reasons and is just a design decision because it is
-        // more intuitive...
-        byteNLMappingVector.push_back({read_offset + 1, line_index + 1});
+        byteNLMappingVector.push_back({read_offset - 1, line_index});
         ChunkMetaData cmd{0,
                           original_offset,
                           actual_offset,
@@ -97,16 +93,13 @@ void FilePreprocessor::preprocess(
         byte_count = 0;
         byteNLMappingVector.clear();
       } else if (byte_count >= byteToNewLineMappingDistance) {
-        // we save the first byte of a line together with its line index
-        // rather than the last byte of the previous line. However, this has
-        // no technical reasons and is just a design decision because it is
-        // more intuitive...
-        byteNLMappingVector.push_back({read_offset + 1, line_index + 1});
+        // read_offset - 1 because we want byte index rather than offset
+        byteNLMappingVector.push_back({read_offset - 1, line_index});
         byte_count = 0;
       }
       line_index++;
     }
-    byteNLMappingVector.push_back({read_offset, line_index});
+    byteNLMappingVector.push_back({read_offset - 1, line_index});
     ChunkMetaData cmd{0,
                       original_offset,
                       actual_offset,
@@ -157,7 +150,7 @@ void FilePreprocessor::preprocess(
               buffer.data(), static_cast<int>(buffer.size()), compressionLevel);
         }
         write_offset += compressed.size();
-        byteNLMappingVector.push_back({read_offset + 1, line_index + 1});
+        byteNLMappingVector.push_back({read_offset - 1, line_index});
         ChunkMetaData cmd{0,
                           original_offset,
                           actual_offset,
@@ -174,7 +167,7 @@ void FilePreprocessor::preprocess(
         original_offset = read_offset;
         actual_offset = write_offset;
       } else if (byte_count >= byteToNewLineMappingDistance) {
-        byteNLMappingVector.push_back({read_offset + 1, line_index + 1});
+        byteNLMappingVector.push_back({read_offset - 1, line_index});
         byte_count = 0;
       }
       line_index++;
