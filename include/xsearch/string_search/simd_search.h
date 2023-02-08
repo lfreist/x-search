@@ -15,7 +15,7 @@ namespace xs::search::simd {
  *
  * @param str data string
  * @param str_len size of str
- * @param c char to be searched for in str
+ * @param c int to be searched for in str
  * @return pointer to match
  */
 char* strchr(char* str, size_t str_len, char c);

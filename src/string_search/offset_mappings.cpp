@@ -45,7 +45,8 @@ std::vector<uint64_t> to_line_indices(
 
     // Search new lines starting from the result of the binary search above.
     while (true) {
-      if (data->data()[current_global_byte_offset - data->getOffset()] == '\n') {
+      if (data->data()[current_global_byte_offset - data->getOffset()] ==
+          '\n') {
         line_index += continue_by_one;
       }
       if (current_global_byte_offset == bo) {

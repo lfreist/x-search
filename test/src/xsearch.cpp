@@ -575,7 +575,6 @@ TEST(ExternSearcherTest, lines) {
   }
 }
 
-
 TEST(ExternSearcherTest, full) {
   const std::vector<size_t> line_indices = {
       1,   5,   8,   10,  12,  13,  14,  35,  37,  44,  47,  54,  65,  71,  79,

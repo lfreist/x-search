@@ -24,7 +24,8 @@ class Searcher {
  public:
   class iterator {
    public:
-    iterator(Searcher<DataT, ResType, PartResT>& searcher, size_t index) : _searcher(searcher), _index(index) {}
+    iterator(Searcher<DataT, ResType, PartResT>& searcher, size_t index)
+        : _searcher(searcher), _index(index) {}
 
     PartResT& operator*() {
       std::unique_lock lock(_searcher._results_mutex);
@@ -55,6 +56,7 @@ class Searcher {
     Searcher<DataT, ResType, PartResT>& _searcher;
     size_t _index;
   };
+
  public:
   // ---------------------------------------------------------------------------
   Searcher(std::string pattern, int num_threads, int max_readers,

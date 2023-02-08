@@ -241,8 +241,9 @@ int main(int argc, char** argv) {
     INLINE_BENCHMARK_WALL_START("total");
     auto extern_searcher =
         xs::Searcher<xs::DataChunk, xs::CountResult, uint64_t>(
-            pattern, num_threads, num_threads, std::move(reader), std::move(processors),
-            std::move(searcher), std::make_unique<xs::CountResult>());
+            pattern, num_threads, num_threads, std::move(reader),
+            std::move(processors), std::move(searcher),
+            std::make_unique<xs::CountResult>());
     extern_searcher.join();
     INLINE_BENCHMARK_WALL_STOP("total");
     std::cout << extern_searcher.getResult()->getCount() << std::endl;

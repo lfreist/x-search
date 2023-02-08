@@ -15,9 +15,7 @@ void CountResult::addPartialResult(uint64_t partial_result) {
 }
 
 // _____________________________________________________________________________
-uint64_t CountResult::getCount() {
-  return _sum_result.load();
-}
+uint64_t CountResult::getCount() { return _sum_result.load(); }
 
 // ===== MatchByteOffsetsResult ================================================
 // _____________________________________________________________________________

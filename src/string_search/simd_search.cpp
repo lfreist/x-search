@@ -10,10 +10,13 @@
 namespace xs::search::simd {
 
 /// simple strstr implementation for char* that is not null terminated
-char* std_strstr(char* str, size_t str_len, const char* pattern, size_t pat_len) {
+char* rest_strstr(char* str, size_t str_len, const char* pattern,
+                  size_t pat_len) {
   size_t shift = 0;
   while (shift < str_len) {
-    if (str_len - shift < pat_len) { return nullptr; }  // not found
+    if (str_len - shift < pat_len) {
+      return nullptr;
+    }  // not found
     bool flag = true;
     size_t str_index = shift;
     for (size_t p_i = 0; p_i < pat_len; ++p_i) {
@@ -23,7 +26,19 @@ char* std_strstr(char* str, size_t str_len, const char* pattern, size_t pat_len)
       }
     }
     shift = str_index;
-    if (flag) { return str + shift; }  // match found
+    if (flag) {
+      return str + shift;  // match found
+    }
+  }
+  return nullptr;
+}
+
+/// simple implementation of strchr for char* that is not null terminated
+char* rest_strchr(char* str, size_t str_len, int c) {
+  for (size_t i = 0; i < str_len; ++i) {
+    if (str[i] == c) {
+      return str + i;
+    }
   }
   return nullptr;
 }
@@ -32,7 +47,7 @@ char* strchr(char* str, size_t str_len, char c) {
   // we are using 256 bits (32 bytes) vectors. If str_len is smaller than 32, we
   // just perform std::strchr
   if (str_len < 32) {
-    return std::strchr(str, c);
+    return rest_strchr(str, str_len, c);
   }
   // load c into SIMD vector
   const __m256i _c = _mm256_set1_epi8(c);
@@ -56,8 +71,8 @@ char* strchr(char* str, size_t str_len, char c) {
     str_len -= 32;
     str += 32;
   }
-  // perform std::strchr on remaining str
-  return std::strchr(str, c);
+  // perform rest_strchr on remaining str
+  return rest_strchr(str, str_len, c);
 }
 
 char* strstr(char* str, size_t str_len, const char* pattern,
@@ -65,7 +80,7 @@ char* strstr(char* str, size_t str_len, const char* pattern,
   // we are using 256 bits (32 bytes) vectors. If str_len is smaller than 32, we
   // just perform std::strstr
   if (str_len < 32 + pattern_len) {
-    return std_strstr(str, str_len, pattern, pattern_len);
+    return rest_strstr(str, str_len, pattern, pattern_len);
   }
   // load first char of pattern
   const __m256i first = _mm256_set1_epi8(pattern[0]);
@@ -104,7 +119,7 @@ char* strstr(char* str, size_t str_len, const char* pattern,
     // shift str pointer to new start
     str += 32;
   }
-  return std_strstr(str, str_len, pattern, pattern_len);
+  return rest_strstr(str, str_len, pattern, pattern_len);
 }
 
 int64_t findNext(const char* pattern, size_t pattern_len, char* str,

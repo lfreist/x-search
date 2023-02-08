@@ -48,27 +48,20 @@ class BaseResult {
   //  but just a vector of part res
   std::vector<PartResT> copyResultSafe() {
     std::vector<PartResT> tmp(_merged_result.rlock()->size());
-    _merged_result.withWriteLock([&](auto& mr) {
-                    tmp.assign(mr.begin(), mr.end());
-                  });
+    _merged_result.withWriteLock(
+        [&](auto& mr) { tmp.assign(mr.begin(), mr.end()); });
     return tmp;
   }
 
-  auto* getSynchronizedResultPtr() {
-    return &_merged_result;
-  }
+  auto* getSynchronizedResultPtr() { return &_merged_result; }
 
-  auto getLockedResult() {
-    return _merged_result.wlock();
-  }
+  auto getLockedResult() { return _merged_result.wlock(); }
 
   const PartResT& operator[](size_t index) {
     return _merged_result.rlock()->at(index);
   }
 
-  [[nodiscard]] size_t size() const {
-    return _merged_result.rlock()->size();
-  }
+  [[nodiscard]] size_t size() const { return _merged_result.rlock()->size(); }
 
  protected:
   ad_utility::Synchronized<std::vector<PartResT>> _merged_result;
@@ -85,7 +78,6 @@ struct FullPartialResult : BasePartialResult {
 
 // ----- full result -----------------------------------------------------------
 class FullResult : public BaseResult<FullPartialResult> {
-
  public:
   FullResult() = default;
 
@@ -101,7 +93,7 @@ class CountResult : public BaseResult<uint64_t> {
   uint64_t getCount();
 
  protected:
-  std::atomic<uint64_t> _sum_result {0};
+  std::atomic<uint64_t> _sum_result{0};
 };
 
 // This is actually the same as CountResult, but we need a different type for
