@@ -42,16 +42,15 @@ namespace xs {
  *  E.g.: extern_search<count>(...) will start and return an ExternSearch object
  *  initialized with everything needed for counting matches.
  */
-typedef Searcher<xs::DataChunk, CountResult, uint64_t> count;
+typedef Searcher<xs::DataChunk, CountMatchesResult, uint64_t> count_matches;
 typedef Searcher<xs::DataChunk, CountLinesResult, uint64_t> count_lines;
-typedef Searcher<xs::DataChunk, MatchByteOffsetsResult, IndexPartialResult>
+typedef Searcher<xs::DataChunk, MatchByteOffsetsResult, std::vector<uint64_t>>
     match_byte_offsets;
-typedef Searcher<xs::DataChunk, LineByteOffsetsResult, IndexPartialResult>
+typedef Searcher<xs::DataChunk, LineByteOffsetsResult, std::vector<uint64_t>>
     line_byte_offsets;
-typedef Searcher<xs::DataChunk, LineIndexResult, IndexPartialResult>
+typedef Searcher<xs::DataChunk, LineIndicesResult, std::vector<uint64_t>>
     line_indices;
-typedef Searcher<xs::DataChunk, LinesResult, LinesPartialResult> lines;
-typedef Searcher<xs::DataChunk, FullResult, FullPartialResult> full;
+typedef Searcher<xs::DataChunk, LinesResult, std::vector<std::string>> lines;
 
 /**
  * A simple one-function API call to ExternSearcher.

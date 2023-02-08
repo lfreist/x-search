@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace po = boost::program_options;
-
+/*
 // ===== Grep output Result ====================================================
 // _____ Output Formatting _____________________________________________________
 // _____________________________________________________________________________
@@ -304,5 +304,10 @@ int main(int argc, char** argv) {
   }
 #endif
 
+  return 0;
+}
+ */
+
+int main() {
   return 0;
 }

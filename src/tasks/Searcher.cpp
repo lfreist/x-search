@@ -10,269 +10,135 @@ namespace xs::tasks {
 
 // ===== MatchCounter ==========================================================
 // _____________________________________________________________________________
-template <>
-void MatchCounter<uint64_t>::search(const std::string& pattern, DataChunk* data,
-                                    uint64_t* result) const {
+uint64_t MatchCounter::search(const std::string& pattern,
+                              DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching count");
-  *result = search::count(data, pattern, false);
+  auto tmp = search::count(data, pattern, false);
   INLINE_BENCHMARK_WALL_STOP("searching count");
+  return tmp;
 }
 
 // _____________________________________________________________________________
-template <>
-void MatchCounter<uint64_t>::search(re2::RE2* pattern, DataChunk* data,
-                                    uint64_t* result) const {
+uint64_t MatchCounter::search(re2::RE2* pattern, DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching count");
-  *result = search::regex::count(data, *pattern, false);
+  auto tmp = search::regex::count(data, *pattern, false);
   INLINE_BENCHMARK_WALL_STOP("searching count");
+  return tmp;
 }
 
 // -----------------------------------------------------------------------------
 
 // ===== LineCounter ===========================================================
-// _____________________________________________________________________________
-template <>
-void LineCounter<uint64_t>::search(const std::string& pattern, DataChunk* data,
-                                   uint64_t* result) const {
+uint64_t LineCounter::search(const std::string& pattern,
+                             DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching count");
-  *result = search::count(data, pattern, true);
+  auto tmp = search::count(data, pattern, true);
   INLINE_BENCHMARK_WALL_STOP("searching count");
+  return tmp;
 }
 
 // _____________________________________________________________________________
-template <>
-void LineCounter<uint64_t>::search(re2::RE2* pattern, DataChunk* data,
-                                   uint64_t* result) const {
+uint64_t LineCounter::search(re2::RE2* pattern, DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching count");
-  *result = search::regex::count(data, *pattern, true);
+  auto tmp = search::regex::count(data, *pattern, true);
   INLINE_BENCHMARK_WALL_STOP("searching count");
+  return tmp;
 }
-
-// -----------------------------------------------------------------------------
 
 // ===== MatchBytePositionSearcher =============================================
 // _____________________________________________________________________________
-template <>
-void MatchBytePositionSearcher<IndexPartialResult>::search(
-    const std::string& pattern, DataChunk* data,
-    IndexPartialResult* result) const {
-  result->_index = data->getIndex();
+std::vector<uint64_t> MatchBytePositionSearcher::search(
+    const std::string& pattern, DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching byte position");
-  result->indices = search::global_byte_offsets_match(data, pattern, false);
+  auto tmp = search::global_byte_offsets_match(data, pattern, false);
   INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return tmp;
 }
 
 // _____________________________________________________________________________
-template <>
-void MatchBytePositionSearcher<FullPartialResult>::search(
-    const std::string& pattern, DataChunk* data,
-    xs::FullPartialResult* result) const {
-  result->_index = data->getIndex();
+std::vector<uint64_t> MatchBytePositionSearcher::search(re2::RE2* pattern,
+                                                        DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching byte position");
-  result->_byte_offsets_match =
-      search::global_byte_offsets_match(data, pattern, false);
+  auto tmp = search::regex::global_byte_offsets_match(data, *pattern, false);
   INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return tmp;
 }
-
-// _____________________________________________________________________________
-template <>
-void MatchBytePositionSearcher<FullPartialResult>::search(
-    re2::RE2* pattern, DataChunk* data, xs::FullPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte position");
-  result->_byte_offsets_match =
-      search::regex::global_byte_offsets_match(data, *pattern, false);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
-}
-
-// _____________________________________________________________________________
-template <>
-void MatchBytePositionSearcher<IndexPartialResult>::search(
-    re2::RE2* pattern, DataChunk* data, IndexPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte position");
-  result->indices =
-      search::regex::global_byte_offsets_match(data, *pattern, false);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
-}
-
-// -----------------------------------------------------------------------------
 
 // ===== LineBytePositionSearcher ==============================================
 // _____________________________________________________________________________
-template <>
-void LineBytePositionSearcher<IndexPartialResult>::search(
-    const std::string& pattern, DataChunk* data,
-    IndexPartialResult* result) const {
-  result->_index = data->getIndex();
+std::vector<uint64_t> LineBytePositionSearcher::search(
+    const std::string& pattern, DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching byte position");
-  result->indices = search::global_byte_offsets_line(data, pattern);
+  auto tmp = search::global_byte_offsets_match(data, pattern, false);
   INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return tmp;
 }
 
 // _____________________________________________________________________________
-template <>
-void LineBytePositionSearcher<FullPartialResult>::search(
-    const std::string& pattern, DataChunk* data,
-    FullPartialResult* result) const {
-  result->_index = data->getIndex();
+std::vector<uint64_t> LineBytePositionSearcher::search(re2::RE2* pattern,
+                                                       DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching byte position");
-  if (!result->_byte_offsets_match.empty()) {
-    result->_byte_offsets_line.reserve(result->_byte_offsets_match.size());
-    size_t last = std::numeric_limits<size_t>::max();
-    for (size_t bo : result->_byte_offsets_match) {
-      // byte offset of line is byte offset of match (bo) - func + 1
-      size_t bo_line = bo - search::previous_new_line_offset_relative_to_match(
-                                data, bo - data->getOffset());
-      if (last != bo_line) {
-        result->_byte_offsets_line.push_back(bo_line);
-      }
-      last = bo_line;
-    }
-  } else {
-    result->_byte_offsets_line =
-        search::global_byte_offsets_line(data, pattern);
-  }
+  auto tmp = search::regex::global_byte_offsets_match(data, *pattern, false);
   INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return tmp;
 }
-
-// _____________________________________________________________________________
-template <>
-void LineBytePositionSearcher<IndexPartialResult>::search(
-    re2::RE2* pattern, DataChunk* data, IndexPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte position");
-  result->indices = search::regex::global_byte_offsets_line(data, *pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
-}
-
-// _____________________________________________________________________________
-template <>
-void LineBytePositionSearcher<FullPartialResult>::search(
-    re2::RE2* pattern, DataChunk* data, FullPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte position");
-  result->_byte_offsets_line =
-      search::regex::global_byte_offsets_line(data, *pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
-}
-
-// -----------------------------------------------------------------------------
 
 // ===== LineIndexSearcher =====================================================
 // _____________________________________________________________________________
-template <>
-void LineIndexSearcher<IndexPartialResult>::search(
-    const std::string& pattern, DataChunk* data,
-    IndexPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte offsets for mapping");
-  auto byte_offsets = search::global_byte_offsets_line(data, pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte offsets for mapping");
+std::vector<uint64_t> LineIndexSearcher::search(const std::string& pattern,
+                                                DataChunk* data) const {
+  INLINE_BENCHMARK_WALL_START("searching byte position");
+  auto mapping_data = search::global_byte_offsets_line(data, pattern);
+  INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return search(data, mapping_data);
+}
+
+// _____________________________________________________________________________
+std::vector<uint64_t> LineIndexSearcher::search(re2::RE2* pattern,
+                                                DataChunk* data) const {
+  INLINE_BENCHMARK_WALL_START("searching byte position");
+  auto mapping_data = search::regex::global_byte_offsets_line(data, *pattern);
+  INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return search(data, mapping_data);
+}
+
+// _____________________________________________________________________________
+std::vector<uint64_t> LineIndexSearcher::search(
+    DataChunk* data, const std::vector<uint64_t>& mapping_data) const {
   INLINE_BENCHMARK_WALL_START("mapping line index");
-  result->indices = map::bytes::to_line_indices(data, byte_offsets);
+  auto tmp = map::bytes::to_line_indices(data, mapping_data);
   INLINE_BENCHMARK_WALL_STOP("mapping line index");
+  return tmp;
+}
+
+// ----- LineSearcher ----------------------------------------------------------
+// _____________________________________________________________________________
+std::vector<std::string> LineSearcher::search(const std::string& pattern,
+                                              DataChunk* data) const {
+  INLINE_BENCHMARK_WALL_START("searching byte position");
+  auto mapping_data = search::global_byte_offsets_line(data, pattern);
+  INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return search(data, mapping_data);
 }
 
 // _____________________________________________________________________________
-template <>
-void LineIndexSearcher<FullPartialResult>::search(
-    const std::string& pattern, DataChunk* data,
-    FullPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("mapping line index");
-  result->_line_indices =
-      map::bytes::to_line_indices(data, result->_byte_offsets_line);
-  INLINE_BENCHMARK_WALL_STOP("mapping line index");
+std::vector<std::string> LineSearcher::search(re2::RE2* pattern,
+                                              DataChunk* data) const {
+  INLINE_BENCHMARK_WALL_START("searching byte position");
+  auto mapping_data = search::regex::global_byte_offsets_line(data, *pattern);
+  INLINE_BENCHMARK_WALL_STOP("searching byte position");
+  return search(data, mapping_data);
 }
 
 // _____________________________________________________________________________
-template <>
-void LineIndexSearcher<IndexPartialResult>::search(
-    re2::RE2* pattern, DataChunk* data, IndexPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte offsets for mapping");
-  auto byte_offsets = search::regex::global_byte_offsets_line(data, *pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte offsets for mapping");
-  INLINE_BENCHMARK_WALL_START("mapping line index");
-  result->indices = map::bytes::to_line_indices(data, byte_offsets);
-  INLINE_BENCHMARK_WALL_STOP("mapping line index");
-}
-
-// _____________________________________________________________________________
-template <>
-void LineIndexSearcher<FullPartialResult>::search(
-    re2::RE2* pattern, DataChunk* data, FullPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("mapping line index");
-  result->_line_indices =
-      map::bytes::to_line_indices(data, result->_byte_offsets_line);
-  INLINE_BENCHMARK_WALL_STOP("mapping line index");
-}
-
-// -----------------------------------------------------------------------------
-
-// ===== LinesSearcher =========================================================
-// _____________________________________________________________________________
-template <>
-void LineSearcher<LinesPartialResult>::search(
-    const std::string& pattern, DataChunk* data,
-    LinesPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte offsets for mapping");
-  auto byte_offsets = search::global_byte_offsets_line(data, pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte offsets for mapping");
-  INLINE_BENCHMARK_WALL_START("mapping line");
-  result->lines.reserve(byte_offsets.size());
-  for (auto bo : byte_offsets) {
-    result->lines.push_back(xs::map::byte::to_line(data, bo));
+std::vector<std::string> LineSearcher::search(
+    DataChunk* data, const std::vector<uint64_t>& mapping_data) const {
+  std::vector<std::string> tmp;
+  tmp.reserve(mapping_data.size());
+  for (const auto bo : mapping_data) {
+    map::byte::to_line(data, bo);
   }
-  INLINE_BENCHMARK_WALL_STOP("mapping line");
+  return tmp;
 }
-
-// _____________________________________________________________________________
-template <>
-void LineSearcher<FullPartialResult>::search(const std::string& pattern,
-                                             DataChunk* data,
-                                             FullPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("mapping line");
-  result->_lines.reserve(result->_byte_offsets_line.size());
-  for (auto bo : result->_byte_offsets_line) {
-    result->_lines.push_back(xs::map::byte::to_line(data, bo));
-  }
-  INLINE_BENCHMARK_WALL_STOP("mapping line");
-}
-
-// _____________________________________________________________________________
-template <>
-void LineSearcher<LinesPartialResult>::search(
-    re2::RE2* pattern, DataChunk* data, LinesPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("searching byte offsets for mapping");
-  auto byte_offsets = search::regex::global_byte_offsets_line(data, *pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte offsets for mapping");
-  INLINE_BENCHMARK_WALL_START("mapping line");
-  result->lines.reserve(byte_offsets.size());
-  for (auto bo : byte_offsets) {
-    result->lines.push_back(xs::map::byte::to_line(data, bo));
-  }
-  INLINE_BENCHMARK_WALL_STOP("mapping line");
-}
-
-// _____________________________________________________________________________
-template <>
-void LineSearcher<FullPartialResult>::search(re2::RE2* pattern, DataChunk* data,
-                                             FullPartialResult* result) const {
-  result->_index = data->getIndex();
-  INLINE_BENCHMARK_WALL_START("mapping line");
-  result->_lines.reserve(result->_byte_offsets_line.size());
-  for (auto bo : result->_byte_offsets_line) {
-    result->_lines.push_back(xs::map::byte::to_line(data, bo));
-  }
-  INLINE_BENCHMARK_WALL_STOP("mapping line");
-}
-
-// -----------------------------------------------------------------------------
 
 }  // namespace xs::tasks

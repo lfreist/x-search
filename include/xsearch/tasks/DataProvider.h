@@ -16,7 +16,7 @@ class BaseDataProvider {
   BaseDataProvider() = default;
   virtual ~BaseDataProvider() = default;
 
-  virtual std::vector<DataT> getNextData(int num) = 0;
+  virtual std::optional<DataT> getNextData() = 0;
 };
 // -----------------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ class ExternBlockReader : public BaseDataProvider<DataChunk> {
  public:
   ExternBlockReader(std::string file_path, const std::string& meta_file_path);
 
-  std::vector<DataChunk> getNextData(int num) override;
+  std::optional<DataChunk> getNextData() override;
 
  private:
   std::string _file_path;

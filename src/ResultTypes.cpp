@@ -1,33 +1,35 @@
 #include <xsearch/ResultTypes.h>
 
+#include <numeric>
+
 namespace xs {
 
-// ===== FullResult ============================================================
+// ===== CountMatchesResult ====================================================
 // _____________________________________________________________________________
-void FullResult::addPartialResult(FullPartialResult partial_result) {
-  _merged_result.wlock()->push_back(std::move(partial_result));
+void CountMatchesResult::add(std::vector<uint64_t> partial_result) {
+  uint64_t sum = std::accumulate(partial_result.begin(), partial_result.end(),
+                                 static_cast<uint64_t>(0));
+  std::unique_lock lock(*_mutex);
+  _sum_result += sum;
+  _cv->notify_one();
 }
 
-// ===== CountResult ===========================================================
 // _____________________________________________________________________________
-void CountResult::addPartialResult(uint64_t partial_result) {
-  _sum_result.fetch_add(partial_result);
+void CountMatchesResult::add(uint64_t partial_result) {
+  std::unique_lock lock(*_mutex);
+  _sum_result += partial_result;
+  _cv->notify_one();
 }
 
 // _____________________________________________________________________________
-uint64_t CountResult::getCount() { return _sum_result.load(); }
-
-// ===== MatchByteOffsetsResult ================================================
-// _____________________________________________________________________________
-void MatchByteOffsetsResult::addPartialResult(
-    IndexPartialResult partial_result) {
-  _merged_result.wlock()->push_back(std::move(partial_result));
+void CountMatchesResult::sortedAdd(std::vector<uint64_t> partial_result) {
+  add(std::move(partial_result));
 }
 
-// ===== LinesResult ================================================
 // _____________________________________________________________________________
-void LinesResult::addPartialResult(LinesPartialResult partial_result) {
-  _merged_result.wlock()->push_back(std::move(partial_result));
+uint64_t CountMatchesResult::getCount() {
+  std::unique_lock lock(*_mutex);
+  return _sum_result;
 }
 
 }  // namespace xs

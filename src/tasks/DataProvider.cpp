@@ -11,30 +11,27 @@ ExternBlockReader::ExternBlockReader(std::string file_path,
     : _file_path(std::move(file_path)),
       _meta_file(meta_file_path, std::ios::in) {}
 
-std::vector<DataChunk> ExternBlockReader::getNextData(int num) {
+std::optional<DataChunk> ExternBlockReader::getNextData() {
   INLINE_BENCHMARK_WALL_START("reading");
   INLINE_BENCHMARK_WALL_START("construct stream");
   std::ifstream stream(_file_path);
   INLINE_BENCHMARK_WALL_STOP("construct stream");
-  std::vector<ChunkMetaData> cmds = _meta_file.nextChunkMetaData(num);
-  if (cmds.empty()) {
+  auto optCmd = _meta_file.nextChunkMetaData();
+  if (!optCmd.has_value()) {
     INLINE_BENCHMARK_WALL_STOP("reading");
     return {};
   }
-  std::vector<DataChunk> dcs;
-  dcs.reserve(cmds.size());
-  for (auto& cmd : cmds) {
-    INLINE_BENCHMARK_WALL_START("seeking file position");
-    stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
-    INLINE_BENCHMARK_WALL_STOP("seeking file position");
-    xs::DataChunk chunk(cmd.actual_size, cmd.original_size, cmd.original_offset,
-                        std::move(cmd.line_mapping_data), cmd.chunk_index);
-    INLINE_BENCHMARK_WALL_START("actual read");
-    stream.read(chunk.data(), static_cast<int64_t>(cmd.actual_size));
-    INLINE_BENCHMARK_WALL_STOP("actual read");
-    dcs.push_back(std::move(chunk));
-  }
+  auto& cmd = optCmd.value();
+  INLINE_BENCHMARK_WALL_START("seeking file position");
+  stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
+  INLINE_BENCHMARK_WALL_STOP("seeking file position");
+  xs::DataChunk chunk(cmd.actual_size, cmd.original_size, cmd.original_offset,
+                      std::move(cmd.line_mapping_data), cmd.chunk_index);
+  INLINE_BENCHMARK_WALL_START("actual read");
+  stream.read(chunk.data(), static_cast<int64_t>(cmd.actual_size));
+  INLINE_BENCHMARK_WALL_STOP("actual read");
   INLINE_BENCHMARK_WALL_STOP("reading");
-  return dcs;
+  return chunk;
 }
+
 }  // namespace xs::tasks

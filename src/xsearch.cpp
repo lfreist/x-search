@@ -8,7 +8,7 @@ namespace xs {
 // _____________________________________________________________________________
 // implementation for searching number of matches
 template <>
-std::shared_ptr<count> extern_search(const std::string& pattern,
+std::shared_ptr<count_matches> extern_search(const std::string& pattern,
                                      const std::string& file_path,
                                      const std::string& meta_file_path,
                                      int num_threads, int num_readers) {
@@ -28,16 +28,13 @@ std::shared_ptr<count> extern_search(const std::string& pattern,
       break;
   }
   // ---------------------------------------------------------------------------
-  std::vector<std::unique_ptr<tasks::BaseSearcher<DataChunk, uint64_t>>>
-      searcher;
-  // Add LineCounter as searcher for counting matching lines
-  searcher.push_back(std::make_unique<tasks::MatchCounter<uint64_t>>());
+  auto searcher = std::make_unique<tasks::MatchCounter>();
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<count>(pattern, num_threads, num_readers,
+  return std::make_shared<count_matches>(pattern, num_threads, num_readers,
                                  std::move(reader), std::move(processors),
                                  std::move(searcher),
-                                 std::make_unique<CountResult>());
+                                 std::make_unique<CountMatchesResult>());
 }
 
 // _____________________________________________________________________________
@@ -63,9 +60,7 @@ std::shared_ptr<count_lines> extern_search(const std::string& pattern,
       break;
   }
   // ---------------------------------------------------------------------------
-  std::vector<std::unique_ptr<tasks::BaseSearcher<DataChunk, uint64_t>>>
-      searcher;
-  searcher.push_back(std::make_unique<tasks::LineCounter<uint64_t>>());
+  auto searcher = std::make_unique<tasks::LineCounter>();
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<count_lines>(pattern, num_threads, num_readers,
@@ -96,11 +91,7 @@ std::shared_ptr<match_byte_offsets> extern_search(
       break;
   }
   // ---------------------------------------------------------------------------
-  std::vector<
-      std::unique_ptr<tasks::BaseSearcher<DataChunk, IndexPartialResult>>>
-      searcher;
-  searcher.push_back(
-      std::make_unique<tasks::MatchBytePositionSearcher<IndexPartialResult>>());
+  auto searcher = std::make_unique<tasks::MatchBytePositionSearcher>();
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<match_byte_offsets>(
@@ -131,12 +122,7 @@ std::shared_ptr<line_byte_offsets> extern_search(
       break;
   }
   // ---------------------------------------------------------------------------
-
-  std::vector<
-      std::unique_ptr<tasks::BaseSearcher<DataChunk, IndexPartialResult>>>
-      searcher;
-  searcher.push_back(
-      std::make_unique<tasks::LineBytePositionSearcher<IndexPartialResult>>());
+  auto searcher = std::make_unique<tasks::LineBytePositionSearcher>();
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<line_byte_offsets>(
@@ -168,13 +154,7 @@ std::shared_ptr<lines> extern_search(const std::string& pattern,
       break;
   }
   // ---------------------------------------------------------------------------
-
-  // Only use the line searcher
-  std::vector<
-      std::unique_ptr<tasks::BaseSearcher<DataChunk, LinesPartialResult>>>
-      searcher;
-  searcher.push_back(
-      std::make_unique<tasks::LineSearcher<LinesPartialResult>>());
+  auto searcher = std::make_unique<tasks::LineSearcher>();
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<lines>(pattern, num_threads, num_readers,
@@ -206,21 +186,16 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
       break;
   }
   // ---------------------------------------------------------------------------
-  std::vector<
-      std::unique_ptr<tasks::BaseSearcher<DataChunk, IndexPartialResult>>>
-      searcher;
-
-  // We only need the line index searcher
-  searcher.push_back(
-      std::make_unique<tasks::LineIndexSearcher<IndexPartialResult>>());
+  auto searcher = std::make_unique<tasks::LineIndexSearcher>();
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<line_indices>(
       pattern, num_threads, num_readers, std::move(reader),
       std::move(processors), std::move(searcher),
-      std::make_unique<LineIndexResult>());
+      std::make_unique<LineIndicesResult>());
 }
 
+/*
 // _____________________________________________________________________________
 // implementation for collecting all results
 template <>
@@ -267,5 +242,6 @@ std::shared_ptr<full> extern_search(const std::string& pattern,
                                 std::move(searcher),
                                 std::make_unique<FullResult>());
 }
+ */
 
 }  // namespace xs

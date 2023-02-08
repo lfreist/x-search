@@ -4,23 +4,6 @@
 #include <gtest/gtest.h>
 #include <xsearch/xsearch.h>
 
-// TODO: why do these tests fail non-deterministic?
-//  The following command never fails...:
-//  ---
-//   for i in {1..10000}; do value=$(./build/checkit over test/files/dummy.txt
-//   test/files/dummy.xs.meta 4); if [ "$value" != "152" ]; then echo "$value";
-//   fi; done
-//  ---
-//  This is checkit.cpp:
-/*
-int main(int argc, char** argv) {
-  auto t = xs::extern_search<xs::count>(argv[1], argv[2], argv[3],
-                                        4, 2);
-  t->join();
-  std::cout << t->getMergedResult()->getCount() << std::endl;
-}
- */
-
 static const std::string pattern("over");
 static const std::string re_pattern("ov[e|i]r");
 static const std::string file_path("test/files/dummy.txt");
@@ -29,43 +12,43 @@ static const std::string meta_file_path("test/files/dummy.xs.meta");
 TEST(ExternSearcherTest, count) {
   {  // plain text
     auto res =
-        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 1, 1);
+        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 1, 1);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // regex
-    auto res = xs::extern_search<xs::count>(re_pattern, file_path,
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
                                             meta_file_path, 1, 1);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 156);
   }
   {  // multiple threads
     auto res =
-        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 4, 1);
+        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 4, 1);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // multiple readers
     auto res =
-        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 1, 2);
+        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 1, 2);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // multiple readers and threads
     auto res =
-        xs::extern_search<xs::count>(pattern, file_path, meta_file_path, 4, 2);
+        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 4, 2);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 152);
   }
   {  // multiple readers and threads and regex pattern
-    auto res = xs::extern_search<xs::count>(re_pattern, file_path,
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
                                             meta_file_path, 4, 4);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 156);
   }
   {  // compression
     auto res =
-        xs::extern_search<xs::count>(re_pattern, "test/files/dummy.xslz4",
+        xs::extern_search<xs::count_matches>(re_pattern, "test/files/dummy.xslz4",
                                      "test/files/dummy.xslz4.meta", 4, 2);
     res->join();
     ASSERT_EQ(res->getResult()->getCount(), 156);
@@ -160,10 +143,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
     auto _xs = xs::extern_search<xs::match_byte_offsets>(pattern, file_path,
                                                          meta_file_path, 1, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 152);
     ASSERT_EQ(res, plain_res);
@@ -172,10 +152,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
     auto _xs = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
                                                          meta_file_path, 1, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 156);
     ASSERT_EQ(res, regex_res);
@@ -184,10 +161,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
     auto _xs = xs::extern_search<xs::match_byte_offsets>(pattern, file_path,
                                                          meta_file_path, 4, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 152);
     ASSERT_EQ(res, plain_res);
@@ -196,10 +170,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
     auto _xs = xs::extern_search<xs::match_byte_offsets>(pattern, file_path,
                                                          meta_file_path, 1, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 152);
     ASSERT_EQ(res, plain_res);
@@ -208,10 +179,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
     auto _xs = xs::extern_search<xs::match_byte_offsets>(pattern, file_path,
                                                          meta_file_path, 4, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 152);
     ASSERT_EQ(res, plain_res);
@@ -220,10 +188,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
     auto _xs = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
                                                          meta_file_path, 4, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 156);
     ASSERT_EQ(res, regex_res);
@@ -233,10 +198,7 @@ TEST(ExternSearcherTest, match_byte_offsets) {
         re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta", 4,
         2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 156);
     ASSERT_EQ(res, regex_res);
@@ -281,10 +243,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
     auto _xs = xs::extern_search<xs::line_byte_offsets>(pattern, file_path,
                                                         meta_file_path, 1, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -293,10 +252,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
     auto _xs = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
                                                         meta_file_path, 1, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 137);
     ASSERT_EQ(res, regex_res);
@@ -305,10 +261,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
     auto _xs = xs::extern_search<xs::line_byte_offsets>(pattern, file_path,
                                                         meta_file_path, 4, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -317,10 +270,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
     auto _xs = xs::extern_search<xs::line_byte_offsets>(pattern, file_path,
                                                         meta_file_path, 1, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -329,10 +279,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
     auto _xs = xs::extern_search<xs::line_byte_offsets>(pattern, file_path,
                                                         meta_file_path, 4, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -341,10 +288,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
     auto _xs = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
                                                         meta_file_path, 4, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 137);
     ASSERT_EQ(res, regex_res);
@@ -354,10 +298,7 @@ TEST(ExternSearcherTest, line_byte_offsets) {
         re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta", 4,
         2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 137);
     ASSERT_EQ(res, regex_res);
@@ -390,10 +331,7 @@ TEST(ExternSearcherTest, line_indices) {
     auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
                                                    meta_file_path, 1, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -402,10 +340,7 @@ TEST(ExternSearcherTest, line_indices) {
     auto _xs = xs::extern_search<xs::line_indices>(re_pattern, file_path,
                                                    meta_file_path, 1, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 137);
     ASSERT_EQ(res, regex_res);
@@ -414,10 +349,7 @@ TEST(ExternSearcherTest, line_indices) {
     auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
                                                    meta_file_path, 4, 1);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -426,10 +358,7 @@ TEST(ExternSearcherTest, line_indices) {
     auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
                                                    meta_file_path, 1, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -438,10 +367,7 @@ TEST(ExternSearcherTest, line_indices) {
     auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
                                                    meta_file_path, 4, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 133);
     ASSERT_EQ(res, plain_res);
@@ -450,10 +376,7 @@ TEST(ExternSearcherTest, line_indices) {
     auto _xs = xs::extern_search<xs::line_indices>(re_pattern, file_path,
                                                    meta_file_path, 4, 2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 137);
     ASSERT_EQ(res, regex_res);
@@ -463,10 +386,7 @@ TEST(ExternSearcherTest, line_indices) {
         re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta", 4,
         2);
     _xs->join();
-    std::vector<size_t> res;
-    for (auto& r : *_xs->getResult()->getLockedResult()) {
-      res.insert(res.begin(), r.indices.begin(), r.indices.end());
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     std::sort(res.begin(), res.end());
     ASSERT_EQ(res.size(), 137);
     ASSERT_EQ(res, regex_res);
@@ -478,84 +398,42 @@ TEST(ExternSearcherTest, lines) {
     auto _xs =
         xs::extern_search<xs::lines>(pattern, file_path, meta_file_path, 1, 1);
     _xs->join();
-    std::vector<std::string> res;
-    {
-      auto tmp = _xs->getResult()->getLockedResult();
-      std::sort(tmp->begin(), tmp->end());
-      for (auto& r : *tmp) {
-        res.insert(res.begin(), r.lines.begin(), r.lines.end());
-      }
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     ASSERT_EQ(res.size(), 133);
   }
   {  // regex
     auto _xs = xs::extern_search<xs::lines>(re_pattern, file_path,
                                             meta_file_path, 1, 1);
     _xs->join();
-    std::vector<std::string> res;
-    {
-      auto tmp = _xs->getResult()->getLockedResult();
-      std::sort(tmp->begin(), tmp->end());
-      for (auto& r : *tmp) {
-        res.insert(res.begin(), r.lines.begin(), r.lines.end());
-      }
-    }
+    auto res = _xs->getResult()->copyResultSafe();
     ASSERT_EQ(res.size(), 137);
   }
   {  // multiple threads
     auto _xs =
         xs::extern_search<xs::lines>(pattern, file_path, meta_file_path, 4, 1);
     _xs->join();
-    std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
-    tmp->withWriteLock([&](auto& r) {
-      std::sort(r.begin(), r.end());
-      for (auto& _r : r) {
-        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
-      }
-    });
+    auto res = _xs->getResult()->copyResultSafe();
     ASSERT_EQ(res.size(), 133);
   }
   {  // multiple readers
     auto _xs =
         xs::extern_search<xs::lines>(pattern, file_path, meta_file_path, 1, 2);
     _xs->join();
-    std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
-    tmp->withWriteLock([&](auto& r) {
-      std::sort(r.begin(), r.end());
-      for (auto& _r : r) {
-        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
-      }
-    });
+    auto res = _xs->getResult()->copyResultSafe();
     ASSERT_EQ(res.size(), 133);
   }
   {  // multiple readers and threads
     auto _xs =
         xs::extern_search<xs::lines>(pattern, file_path, meta_file_path, 4, 2);
     _xs->join();
-    std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
-    tmp->withWriteLock([&](auto& r) {
-      std::sort(r.begin(), r.end());
-      for (auto& _r : r) {
-        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
-      }
-    });
+    auto res = _xs->getResult()->copyResultSafe();
     ASSERT_EQ(res.size(), 133);
   }
   {  // multiple readers and threads and regex pattern
     auto _xs = xs::extern_search<xs::lines>(re_pattern, file_path,
                                             meta_file_path, 4, 2);
     _xs->join();
-    std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
-    tmp->withWriteLock([&](auto& r) {
-      std::sort(r.begin(), r.end());
-      for (auto& _r : r) {
-        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
-      }
-    });
+    auto res = _xs->getResult()->copyResultSafe();
     ASSERT_EQ(res.size(), 137);
   }
   {  // compression
@@ -563,18 +441,12 @@ TEST(ExternSearcherTest, lines) {
         xs::extern_search<xs::lines>(re_pattern, "test/files/dummy.xslz4",
                                      "test/files/dummy.xslz4.meta", 4, 2);
     _xs->join();
-    std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
-    tmp->withWriteLock([&](auto& r) {
-      std::sort(r.begin(), r.end());
-      for (auto& _r : r) {
-        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
-      }
-    });
+    auto res = _xs->getResult()->copyResultSafe();
     ASSERT_EQ(res.size(), 137);
   }
 }
 
+/*
 TEST(ExternSearcherTest, full) {
   const std::vector<size_t> line_indices = {
       1,   5,   8,   10,  12,  13,  14,  35,  37,  44,  47,  54,  65,  71,  79,
@@ -871,3 +743,4 @@ TEST(ExternSearcherTest, full) {
     ASSERT_EQ(lines.size(), 137);
   }
 }
+ */
