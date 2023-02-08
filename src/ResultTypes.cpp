@@ -2,32 +2,11 @@
 
 namespace xs {
 
-/*
-// ===== FullPartialResult =====================================================
-// _____________________________________________________________________________
-void FullPartialResult::merge(FullPartialResult& other) {
-  _byte_offsets_line.insert(
-      _byte_offsets_line.end(),
-      std::move_iterator(other._byte_offsets_line.begin()),
-      std::move_iterator(other._byte_offsets_line.end()));
-  _byte_offsets_match.insert(
-      _byte_offsets_match.end(),
-      std::move_iterator(other._byte_offsets_match.begin()),
-      std::move_iterator(other._byte_offsets_match.end()));
-  _line_indices.insert(_line_indices.end(),
-                       std::move_iterator(other._line_indices.begin()),
-                       std::move_iterator(other._line_indices.end()));
-  _lines.insert(_lines.end(), std::move_iterator(other._lines.begin()),
-                std::move_iterator(other._lines.end()));
-}
-
 // ===== FullResult ============================================================
 // _____________________________________________________________________________
 void FullResult::addPartialResult(FullPartialResult partial_result) {
-  std::unique_lock locker(*_res_vec_mutex);
-  _merged_result.push_back(std::move(partial_result));
+  _merged_result.wlock()->push_back(std::move(partial_result));
 }
- */
 
 // ===== CountResult ===========================================================
 // _____________________________________________________________________________
@@ -47,7 +26,7 @@ void MatchByteOffsetsResult::addPartialResult(
   _merged_result.wlock()->push_back(std::move(partial_result));
 }
 
-// ===== MatchByteOffsetsResult ================================================
+// ===== LinesResult ================================================
 // _____________________________________________________________________________
 void LinesResult::addPartialResult(LinesPartialResult partial_result) {
   _merged_result.wlock()->push_back(std::move(partial_result));

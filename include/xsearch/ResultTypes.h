@@ -81,11 +81,8 @@ struct FullPartialResult : BasePartialResult {
   std::vector<uint64_t> _byte_offsets_line;
   std::vector<uint64_t> _line_indices;
   std::vector<std::string> _lines;
-
-  void merge(FullPartialResult& other);
 };
 
-/*
 // ----- full result -----------------------------------------------------------
 class FullResult : public BaseResult<FullPartialResult> {
 
@@ -93,11 +90,7 @@ class FullResult : public BaseResult<FullPartialResult> {
   FullResult() = default;
 
   void addPartialResult(FullPartialResult partial_result) override;
-
- private:
-  FullPartialResult _empty{};
 };
- */
 
 // ----- count matches ---------------------------------------------------------
 class CountResult : public BaseResult<uint64_t> {

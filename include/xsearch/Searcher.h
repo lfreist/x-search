@@ -175,7 +175,7 @@ class Searcher {
     INLINE_BENCHMARK_WALL_START("results join task");
     std::unique_lock locker(_results_mutex);
     for (auto& part_res : partial_results) {
-      _result->addPartialResult(part_res);
+      _result->addPartialResult(std::move(part_res));
       _results_condition_variable.notify_one();
     }
     INLINE_BENCHMARK_WALL_STOP("results join task");

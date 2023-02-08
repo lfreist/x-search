@@ -110,7 +110,7 @@ class GrepResult : public xs::BaseResult<xs::FullPartialResult> {
         _buffer.erase(_next_index);
       }
     } else {
-      _buffer.insert({part_res._index, {std::move(part_res)}});
+      _buffer.insert({part_res._index, std::move(part_res)});
     }
     INLINE_BENCHMARK_WALL_STOP("formatting and printing");
   }

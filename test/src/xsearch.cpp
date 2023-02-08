@@ -473,7 +473,6 @@ TEST(ExternSearcherTest, line_indices) {
   }
 }
 
-/*
 TEST(ExternSearcherTest, lines) {
   {  // plain text
     auto _xs =
@@ -508,11 +507,13 @@ TEST(ExternSearcherTest, lines) {
         xs::extern_search<xs::lines>(pattern, file_path, meta_file_path, 4, 1);
     _xs->join();
     std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getMergedResult();
-    std::sort(tmp.begin(), tmp.end());
-    for (auto& r : tmp) {
-      res.insert(res.begin(), r.lines.begin(), r.lines.end());
-    }
+    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
+    tmp->withWriteLock([&](auto& r) {
+      std::sort(r.begin(), r.end());
+      for (auto& _r : r) {
+        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
+      }
+    });
     ASSERT_EQ(res.size(), 133);
   }
   {  // multiple readers
@@ -520,11 +521,13 @@ TEST(ExternSearcherTest, lines) {
         xs::extern_search<xs::lines>(pattern, file_path, meta_file_path, 1, 2);
     _xs->join();
     std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getMergedResult();
-    std::sort(tmp.begin(), tmp.end());
-    for (auto& r : tmp) {
-      res.insert(res.begin(), r.lines.begin(), r.lines.end());
-    }
+    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
+    tmp->withWriteLock([&](auto& r) {
+      std::sort(r.begin(), r.end());
+      for (auto& _r : r) {
+        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
+      }
+    });
     ASSERT_EQ(res.size(), 133);
   }
   {  // multiple readers and threads
@@ -532,11 +535,13 @@ TEST(ExternSearcherTest, lines) {
         xs::extern_search<xs::lines>(pattern, file_path, meta_file_path, 4, 2);
     _xs->join();
     std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getMergedResult();
-    std::sort(tmp.begin(), tmp.end());
-    for (auto& r : tmp) {
-      res.insert(res.begin(), r.lines.begin(), r.lines.end());
-    }
+    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
+    tmp->withWriteLock([&](auto& r) {
+      std::sort(r.begin(), r.end());
+      for (auto& _r : r) {
+        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
+      }
+    });
     ASSERT_EQ(res.size(), 133);
   }
   {  // multiple readers and threads and regex pattern
@@ -544,11 +549,13 @@ TEST(ExternSearcherTest, lines) {
                                             meta_file_path, 4, 2);
     _xs->join();
     std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getMergedResult();
-    std::sort(tmp.begin(), tmp.end());
-    for (auto& r : tmp) {
-      res.insert(res.begin(), r.lines.begin(), r.lines.end());
-    }
+    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
+    tmp->withWriteLock([&](auto& r) {
+      std::sort(r.begin(), r.end());
+      for (auto& _r : r) {
+        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
+      }
+    });
     ASSERT_EQ(res.size(), 137);
   }
   {  // compression
@@ -557,17 +564,18 @@ TEST(ExternSearcherTest, lines) {
                                      "test/files/dummy.xslz4.meta", 4, 2);
     _xs->join();
     std::vector<std::string> res;
-    auto tmp = _xs->getResult()->getMergedResult();
-    std::sort(tmp.begin(), tmp.end());
-    for (auto& r : tmp) {
-      res.insert(res.begin(), r.lines.begin(), r.lines.end());
-    }
+    auto tmp = _xs->getResult()->getSynchronizedResultPtr();
+    tmp->withWriteLock([&](auto& r) {
+      std::sort(r.begin(), r.end());
+      for (auto& _r : r) {
+        res.insert(res.end(), _r.lines.begin(), _r.lines.end());
+      }
+    });
     ASSERT_EQ(res.size(), 137);
   }
 }
-*/
 
-/*
+
 TEST(ExternSearcherTest, full) {
   const std::vector<size_t> line_indices = {
       1,   5,   8,   10,  12,  13,  14,  35,  37,  44,  47,  54,  65,  71,  79,
@@ -668,7 +676,7 @@ TEST(ExternSearcherTest, full) {
     std::vector<size_t> line_bo;
     std::vector<size_t> line_ind;
     std::vector<std::string> lines;
-    for (auto& r : _xs->getResult()->getMergedResult()) {
+    for (auto& r : *_xs->getResult()->getLockedResult()) {
       match_bo.insert(match_bo.end(), r._byte_offsets_match.begin(),
                       r._byte_offsets_match.end());
       line_bo.insert(line_bo.end(), r._byte_offsets_line.begin(),
@@ -697,7 +705,7 @@ TEST(ExternSearcherTest, full) {
     std::vector<size_t> line_bo;
     std::vector<size_t> line_ind;
     std::vector<std::string> lines;
-    for (auto& r : _xs->getResult()->getMergedResult()) {
+    for (auto& r : *_xs->getResult()->getLockedResult()) {
       match_bo.insert(match_bo.end(), r._byte_offsets_match.begin(),
                       r._byte_offsets_match.end());
       line_bo.insert(line_bo.end(), r._byte_offsets_line.begin(),
@@ -726,7 +734,7 @@ TEST(ExternSearcherTest, full) {
     std::vector<size_t> line_bo;
     std::vector<size_t> line_ind;
     std::vector<std::string> lines;
-    for (auto& r : _xs->getResult()->getMergedResult()) {
+    for (auto& r : *_xs->getResult()->getLockedResult()) {
       match_bo.insert(match_bo.end(), r._byte_offsets_match.begin(),
                       r._byte_offsets_match.end());
       line_bo.insert(line_bo.end(), r._byte_offsets_line.begin(),
@@ -755,7 +763,7 @@ TEST(ExternSearcherTest, full) {
     std::vector<size_t> line_bo;
     std::vector<size_t> line_ind;
     std::vector<std::string> lines;
-    for (auto& r : _xs->getResult()->getMergedResult()) {
+    for (auto& r : *_xs->getResult()->getLockedResult()) {
       match_bo.insert(match_bo.end(), r._byte_offsets_match.begin(),
                       r._byte_offsets_match.end());
       line_bo.insert(line_bo.end(), r._byte_offsets_line.begin(),
@@ -784,7 +792,7 @@ TEST(ExternSearcherTest, full) {
     std::vector<size_t> line_bo;
     std::vector<size_t> line_ind;
     std::vector<std::string> lines;
-    for (auto& r : _xs->getResult()->getMergedResult()) {
+    for (auto& r : *_xs->getResult()->getLockedResult()) {
       match_bo.insert(match_bo.end(), r._byte_offsets_match.begin(),
                       r._byte_offsets_match.end());
       line_bo.insert(line_bo.end(), r._byte_offsets_line.begin(),
@@ -813,7 +821,7 @@ TEST(ExternSearcherTest, full) {
     std::vector<size_t> line_bo;
     std::vector<size_t> line_ind;
     std::vector<std::string> lines;
-    for (auto& r : _xs->getResult()->getMergedResult()) {
+    for (auto& r : *_xs->getResult()->getLockedResult()) {
       match_bo.insert(match_bo.end(), r._byte_offsets_match.begin(),
                       r._byte_offsets_match.end());
       line_bo.insert(line_bo.end(), r._byte_offsets_line.begin(),
@@ -842,7 +850,7 @@ TEST(ExternSearcherTest, full) {
     std::vector<size_t> line_bo;
     std::vector<size_t> line_ind;
     std::vector<std::string> lines;
-    for (auto& r : _xs->getResult()->getMergedResult()) {
+    for (auto& r : *_xs->getResult()->getLockedResult()) {
       match_bo.insert(match_bo.end(), r._byte_offsets_match.begin(),
                       r._byte_offsets_match.end());
       line_bo.insert(line_bo.end(), r._byte_offsets_line.begin(),
@@ -864,4 +872,3 @@ TEST(ExternSearcherTest, full) {
     ASSERT_EQ(lines.size(), 137);
   }
 }
- */
