@@ -49,6 +49,8 @@ void FilePreprocessor::preprocess(
   size_t original_offset = 0;
   size_t actual_offset = 0;
 
+  size_t chunk_index = 0;
+
   if (compressionAlg == NONE) {
     // read file line by line and safe new line index all x bytes in metafile
     uint64_t line_index = 0;
@@ -80,17 +82,14 @@ void FilePreprocessor::preprocess(
               "Could not find new line. Increase maxOverflowSize value.");
         }
         byteNLMappingVector.push_back({read_offset - 1, line_index});
-        ChunkMetaData cmd{0,
-                          original_offset,
-                          actual_offset,
-                          buffer_length,
-                          buffer_length,
-                          byteNLMappingVector};
+        ChunkMetaData cmd{chunk_index,   original_offset, actual_offset,
+                          buffer_length, buffer_length,   byteNLMappingVector};
         meta_file.writeChunkMetaData(cmd);
         original_offset = read_offset;
         actual_offset = write_offset;
         buffer_length = 0;
         byte_count = 0;
+        chunk_index++;
         byteNLMappingVector.clear();
       } else if (byte_count >= byteToNewLineMappingDistance) {
         // read_offset - 1 because we want byte index rather than offset
@@ -100,12 +99,8 @@ void FilePreprocessor::preprocess(
       line_index++;
     }
     byteNLMappingVector.push_back({read_offset - 1, line_index});
-    ChunkMetaData cmd{0,
-                      original_offset,
-                      actual_offset,
-                      buffer_length,
-                      buffer_length,
-                      byteNLMappingVector};
+    ChunkMetaData cmd{chunk_index,   original_offset, actual_offset,
+                      buffer_length, buffer_length,   byteNLMappingVector};
     meta_file.writeChunkMetaData(cmd);
   } else {
     std::ofstream out_stream(outFile.empty()
@@ -151,18 +146,16 @@ void FilePreprocessor::preprocess(
         }
         write_offset += compressed.size();
         byteNLMappingVector.push_back({read_offset - 1, line_index});
-        ChunkMetaData cmd{0,
-                          original_offset,
-                          actual_offset,
-                          buffer.size(),
-                          compressed.size(),
-                          byteNLMappingVector};
+        ChunkMetaData cmd{chunk_index,       original_offset,
+                          actual_offset,     buffer.size(),
+                          compressed.size(), byteNLMappingVector};
         out_stream.write(compressed.data(),
                          static_cast<std::streamsize>(compressed.size()));
         meta_file.writeChunkMetaData(cmd);
         buffer.clear();
         compressed.clear();
         byte_count = 0;
+        chunk_index++;
         byteNLMappingVector.clear();
         original_offset = read_offset;
         actual_offset = write_offset;
@@ -180,12 +173,8 @@ void FilePreprocessor::preprocess(
         compressed = xs::utils::compression::LZ4::compress(
             buffer.data(), static_cast<int>(buffer.size()), compressionLevel);
       }
-      ChunkMetaData cmd{0,
-                        original_offset,
-                        actual_offset,
-                        buffer.size(),
-                        compressed.size(),
-                        byteNLMappingVector};
+      ChunkMetaData cmd{chunk_index,   original_offset,   actual_offset,
+                        buffer.size(), compressed.size(), byteNLMappingVector};
       out_stream.write(compressed.data(),
                        static_cast<std::streamsize>(compressed.size()));
       meta_file.writeChunkMetaData(cmd);

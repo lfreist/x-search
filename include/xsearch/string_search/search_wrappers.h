@@ -73,20 +73,6 @@ std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
                                                const std::string& pattern);
 
 /**
- * Search line indices of lines containing a match of pattern within data.
- *
- * !! MARK: this function requires data to hold a non empty
- * _byte_to_nl_mapping_data vector !!
- *
- * @param data SFString*: data to be searched on
- * @param pattern const std::string&: pattern to be searched for
- * @return std::vector<uint64_t>: vector of all found line indices
- */
-std::vector<uint64_t> line_indices(
-    xs::DataChunk* data, const std::vector<uint64_t>& global_byte_offsets,
-    const std::string& pattern);
-
-/**
  * Count the numbers of lines containing a match of pattern in data.
  *
  * @param data SFString*: data to be searched in
@@ -150,20 +136,6 @@ std::vector<uint64_t> local_byte_offsets_match(const xs::DataChunk* data,
 std::vector<uint64_t> global_byte_offsets_match(const xs::DataChunk* data,
                                                 const re2::RE2& pattern,
                                                 bool skip_to_nl = false);
-
-/**
- * Search line indices of lines containing a regex match of pattern within data.
- *
- * !! MARK: this function requires data to hold a non empty
- * _byte_to_nl_mapping_data vector !!
- *
- * @param data SFString*: data to be searched on
- * @param pattern const re2::RE2&: pattern to be searched for
- * @return std::vector<uint64_t>: vector of all found line indices
- */
-std::vector<uint64_t> line_indices(
-    xs::DataChunk* data, const std::vector<uint64_t>& global_byte_offsets,
-    const re2::RE2& pattern);
 
 /**
  * Count the numbers of lines containing a regex match of pattern in data.

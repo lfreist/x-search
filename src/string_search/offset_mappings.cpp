@@ -69,21 +69,20 @@ std::string to_line(xs::DataChunk* data, uint64_t match_global_byte_offset) {
   uint64_t match_local_byte_offset =
       match_global_byte_offset - data->getOffset();
   std::string result;
-  char* data_p = data->data();
-  if (match_local_byte_offset > data->size()) {
+  if (match_local_byte_offset >= data->size()) {
     // we should never reach this point!
     throw std::runtime_error("ERROR: out of scope.");
   }
-  char* match = data_p + match_local_byte_offset;
+  char* match = data->data() + match_local_byte_offset;
   // we search the position of the previous new line char starting at the byte
   //  position of the match...
   char* prev_nl = (*match == '\n') ? match - 1 : match;
-  while (prev_nl > data_p && *prev_nl != '\n') {
+  while (prev_nl > data->data() && *prev_nl != '\n') {
     prev_nl--;
   }
   // ... we then search the next new line char...
-  char* next_nl =
-      xs::search::simd::strchr(match, data->size() - (match - data_p), '\n');
+  char* next_nl = xs::search::simd::strchr(
+      match, data->size() - (match - data->data()), '\n');
   // ... and construct a std::string from prev_nl to next_nl
   if (next_nl == nullptr) {
     // if the match occurs in the last line of the file, we might not fight a

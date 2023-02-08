@@ -25,10 +25,10 @@ char* rest_strstr(char* str, size_t str_len, const char* pattern,
         break;
       }
     }
-    shift = str_index;
     if (flag) {
       return str + shift;  // match found
     }
+    shift = str_index;
   }
   return nullptr;
 }

@@ -33,9 +33,9 @@ static char dummy_text[] =
     "well-centered by-job crop-tailed vagrantism condescensivelyx";
 
 TEST(offset_mapping, to_line_indices) {
-  DataChunk str(0, 0, {{177, 3}, {394, 7}, {802, 14}, {1067, 19}, {1240, 22}});
+  DataChunk str(0, 0, {{177, 2}, {394, 6}, {802, 13}, {1067, 18}, {1239, 21}});
   str.assign(dummy_text);
-  std::vector<uint64_t> byte_offsets(1241);
+  std::vector<uint64_t> byte_offsets(1240);
   // vector of all byte offsets
   for (size_t i = 0; i < byte_offsets.size(); ++i) {
     byte_offsets.at(i) = i;
@@ -45,17 +45,23 @@ TEST(offset_mapping, to_line_indices) {
   line_indices.reserve(1240);
   uint64_t line_index = 0;
   for (auto& c : dummy_text) {
+    // necessary because we do not want to count \0 byte as part of the data
+    if (c == '\0') {
+      break;
+    }
     line_indices.push_back(line_index);
     if (c == '\n') {
       line_index++;
     }
   }
 
+  auto tmp = map::bytes::to_line_indices(&str, byte_offsets);
+
   ASSERT_EQ(map::bytes::to_line_indices(&str, byte_offsets), line_indices);
 }
 
 TEST(offset_mapping, to_line) {
-  DataChunk str(0, 0, {{176, 3}, {393, 7}, {801, 14}, {1066, 19}, {1240, 23}});
+  DataChunk str(0, 0, {{176, 3}, {393, 7}, {801, 14}, {1066, 19}, {1239, 23}});
   str.assign(dummy_text);
   ASSERT_EQ(
       xs::map::byte::to_line(&str, 0),
@@ -71,7 +77,7 @@ TEST(offset_mapping, to_line) {
             "DNB nondeliriousness arpents uncasing\n");
   ASSERT_EQ(xs::map::byte::to_line(&str, 801),
             "enforcive Ibilao jubilus meisje sitively\n");
-  ASSERT_EQ(xs::map::byte::to_line(&str, 1240),
+  ASSERT_EQ(xs::map::byte::to_line(&str, 1239),
             "well-centered by-job crop-tailed vagrantism condescensivelyx\n");
-  ASSERT_THROW(xs::map::byte::to_line(&str, 1241), std::runtime_error);
+  ASSERT_THROW(xs::map::byte::to_line(&str, 1240), std::runtime_error);
 }

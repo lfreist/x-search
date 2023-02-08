@@ -5,7 +5,6 @@
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/tasks/Searcher.h>
 #include <xsearch/utils/InlineBench.h>
-#include <xsearch/utils/utils.h>
 
 namespace xs::tasks {
 
@@ -171,7 +170,7 @@ void LineIndexSearcher<IndexPartialResult>::search(
   auto byte_offsets = search::global_byte_offsets_line(data, pattern);
   INLINE_BENCHMARK_WALL_STOP("searching byte offsets for mapping");
   INLINE_BENCHMARK_WALL_START("mapping line index");
-  result->indices = search::line_indices(data, byte_offsets, pattern);
+  result->indices = map::bytes::to_line_indices(data, byte_offsets);
   INLINE_BENCHMARK_WALL_STOP("mapping line index");
 }
 
@@ -183,7 +182,7 @@ void LineIndexSearcher<FullPartialResult>::search(
   result->_index = data->getIndex();
   INLINE_BENCHMARK_WALL_START("mapping line index");
   result->_line_indices =
-      search::line_indices(data, result->_byte_offsets_line, pattern);
+      map::bytes::to_line_indices(data, result->_byte_offsets_line);
   INLINE_BENCHMARK_WALL_STOP("mapping line index");
 }
 
@@ -196,7 +195,7 @@ void LineIndexSearcher<IndexPartialResult>::search(
   auto byte_offsets = search::regex::global_byte_offsets_line(data, *pattern);
   INLINE_BENCHMARK_WALL_STOP("searching byte offsets for mapping");
   INLINE_BENCHMARK_WALL_START("mapping line index");
-  result->indices = search::regex::line_indices(data, byte_offsets, *pattern);
+  result->indices = map::bytes::to_line_indices(data, byte_offsets);
   INLINE_BENCHMARK_WALL_STOP("mapping line index");
 }
 
@@ -207,7 +206,7 @@ void LineIndexSearcher<FullPartialResult>::search(
   result->_index = data->getIndex();
   INLINE_BENCHMARK_WALL_START("mapping line index");
   result->_line_indices =
-      search::regex::line_indices(data, result->_byte_offsets_line, *pattern);
+      map::bytes::to_line_indices(data, result->_byte_offsets_line);
   INLINE_BENCHMARK_WALL_STOP("mapping line index");
 }
 
