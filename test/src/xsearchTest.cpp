@@ -11,45 +11,45 @@ static const std::string meta_file_path("test/files/dummy.xs.meta");
 
 TEST(ExternSearcherTest, count) {
   {  // plain text
-    auto res =
-        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 1, 1);
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, 1, 1);
     res->join();
     ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // regex
     auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
-                                            meta_file_path, 1, 1);
+                                                    meta_file_path, 1, 1);
     res->join();
     ASSERT_EQ(res->getResult()->size(), 156);
   }
   {  // multiple threads
-    auto res =
-        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 4, 1);
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, 4, 1);
     res->join();
     ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // multiple readers
-    auto res =
-        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 1, 2);
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, 1, 2);
     res->join();
     ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // multiple readers and threads
-    auto res =
-        xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 4, 2);
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, 4, 2);
     res->join();
     ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // multiple readers and threads and regex pattern
     auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
-                                            meta_file_path, 4, 4);
+                                                    meta_file_path, 4, 4);
     res->join();
     ASSERT_EQ(res->getResult()->size(), 156);
   }
   {  // compression
-    auto res =
-        xs::extern_search<xs::count_matches>(re_pattern, "test/files/dummy.xslz4",
-                                     "test/files/dummy.xslz4.meta", 4, 2);
+    auto res = xs::extern_search<xs::count_matches>(
+        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta", 4,
+        2);
     res->join();
     ASSERT_EQ(res->getResult()->size(), 156);
   }

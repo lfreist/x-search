@@ -78,6 +78,7 @@ class ContainerResult : public BaseResult<std::vector<T>> {
   };
 
   using Iterator = iterator<ContainerResult<T>>;
+
  public:
   ContainerResult() = default;
 
@@ -107,7 +108,8 @@ class ContainerResult : public BaseResult<std::vector<T>> {
     this->_cv->notify_one();
   }
 
-  void sortedAdd(std::vector<T> partial_result, uint64_t result_index) override {
+  void sortedAdd(std::vector<T> partial_result,
+                 uint64_t result_index) override {
     std::unique_lock lock(*this->_mutex);
     if (_current_index == result_index) {
       add(std::move(partial_result));
@@ -144,13 +146,9 @@ class ContainerResult : public BaseResult<std::vector<T>> {
 
   [[nodiscard]] size_t size() const override { return _data.rlock()->size(); }
 
-  virtual Iterator begin() {
-    return Iterator(*this, 0);
-  }
+  virtual Iterator begin() { return Iterator(*this, 0); }
 
-  virtual Iterator end() {
-    return Iterator(*this, 0);
-  }
+  virtual Iterator end() { return Iterator(*this, 0); }
 
  protected:
   ad_utility::Synchronized<std::vector<T>> _data;
@@ -171,7 +169,8 @@ class CountResult : public BaseResult<uint64_t> {
  public:
   class iterator {
    public:
-    iterator(CountResult& result, size_t index) : _result(result), _index(index) {}
+    iterator(CountResult& result, size_t index)
+        : _result(result), _index(index) {}
 
     uint64_t operator*() {
       std::unique_lock lock(*_result._mutex);
@@ -206,13 +205,9 @@ class CountResult : public BaseResult<uint64_t> {
 
   [[nodiscard]] size_t size() const override;
 
-  iterator begin() {
-    return {*this, 0};
-  }
+  iterator begin() { return {*this, 0}; }
 
-  iterator end() {
-    return {*this, 0};
-  }
+  iterator end() { return {*this, 0}; }
 
  protected:
   uint64_t _sum_result = 0;

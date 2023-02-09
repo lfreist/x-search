@@ -93,9 +93,7 @@ class Searcher {
   iterator end() { return iterator(*this, 0); }
 */
 
-  ResT* getResult() {
-    return _result.get();
-  }
+  ResT* getResult() { return _result.get(); }
 
   bool isRunning() { return _running.load(); }
 

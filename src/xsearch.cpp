@@ -9,9 +9,9 @@ namespace xs {
 // implementation for searching number of matches
 template <>
 std::shared_ptr<count_matches> extern_search(const std::string& pattern,
-                                     const std::string& file_path,
-                                     const std::string& meta_file_path,
-                                     int num_threads, int num_readers) {
+                                             const std::string& file_path,
+                                             const std::string& meta_file_path,
+                                             int num_threads, int num_readers) {
   auto reader =
       std::make_unique<tasks::ExternBlockReader>(file_path, meta_file_path);
   // check for compression and add decompression task --------------------------
@@ -31,10 +31,10 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
   auto searcher = std::make_unique<tasks::MatchCounter>();
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<count_matches>(pattern, num_threads, num_readers,
-                                 std::move(reader), std::move(processors),
-                                 std::move(searcher),
-                                 std::make_unique<CountMatchesResult>());
+  return std::make_shared<count_matches>(
+      pattern, num_threads, num_readers, std::move(reader),
+      std::move(processors), std::move(searcher),
+      std::make_unique<CountMatchesResult>());
 }
 
 // _____________________________________________________________________________

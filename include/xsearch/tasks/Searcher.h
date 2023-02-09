@@ -41,7 +41,10 @@ class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
 
  private:
   // private because we do not want anyone to use this method...
-  uint64_t search(DataChunk* data, const std::vector<uint64_t>& mapping_data) const override { return 0; }
+  uint64_t search(DataChunk* data,
+                  const std::vector<uint64_t>& mapping_data) const override {
+    return 0;
+  }
 };
 
 class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
@@ -53,7 +56,10 @@ class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
 
  private:
   // private because we do not want anyone to use this method...
-  uint64_t search(DataChunk* data, const std::vector<uint64_t>& mapping_data) const override { return 0; }
+  uint64_t search(DataChunk* data,
+                  const std::vector<uint64_t>& mapping_data) const override {
+    return 0;
+  }
 };
 
 class MatchBytePositionSearcher
@@ -68,7 +74,11 @@ class MatchBytePositionSearcher
 
  private:
   // private because we do not want anyone to use this method...
-  std::vector<uint64_t> search(DataChunk* data, const std::vector<uint64_t>& mapping_data) const override { return {}; }
+  std::vector<uint64_t> search(
+      DataChunk* data,
+      const std::vector<uint64_t>& mapping_data) const override {
+    return {};
+  }
 };
 
 class LineBytePositionSearcher
@@ -83,7 +93,11 @@ class LineBytePositionSearcher
 
  private:
   // private because we do not want anyone to use this method...
-  std::vector<uint64_t> search(DataChunk* data, const std::vector<uint64_t>& mapping_data) const override { return {}; }
+  std::vector<uint64_t> search(
+      DataChunk* data,
+      const std::vector<uint64_t>& mapping_data) const override {
+    return {};
+  }
 };
 
 class LineIndexSearcher
