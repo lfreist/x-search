@@ -36,6 +36,13 @@ struct GrepPartialResult {
 class GrepResult : public xs::ContainerResult<GrepPartialResult> {
  public:
   GrepResult() = default;
+
+  void add(std::vector<GrepPartialResult> partial_result) override {
+    // TODO: implement. We do not need to inherit ContainerResult since we
+    //  simply output the collected data.
+    //  We should implement a sorted add here and output results using
+    //  output_helper.
+  }
 };
 
 // _____________________________________________________________________________
