@@ -21,52 +21,13 @@ namespace xs {
 
 template <class DataT, class ResT, class PartResT>
 class Searcher {
-  /*
- public:
-  class iterator {
-   public:
-    iterator(Searcher<DataT, ResT, PartResT>& searcher, size_t index)
-        : _searcher(searcher), _index(index) {}
-
-    PartResT& operator*() {
-      std::unique_lock lock(_searcher._results_mutex);
-      return _searcher._result->operator[](_index);
-    }
-
-    iterator& operator++() {
-      _index++;
-      return *this;
-    }
-
-    bool operator!=(const iterator& other) {
-      std::unique_lock locker(_searcher._results_mutex);
-      while (_index >= _searcher._result->size()) {
-        if (!_searcher.isRunning()) {
-          // no results will be added and index is out of range
-          return false;
-        }
-        _searcher._results_condition_variable.wait(locker);
-      }
-      if (!_searcher.isRunning()) {
-        return _index <= _searcher._result->size();
-      }
-      return true;
-    }
-
-   private:
-    Searcher<DataT, ResT, PartResT>& _searcher;
-    size_t _index;
-  };
-*/
  public:
   // ---------------------------------------------------------------------------
   Searcher(std::string pattern, int num_threads, int max_readers,
            std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
            std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
-           std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>> searchers,
-           std::unique_ptr<ResT> initial_result)
-      : _result(std::move(initial_result)),
-        _reader(std::move(reader)),
+           std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>> searchers)
+      : _reader(std::move(reader)),
         _processors(std::move(processors)),
         _searcher(std::move(searchers)) {
     if (max_readers > num_threads) {
@@ -79,6 +40,7 @@ class Searcher {
     if (_regex) {
       _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
     }
+    _result = std::make_unique<ResT>();
     _running = true;
     _workers = num_threads;
     for (auto& t : _threads) {

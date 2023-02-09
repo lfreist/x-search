@@ -26,10 +26,6 @@ class BaseSearcher {
 
   virtual ResT search(const std::string& pattern, DataT* data) const = 0;
   virtual ResT search(re2::RE2* pattern, DataT* data) const = 0;
-
- protected:
-  virtual ResT search(DataT* data,
-                      const std::vector<uint64_t>& mapping_data) const = 0;
 };
 
 class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
@@ -38,13 +34,6 @@ class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
 
   uint64_t search(const std::string& pattern, DataChunk* data) const override;
   uint64_t search(re2::RE2* pattern, DataChunk* data) const override;
-
- private:
-  // private because we do not want anyone to use this method...
-  uint64_t search(DataChunk* data,
-                  const std::vector<uint64_t>& mapping_data) const override {
-    return 0;
-  }
 };
 
 class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
@@ -53,13 +42,6 @@ class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
 
   uint64_t search(const std::string& pattern, DataChunk* data) const override;
   uint64_t search(re2::RE2* pattern, DataChunk* data) const override;
-
- private:
-  // private because we do not want anyone to use this method...
-  uint64_t search(DataChunk* data,
-                  const std::vector<uint64_t>& mapping_data) const override {
-    return 0;
-  }
 };
 
 class MatchBytePositionSearcher
@@ -71,14 +53,6 @@ class MatchBytePositionSearcher
                                DataChunk* data) const override;
   std::vector<uint64_t> search(re2::RE2* pattern,
                                DataChunk* data) const override;
-
- private:
-  // private because we do not want anyone to use this method...
-  std::vector<uint64_t> search(
-      DataChunk* data,
-      const std::vector<uint64_t>& mapping_data) const override {
-    return {};
-  }
 };
 
 class LineBytePositionSearcher
@@ -90,14 +64,6 @@ class LineBytePositionSearcher
                                DataChunk* data) const override;
   std::vector<uint64_t> search(re2::RE2* pattern,
                                DataChunk* data) const override;
-
- private:
-  // private because we do not want anyone to use this method...
-  std::vector<uint64_t> search(
-      DataChunk* data,
-      const std::vector<uint64_t>& mapping_data) const override {
-    return {};
-  }
 };
 
 class LineIndexSearcher
@@ -109,9 +75,11 @@ class LineIndexSearcher
                                DataChunk* data) const override;
   std::vector<uint64_t> search(re2::RE2* pattern,
                                DataChunk* data) const override;
+
+ private:
   std::vector<uint64_t> search(
       DataChunk* data,
-      const std::vector<uint64_t>& mapping_data) const override;
+      const std::vector<uint64_t>& mapping_data) const;
 };
 
 class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
@@ -122,9 +90,10 @@ class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
                                   DataChunk* data) const override;
   std::vector<std::string> search(re2::RE2* pattern,
                                   DataChunk* data) const override;
+ private:
   std::vector<std::string> search(
       DataChunk* data,
-      const std::vector<uint64_t>& mapping_data) const override;
+      const std::vector<uint64_t>& mapping_data) const;
 };
 
 }  // namespace xs::tasks

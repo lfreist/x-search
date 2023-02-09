@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace po = boost::program_options;
-/*
+
 // ===== Grep output Result ====================================================
 // _____ Output Formatting _____________________________________________________
 // _____________________________________________________________________________
@@ -23,110 +23,83 @@ std::string get_regex_match_(const char* data, size_t size,
   return match.as_string();
 }
 
+struct GrepPartialResult {
+  uint64_t index = 0;
+  std::string str;
+
+  bool operator<(const GrepPartialResult& other) const {
+    return index < other.index;
+  }
+};
+
 // _____________________________________________________________________________
-void output_helper(const std::string& pattern, xs::FullPartialResult& results,
-                   bool regex, bool line_number, bool byte_offset,
-                   bool only_matching, bool color) {
-  for (size_t i = 0; i < results._byte_offsets_line.size(); ++i) {
-    if (line_number) {
+class GrepResult : public xs::ContainerResult<GrepPartialResult> {
+ public:
+  GrepResult() = default;
+};
+
+// _____________________________________________________________________________
+void output_helper(const std::string& pattern, GrepResult& results, bool regex,
+                   bool index, bool only_matching, bool color) {
+  for (uint64_t i = 0; i < results.size(); ++i) {
+    if (index) {
       if (color) {
-        std::cout << GREEN << results._line_indices.at(i) + 1 << CYAN << ":"
-                  << COLOR_RESET;
+        std::cout << GREEN << results[i].index << CYAN << ":" << COLOR_RESET;
       } else {
-        std::cout << results._line_indices.at(i) + 1 << ":";
+        std::cout << results[i].index << ":";
       }
     }
-    if (byte_offset) {
-      if (color) {
-        std::cout << GREEN << results._byte_offsets_line.at(i) << CYAN << ":"
-                  << COLOR_RESET;
-      } else {
-        std::cout << results._byte_offsets_line.at(i) << ":";
-      }
-    }
-    const std::string& line = results._lines.at(i);
-    if (only_matching) {
-      if (color) {
-        std::cout << RED
-                  << (regex ? get_regex_match_(line.data(), line.size(),
-                                               re2::RE2("(" + pattern + ")"))
-                            : pattern)
-                  << COLOR_RESET << "\n";
-      } else {
-        std::cout << (regex ? get_regex_match_(line.data(), line.size(),
-                                               re2::RE2("(" + pattern + ")"))
-                            : pattern)
-                  << "\n";
-      }
-    } else {
-      if (color) {
-        std::string match =
-            regex ? get_regex_match_(line.data(), line.size(),
-                                     re2::RE2("(" + pattern + ")"))
-                  : pattern;
-        // we need to find the offset within the line. Damn. Fix this another
-        // day.
-        const char* match_ = std::strstr(line.data(), match.data());
-        if (match_ == nullptr) {
-          std::cout << line;
-          return;
-        }
-        size_t match_offset = match_ - line.data();
-        std::cout << line.substr(0, match_offset) << RED << match << COLOR_RESET
-                  << line.substr(match_offset + match.size());
-      } else {
-        std::cout << line;
-      }
-    }
+    // TODO: add colored output
+    std::cout << results[i].str << std::endl;
   }
 }
 
 // _____________________________________________________________________________
-
-class GrepResult : public xs::BaseResult<xs::FullPartialResult> {
+class GrepSearcher
+    : public xs::tasks::BaseSearcher<xs::DataChunk,
+                                     std::vector<GrepPartialResult>> {
  public:
-  GrepResult(std::string pattern, bool regex, bool line_number,
-             bool byte_offset, bool match_only, bool color = true)
-      : _pattern(std::move(pattern)),
-        _regex(regex),
-        _color(color),
-        _line_number(line_number),
-        _byte_offset(byte_offset),
-        _match_only(match_only) {}
+  GrepSearcher(bool line_number, bool only_matching)
+      : _line_number(line_number), _only_matching(only_matching) {}
 
-  void addPartialResult(xs::FullPartialResult part_res) override {
-    INLINE_BENCHMARK_WALL_START("formatting and printing");
-    if (part_res._index == _next_index) {
-      output_helper(_pattern, part_res, _regex, _line_number, _byte_offset,
-                    _match_only, _color);
-      while (true) {
-        _next_index++;
-        auto search = _buffer.find(_next_index);
-        if (search == _buffer.end()) {
-          break;
-        }
-        output_helper(_pattern, search->second, _regex, _line_number,
-                      _byte_offset, _match_only, _color);
-        _buffer.erase(_next_index);
-      }
-    } else {
-      _buffer.insert({part_res._index, std::move(part_res)});
+  std::vector<GrepPartialResult> search(const std::string& pattern,
+                                        xs::DataChunk* data) const override {
+    std::vector<uint64_t> byte_offsets =
+        _only_matching
+            ? xs::search::global_byte_offsets_match(data, pattern, false)
+            : xs::search::global_byte_offsets_line(data, pattern);
+    std::vector<uint64_t> line_numbers;
+    if (_line_number) {
+      line_numbers = xs::map::bytes::to_line_indices(data, byte_offsets);
+      std::transform(line_numbers.begin(), line_numbers.end(),
+                     line_numbers.begin(), [](uint64_t li) { return li + 1; });
     }
-    INLINE_BENCHMARK_WALL_STOP("formatting and printing");
+    std::vector<std::string> lines;
+    if (!_only_matching) {
+      lines.resize(byte_offsets.size());
+      std::transform(byte_offsets.begin(), byte_offsets.end(), lines.begin(),
+                     [data](uint64_t index) {
+                       return xs::map::byte::to_line(data, index);
+                     });
+    }
+
+    std::vector<GrepPartialResult> res(byte_offsets.size());
+    for (uint64_t i = 0; i < byte_offsets.size(); ++i) {
+      res[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
+      res[i].str = _only_matching ? pattern : lines[i];
+    }
+    return res;
+  }
+
+  std::vector<GrepPartialResult> search(re2::RE2* pattern,
+                                        xs::DataChunk* data) const override {
+    return {};
   }
 
  private:
-  std::string _pattern;
-  bool _regex;
-  bool _color;
   bool _line_number;
-  bool _byte_offset;
-  bool _match_only;
-  uint64_t _next_index = 0;
-  std::unordered_map<uint64_t, xs::FullPartialResult> _buffer;
+  bool _only_matching;
 };
-
-// -----------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
   std::string pattern;
@@ -228,64 +201,26 @@ int main(int argc, char** argv) {
   // ---------------------------------------------------------------------------
   auto reader =
       std::make_unique<xs::tasks::ExternBlockReader>(file_path, meta_file_path);
-  std::vector<std::unique_ptr<
-      xs::tasks::BaseSearcher<xs::DataChunk, xs::FullPartialResult>>>
-      searchers;
 
   if (count) {
     // count set -> count results and output number in the end -----------------
-    std::vector<
-        std::unique_ptr<xs::tasks::BaseSearcher<xs::DataChunk, uint64_t>>>
-        searcher;
-    searcher.push_back(std::make_unique<xs::tasks::LineCounter<uint64_t>>());
+    auto searcher = std::make_unique<xs::tasks::LineCounter>();
     INLINE_BENCHMARK_WALL_START("total");
     auto extern_searcher =
         xs::Searcher<xs::DataChunk, xs::CountResult, uint64_t>(
             pattern, num_threads, num_threads, std::move(reader),
-            std::move(processors), std::move(searcher),
-            std::make_unique<xs::CountResult>());
+            std::move(processors), std::move(searcher));
     extern_searcher.join();
     INLINE_BENCHMARK_WALL_STOP("total");
-    std::cout << extern_searcher.getResult()->getCount() << std::endl;
+    std::cout << extern_searcher.getResult()->size() << std::endl;
     // -------------------------------------------------------------------------
   } else {
     // no count set -> run grep and output results
-    // -------------------------------
-    if ((byte_offset || line_number) && only_matching) {
-      // -b -o || -n -o
-      searchers.push_back(
-          std::make_unique<
-              xs::tasks::MatchBytePositionSearcher<xs::FullPartialResult>>());
-    } else if ((byte_offset || line_number) && !only_matching) {
-      // -b || -n
-      searchers.push_back(
-          std::make_unique<
-              xs::tasks::LineBytePositionSearcher<xs::FullPartialResult>>());
-    } else if (only_matching) {
-      // -o
-      searchers.push_back(
-          std::make_unique<
-              xs::tasks::MatchBytePositionSearcher<xs::FullPartialResult>>());
-    } else {
-      // no command line options
-      searchers.push_back(
-          std::make_unique<
-              xs::tasks::LineBytePositionSearcher<xs::FullPartialResult>>());
-    }
-    if (line_number) {
-      searchers.push_back(
-          std::make_unique<
-              xs::tasks::LineIndexSearcher<xs::FullPartialResult>>());
-    }
-    searchers.push_back(
-        std::make_unique<xs::tasks::LineSearcher<xs::FullPartialResult>>());
+    auto searcher = std::make_unique<GrepSearcher>(line_number, only_matching);
     auto extern_searcher =
-        xs::Searcher<xs::DataChunk, GrepResult, xs::FullPartialResult>(
-            pattern, num_threads, 8, std::move(reader), std::move(processors),
-            std::move(searchers),
-            std::make_unique<GrepResult>(
-                pattern, xs::utils::use_str_as_regex(pattern), line_number,
-                byte_offset, only_matching, !no_color));
+        xs::Searcher<xs::DataChunk, GrepResult, std::vector<GrepPartialResult>>(
+            pattern, num_threads, num_threads, std::move(reader),
+            std::move(processors), std::move(searcher));
     extern_searcher.join();
   }
   // ---------------------------------------------------------------------------
@@ -306,8 +241,7 @@ int main(int argc, char** argv) {
 
   return 0;
 }
- */
 
-int main() {
-  return 0;
-}
+// int main() {
+//   return 0;
+// }
