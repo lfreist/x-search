@@ -14,44 +14,44 @@ TEST(ExternSearcherTest, count) {
     auto res =
         xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 1, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 152);
+    ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // regex
     auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
                                             meta_file_path, 1, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 156);
+    ASSERT_EQ(res->getResult()->size(), 156);
   }
   {  // multiple threads
     auto res =
         xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 4, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 152);
+    ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // multiple readers
     auto res =
         xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 1, 2);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 152);
+    ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // multiple readers and threads
     auto res =
         xs::extern_search<xs::count_matches>(pattern, file_path, meta_file_path, 4, 2);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 152);
+    ASSERT_EQ(res->getResult()->size(), 152);
   }
   {  // multiple readers and threads and regex pattern
     auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
                                             meta_file_path, 4, 4);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 156);
+    ASSERT_EQ(res->getResult()->size(), 156);
   }
   {  // compression
     auto res =
         xs::extern_search<xs::count_matches>(re_pattern, "test/files/dummy.xslz4",
                                      "test/files/dummy.xslz4.meta", 4, 2);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 156);
+    ASSERT_EQ(res->getResult()->size(), 156);
   }
 }
 
@@ -60,44 +60,44 @@ TEST(ExternSearcherTest, count_lines) {
     auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
                                                   meta_file_path, 1, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 133);
+    ASSERT_EQ(res->getResult()->size(), 133);
   }
   {  // regex
     auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
                                                   meta_file_path, 1, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 137);
+    ASSERT_EQ(res->getResult()->size(), 137);
   }
   {  // multiple threads
     auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
                                                   meta_file_path, 4, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 133);
+    ASSERT_EQ(res->getResult()->size(), 133);
   }
   {  // multiple readers
     auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
                                                   meta_file_path, 1, 2);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 133);
+    ASSERT_EQ(res->getResult()->size(), 133);
   }
   {  // multiple readers and threads
     auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
                                                   meta_file_path, 4, 2);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 133);
+    ASSERT_EQ(res->getResult()->size(), 133);
   }
   {  // multiple readers and threads and regex pattern
     auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
                                                   meta_file_path, 4, 4);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 137);
+    ASSERT_EQ(res->getResult()->size(), 137);
   }
   {  // compression
     auto res =
         xs::extern_search<xs::count_lines>(re_pattern, "test/files/dummy.xslz4",
                                            "test/files/dummy.xslz4.meta", 4, 2);
     res->join();
-    ASSERT_EQ(res->getResult()->getCount(), 137);
+    ASSERT_EQ(res->getResult()->size(), 137);
   }
 }
 

@@ -122,6 +122,7 @@ class Searcher {
     }
     if (_workers.fetch_sub(1) == 1) {
       _running.store(false);
+      _result->done();
     }
   }
 
@@ -160,8 +161,9 @@ class Searcher {
     PartResT res;
     if (_regex) {
       res = _searcher->search(_regex_pattern.get(), &chunk);
+    } else {
+      res = _searcher->search(_pattern, &chunk);
     }
-    res = _searcher->search(_pattern, &chunk);
     INLINE_BENCHMARK_WALL_STOP("searcher task");
     return res;
   }

@@ -69,7 +69,7 @@ std::vector<uint64_t> MatchBytePositionSearcher::search(re2::RE2* pattern,
 std::vector<uint64_t> LineBytePositionSearcher::search(
     const std::string& pattern, DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching byte position");
-  auto tmp = search::global_byte_offsets_match(data, pattern, false);
+  auto tmp = search::global_byte_offsets_line(data, pattern);
   INLINE_BENCHMARK_WALL_STOP("searching byte position");
   return tmp;
 }
@@ -78,7 +78,7 @@ std::vector<uint64_t> LineBytePositionSearcher::search(
 std::vector<uint64_t> LineBytePositionSearcher::search(re2::RE2* pattern,
                                                        DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START("searching byte position");
-  auto tmp = search::regex::global_byte_offsets_match(data, *pattern, false);
+  auto tmp = search::regex::global_byte_offsets_line(data, *pattern);
   INLINE_BENCHMARK_WALL_STOP("searching byte position");
   return tmp;
 }
@@ -136,7 +136,7 @@ std::vector<std::string> LineSearcher::search(
   std::vector<std::string> tmp;
   tmp.reserve(mapping_data.size());
   for (const auto bo : mapping_data) {
-    map::byte::to_line(data, bo);
+    tmp.push_back(map::byte::to_line(data, bo));
   }
   return tmp;
 }
