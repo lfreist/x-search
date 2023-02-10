@@ -3,6 +3,9 @@
 [![Linux (clang)](https://github.com/lfreist/x-search/actions/workflows/build-linux-clang.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/build-linux-clang.yml)
 [![Linux (gcc)](https://github.com/lfreist/x-search/actions/workflows/build-linux-gcc.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/build-linux-gcc.yml)
 
+[![Thread Sanitizer](https://github.com/lfreist/x-search/actions/workflows/thread-sanitizer-test.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/thread-sanitizer-test.yml)
+[![Address Sanitizer](https://github.com/lfreist/x-search/actions/workflows/address-sanitizer-test.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/address-sanitizer-test.yml)
+
 [![Code Style (clang14)](https://github.com/lfreist/x-search/actions/workflows/clang-format.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/clang-format.yml)
 
 
@@ -62,9 +65,8 @@ auto res = xs::extern_search<xs::count>(pattern, file_path, meta_file_path, num_
 > - `xs::line_byte_offsets`: a vector of the byte offsets of matching lines
 > - `xs::line_indices`: a vector of the line indices of matching lines
 > - `xs::lines`: a vector of lines (as std::string) containing the match
-> - `xs::full`: a combined result of the above
 
 After calling `xs::extern_search`, the returned shared_ptr of the Searcher instance can be...
 - ... joined (`res->join()`): the main threads sleeps until the search process finished
-- ... used to access already created results using the iterator (`for (auto& part_res : res->getMergedResult()) {...}`)
+- ... used to access already created results using the iterator (`for (auto value : *res->getResult()) {...}`)
 - ... ignored: the threads started for the search by `Searcher` are joined on destruction.
