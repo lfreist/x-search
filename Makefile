@@ -35,14 +35,24 @@ build_benchmark: init
 	cmake -B build-benchmark -DCMAKE_BUILD_TYPE=Benchmark -DRE2_BUILD_TESTING=off 2>/dev/null
 	cmake --build build-benchmark --config Benchmark -j $(nproc) 2>/dev/null
 
+build_sanitizer: init
+	cmake -B build-thread-sanitizer -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DCMAKE_CXX_COMPILER=clang++ -DRE2_BUILD_TESTING=off
+	cmake --build build-thread-sanitizer -j $(nproc) 2>/dev/null
+	cmake -B build-address-sanitizer -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=address" -DCMAKE_CXX_COMPILER=clang++ -DRE2_BUILD_TESTING=off
+	cmake --build build-address-sanitizer -j $(nproc) 2>/dev/null
+
 test: lib_test grep_test
 
 lib_test: build init_test_runs
-	ctest -C Release --test-dir build 2>/dev/null
+	ctest -C Release --test-dir build
 
 grep_test: build init_test_runs
 	if [ ! -f tmp/1gb.dummy.txt ]; then python3 ./scripts/createTestFile.py --size 1 files/words.txt --output tmp/1gb.dummy.txt --progress; fi
 	bash ./test/test_grep.sh ./build tmp/1gb.dummy.txt
+
+sanitizer_test: build_sanitizer
+	ctest -C Release --test-dir build-thread-sanitizer
+	ctest -C Release --test-dir build-address-sanitizer
 
 check_style:
 	bash ./format_check.sh
