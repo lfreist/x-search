@@ -11,7 +11,7 @@ ExternBlockReader::ExternBlockReader(std::string file_path,
     : _file_path(std::move(file_path)),
       _meta_file(meta_file_path, std::ios::in) {}
 
-std::optional<DataChunk> ExternBlockReader::getNextData() {
+std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
   INLINE_BENCHMARK_WALL_START("reading");
   INLINE_BENCHMARK_WALL_START("construct stream");
   std::ifstream stream(_file_path);
@@ -31,7 +31,7 @@ std::optional<DataChunk> ExternBlockReader::getNextData() {
   stream.read(chunk.data(), static_cast<int64_t>(cmd.actual_size));
   INLINE_BENCHMARK_WALL_STOP("actual read");
   INLINE_BENCHMARK_WALL_STOP("reading");
-  return chunk;
+  return std::make_pair(std::move(chunk), cmd.chunk_index);
 }
 
 }  // namespace xs::tasks

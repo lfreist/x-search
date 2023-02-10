@@ -71,14 +71,14 @@ class Searcher {
  private:
   void main_task() {
     while (true) {
-      auto optChunk = reader_task();
-      if (!optChunk.has_value()) {
+      auto optPair = reader_task();
+      if (!optPair.has_value()) {
         break;
       }
-      auto& chunk = optChunk.value();
-      processors_task(chunk);
-      auto partial_results = searchers_task(chunk);
-      results_join_task(std::move(partial_results));
+      auto& chunk_index_pair = optPair.value();
+      processors_task(chunk_index_pair.first);
+      auto partial_results = searchers_task(chunk_index_pair.first);
+      results_join_task(std::move(partial_results), chunk_index_pair.second);
     }
     if (_workers.fetch_sub(1) == 1) {
       _running.store(false);
@@ -86,7 +86,7 @@ class Searcher {
     }
   }
 
-  std::optional<DataT> reader_task() {
+  std::optional<std::pair<DataT, uint64_t>> reader_task() {
     std::unique_lock reader_lock(_reader_worker_mutex);
     while (true) {
       {
@@ -100,12 +100,12 @@ class Searcher {
     _max_readers--;
     reader_lock.unlock();
     INLINE_BENCHMARK_WALL_START("reader task");
-    auto chunk = _reader->getNextData();
+    auto chunk_index_pair = _reader->getNextData();
     INLINE_BENCHMARK_WALL_STOP("reader task");
     reader_lock.lock();
     _max_readers++;
     _reader_cv.notify_one();
-    return chunk;
+    return chunk_index_pair;
   }
 
   void processors_task(DataT& chunk) {
@@ -128,9 +128,9 @@ class Searcher {
     return res;
   }
 
-  void results_join_task(PartResT partial_results) {
+  void results_join_task(PartResT partial_results, uint64_t index) {
     INLINE_BENCHMARK_WALL_START("results join task");
-    _result->add(std::move(partial_results));
+    _result->add(std::move(partial_results), index);
     INLINE_BENCHMARK_WALL_STOP("results join task");
   }
 

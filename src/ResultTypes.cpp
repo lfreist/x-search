@@ -13,10 +13,7 @@ void CountResult::add(uint64_t partial_result) {
 }
 
 // _____________________________________________________________________________
-void CountResult::sortedAdd(uint64_t partial_result) { add(partial_result); }
-
-// _____________________________________________________________________________
-void CountResult::sortedAdd(uint64_t partial_result, uint64_t id) {
+void CountResult::add(uint64_t partial_result, uint64_t id) {
   add(partial_result);
 }
 

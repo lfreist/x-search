@@ -46,8 +46,8 @@ IF(${MAIN_PROJECT})
     add_library(InlineBench INTERFACE include/xsearch/utils/InlineBench.h)
 
     # ___ Executables __________________________________________________________________________________________________
-    add_executable(sfgrep sfgrep.cpp)
-    target_link_libraries(sfgrep PUBLIC xsearch boost_program_options)
+    add_executable(xsgrep xsgrep.cpp)
+    target_link_libraries(xsgrep PUBLIC xsearch boost_program_options)
 
     add_executable(FilePreprocessor FilePreprocessorMain.cpp)
     target_link_libraries(FilePreprocessor PUBLIC xsearch boost_program_options)

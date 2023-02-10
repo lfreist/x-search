@@ -33,44 +33,134 @@ struct GrepPartialResult {
 };
 
 // _____________________________________________________________________________
-class GrepResult : public xs::ContainerResult<GrepPartialResult> {
+struct GrepResultSettings {
+  bool regex = false;
+  bool index = false;
+  bool color = true;
+  bool only_matching = false;
+  std::string pattern;
+};
+
+// _____________________________________________________________________________
+class GrepResult
+    : public xs::BaseResult<
+          std::pair<std::vector<GrepPartialResult>, GrepResultSettings>> {
  public:
   GrepResult() = default;
 
-  void add(std::vector<GrepPartialResult> partial_result) override {
-    // TODO: implement. We do not need to inherit ContainerResult since we
-    //  simply output the collected data.
-    //  We should implement a sorted add here and output results using
-    //  output_helper.
+  void add(std::pair<std::vector<GrepPartialResult>, GrepResultSettings>
+               partial_result,
+           uint64_t id) override {
+    std::unique_lock lock(*this->_mutex);
+    if (_current_index == id) {
+      add(std::move(partial_result));
+      _current_index++;
+      // check if buffered results can be added now
+      while (true) {
+        auto search = _buffer.find(_current_index);
+        if (search == _buffer.end()) {
+          break;
+        }
+        add(std::move(search->second));
+        _buffer.erase(_current_index);
+        _current_index++;
+      }
+      // at least one partial_result was added -> notify
+      this->_cv->notify_one();
+    } else {
+      // buffer the partial result
+      _buffer.insert({id, std::move(partial_result)});
+    }
+  }
+
+  size_t size() const override { return 0; }
+
+ private:
+  std::unordered_map<
+      uint64_t, std::pair<std::vector<GrepPartialResult>, GrepResultSettings>>
+      _buffer;
+  uint64_t _current_index = 0;
+
+  void add(std::pair<std::vector<GrepPartialResult>, GrepResultSettings>
+               partial_result) override {
+    auto& res = partial_result.first;
+    auto& settings = partial_result.second;
+    for (auto& r : res) {
+      if (settings.index) {
+        if (settings.color) {
+          std::cout << GREEN << r.index << CYAN << ":" << COLOR_RESET;
+        } else {
+          std::cout << r.index << ":";
+        }
+      }
+      if (settings.only_matching) {
+        if (settings.color) {
+          std::cout << RED << r.str << COLOR_RESET << '\n';
+        } else {
+          std::cout << r.str << '\n';
+        }
+      } else {
+        if (settings.color) {
+          // search for every occurrence of pattern within the string and
+          // print it out colored while the rest is printed uncolored.
+            size_t shift = 0;
+            std::string match = settings.pattern;
+            while (true) {
+              size_t match_pos;
+              if (settings.regex) {
+                re2::RE2 re_pattern(settings.pattern);
+                re2::StringPiece input(r.str.data() + shift, r.str.size() - shift);
+                re2::StringPiece re_match;
+                auto tmp = re2::RE2::PartialMatch(input, re_pattern, &re_match);
+                if (tmp) {
+                  match_pos = re_match.data() - input.data() + shift;
+                  match = re_match.as_string();
+                } else {
+                  break;
+                }
+              } else {
+                match_pos = r.str.find(settings.pattern, shift);
+              }
+              if (match_pos == std::string::npos) {
+                break;
+              }
+              // print string part uncolored (eq. pythonic substr is
+              //  str[shift:match_pos]) and pattern in RED
+              std::cout << std::string(
+                               r.str.begin() + static_cast<int64_t>(shift),
+                               r.str.begin() + static_cast<int64_t>(match_pos))
+                        << RED << match << COLOR_RESET;
+              // start next search at new shift
+              shift = match_pos + match.size();
+            }
+            // print rest of the string (eq. pythonic substr is str[shift:])
+            std::cout << std::string(
+                             r.str.begin() + static_cast<int64_t>(shift),
+                             r.str.end())
+                      << '\n';
+        } else {
+          std::cout << r.str << '\n';
+        }
+      }
+    }
   }
 };
 
 // _____________________________________________________________________________
-void output_helper(const std::string& pattern, GrepResult& results, bool regex,
-                   bool index, bool only_matching, bool color) {
-  for (uint64_t i = 0; i < results.size(); ++i) {
-    if (index) {
-      if (color) {
-        std::cout << GREEN << results[i].index << CYAN << ":" << COLOR_RESET;
-      } else {
-        std::cout << results[i].index << ":";
-      }
-    }
-    // TODO: add colored output
-    std::cout << results[i].str << std::endl;
-  }
-}
-
-// _____________________________________________________________________________
 class GrepSearcher
-    : public xs::tasks::BaseSearcher<xs::DataChunk,
-                                     std::vector<GrepPartialResult>> {
+    : public xs::tasks::BaseSearcher<
+          xs::DataChunk,
+          std::pair<std::vector<GrepPartialResult>, GrepResultSettings>> {
  public:
-  GrepSearcher(bool line_number, bool only_matching)
-      : _line_number(line_number), _only_matching(only_matching) {}
+  GrepSearcher(bool byte_offset, bool line_number, bool only_matching,
+               bool color)
+      : _byte_offset(byte_offset),
+        _line_number(line_number),
+        _only_matching(only_matching),
+        _color(color) {}
 
-  std::vector<GrepPartialResult> search(const std::string& pattern,
-                                        xs::DataChunk* data) const override {
+  std::pair<std::vector<GrepPartialResult>, GrepResultSettings> search(
+      const std::string& pattern, xs::DataChunk* data) const override {
     std::vector<uint64_t> byte_offsets =
         _only_matching
             ? xs::search::global_byte_offsets_match(data, pattern, false)
@@ -90,22 +180,64 @@ class GrepSearcher
                      });
     }
 
-    std::vector<GrepPartialResult> res(byte_offsets.size());
+    std::pair<std::vector<GrepPartialResult>, GrepResultSettings> res = {
+        {},
+        {false, _line_number || _byte_offset, _color, _only_matching, pattern}};
+    res.first.resize(byte_offsets.size());
     for (uint64_t i = 0; i < byte_offsets.size(); ++i) {
-      res[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
-      res[i].str = _only_matching ? pattern : lines[i];
+      res.first[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
+      res.first[i].str = _only_matching ? pattern : lines[i];
     }
     return res;
   }
 
-  std::vector<GrepPartialResult> search(re2::RE2* pattern,
-                                        xs::DataChunk* data) const override {
-    return {};
+  std::pair<std::vector<GrepPartialResult>, GrepResultSettings> search(
+      re2::RE2* pattern, xs::DataChunk* data) const override {
+    std::vector<uint64_t> byte_offsets =
+        _only_matching
+            ? xs::search::regex::global_byte_offsets_match(data, *pattern,
+                                                           false)
+            : xs::search::regex::global_byte_offsets_line(data, *pattern);
+    std::vector<uint64_t> line_numbers;
+    if (_line_number) {
+      line_numbers = xs::map::bytes::to_line_indices(data, byte_offsets);
+      std::transform(line_numbers.begin(), line_numbers.end(),
+                     line_numbers.begin(), [](uint64_t li) { return li + 1; });
+    }
+    std::vector<std::string> lines;
+    if (_only_matching) {
+      lines.resize(byte_offsets.size());
+      std::transform(byte_offsets.begin(), byte_offsets.end(), lines.begin(),
+                     [data, pattern](uint64_t index) {
+                       size_t local_byte_offset = index - data->getOffset();
+                       return get_regex_match_(data->data() + local_byte_offset,
+                                               data->size() - local_byte_offset,
+                                               *pattern);
+                     });
+    } else {
+      lines.resize(byte_offsets.size());
+      std::transform(byte_offsets.begin(), byte_offsets.end(), lines.begin(),
+                     [data](uint64_t index) {
+                       return xs::map::byte::to_line(data, index);
+                     });
+    }
+
+    std::pair<std::vector<GrepPartialResult>, GrepResultSettings> res = {
+        {}, {true, _line_number || _byte_offset, _color, _only_matching, pattern->pattern()}};
+    res.first.resize(byte_offsets.size());
+    for (uint64_t i = 0; i < byte_offsets.size(); ++i) {
+      res.first[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
+      // we have placed either the line or the regex match in here above!
+      res.first[i].str = lines[i];
+    }
+    return res;
   }
 
  private:
+  bool _byte_offset;
   bool _line_number;
   bool _only_matching;
+  bool _color;
 };
 
 int main(int argc, char** argv) {
@@ -223,11 +355,13 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
   } else {
     // no count set -> run grep and output results
-    auto searcher = std::make_unique<GrepSearcher>(line_number, only_matching);
-    auto extern_searcher =
-        xs::Searcher<xs::DataChunk, GrepResult, std::vector<GrepPartialResult>>(
-            pattern, num_threads, num_threads, std::move(reader),
-            std::move(processors), std::move(searcher));
+    auto searcher = std::make_unique<GrepSearcher>(byte_offset, line_number,
+                                                   only_matching, !no_color);
+    auto extern_searcher = xs::Searcher<
+        xs::DataChunk, GrepResult,
+        std::pair<std::vector<GrepPartialResult>, GrepResultSettings>>(
+        pattern, num_threads, num_threads, std::move(reader),
+        std::move(processors), std::move(searcher));
     extern_searcher.join();
   }
   // ---------------------------------------------------------------------------
@@ -248,7 +382,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-
-// int main() {
-//   return 0;
-// }

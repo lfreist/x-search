@@ -89,10 +89,9 @@ std::string to_line(xs::DataChunk* data, uint64_t match_global_byte_offset) {
     //  next_nl if the file does not end with a new line char.
     auto res = std::string(prev_nl + (*prev_nl == '\n' ? 1 : 0),
                            data->data() + data->size() - (prev_nl + 1));
-    res.push_back('\n');
     return res;
   } else {
-    return {prev_nl + (*prev_nl == '\n' ? 1 : 0), next_nl + 1};
+    return {prev_nl + (*prev_nl == '\n' ? 1 : 0), next_nl};
   }
 }
 

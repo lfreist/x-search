@@ -1,6 +1,6 @@
 NAME=x-search
 
-.PHONY: all test lib_test sfgrep_test check_style benchmark clean help
+.PHONY: all test lib_test grep_test check_style benchmark clean help
 
 help:
 	@echo "--------------------------------------------------------------------------------"
@@ -35,14 +35,14 @@ build_benchmark: init
 	cmake -B build-benchmark -DCMAKE_BUILD_TYPE=Benchmark -DRE2_BUILD_TESTING=off 2>/dev/null
 	cmake --build build-benchmark --config Benchmark -j $(nproc) 2>/dev/null
 
-test: lib_test sfgrep_test
+test: lib_test grep_test
 
 lib_test: build init_test_runs
 	ctest -C Release --test-dir build 2>/dev/null
 
-sfgrep_test: build init_test_runs
+grep_test: build init_test_runs
 	if [ ! -f tmp/1gb.dummy.txt ]; then python3 ./scripts/createTestFile.py --size 1 files/words.txt --output tmp/1gb.dummy.txt --progress; fi
-	bash ./test/test_sfgrep.sh ./build tmp/1gb.dummy.txt
+	bash ./test/test_grep.sh ./build tmp/1gb.dummy.txt
 
 check_style:
 	bash ./format_check.sh

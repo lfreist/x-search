@@ -25,8 +25,7 @@ class BaseResult {
   virtual ~BaseResult() = default;
 
   virtual void add(T partial_result) = 0;
-  virtual void sortedAdd(T partial_result) = 0;
-  virtual void sortedAdd(T partial_result, uint64_t id) = 0;
+  virtual void add(T partial_result, uint64_t id) = 0;
 
   [[nodiscard]] virtual size_t size() const = 0;
 
@@ -95,40 +94,8 @@ class ContainerResult : public BaseResult<std::vector<T>> {
     this->_cv->notify_one();
   }
 
-  void sortedAdd(std::vector<T> partial_result) override {
-    if (partial_result.empty()) {
-      return;
-    }
-    std::unique_lock lock(*this->_mutex);
-    _data.wlock()->insert(
-        std::upper_bound(_data.rlock()->begin(), _data.rlock()->end(),
-                         partial_result.front()),
-        std::make_move_iterator(partial_result.begin()),
-        std::make_move_iterator(partial_result.end()));
-    this->_cv->notify_one();
-  }
-
-  void sortedAdd(std::vector<T> partial_result,
-                 uint64_t result_index) override {
-    std::unique_lock lock(*this->_mutex);
-    if (_current_index == result_index) {
-      add(std::move(partial_result));
-      _current_index++;
-      // check if buffered results can be added now
-      while (true) {
-        auto search = _buffer.find(_current_index);
-        if (search == _buffer.end()) {
-          break;
-        }
-        add(std::move(search->second));
-        _buffer.erase(_current_index++);
-      }
-      // at least one partial_result was added -> notify
-      this->_cv->notify_one();
-    } else {
-      // buffer the partial result
-      _buffer.insert({result_index, std::move(partial_result)});
-    }
+  void add(std::vector<T> partial_result, uint64_t id) override {
+    add(std::move(partial_result));
   }
 
   std::vector<T> copyResultSafe() {
@@ -152,8 +119,6 @@ class ContainerResult : public BaseResult<std::vector<T>> {
 
  protected:
   ad_utility::Synchronized<std::vector<T>> _data;
-  std::unordered_map<uint64_t, std::vector<T>> _buffer;
-  uint64_t _current_index = 0;
 };
 
 /**
@@ -200,8 +165,7 @@ class CountResult : public BaseResult<uint64_t> {
   CountResult() = default;
 
   void add(uint64_t partial_result) override;
-  void sortedAdd(uint64_t partial_result) override;
-  void sortedAdd(uint64_t partial_result, uint64_t id) override;
+  void add(uint64_t partial_result, uint64_t id) override;
 
   [[nodiscard]] size_t size() const override;
 

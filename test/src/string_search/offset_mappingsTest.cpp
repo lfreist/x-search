@@ -65,19 +65,19 @@ TEST(offset_mapping, to_line) {
   str.assign(dummy_text);
   ASSERT_EQ(
       xs::map::byte::to_line(&str, 0),
-      "Liane reindorsing two-time zippering chromolithography rainbowweed\n");
+      "Liane reindorsing two-time zippering chromolithography rainbowweed");
   ASSERT_EQ(
       xs::map::byte::to_line(&str, 12),
-      "Liane reindorsing two-time zippering chromolithography rainbowweed\n");
+      "Liane reindorsing two-time zippering chromolithography rainbowweed");
   ASSERT_EQ(xs::map::byte::to_line(&str, 180),
-            "complementizer commorant ever-endingly sheikhly\n");
+            "complementizer commorant ever-endingly sheikhly");
   ASSERT_EQ(xs::map::byte::to_line(&str, 250),
-            "glam predamaged objectionability evil-looking quaquaversal\n");
+            "glam predamaged objectionability evil-looking quaquaversal");
   ASSERT_EQ(xs::map::byte::to_line(&str, 392),
-            "DNB nondeliriousness arpents uncasing\n");
+            "DNB nondeliriousness arpents uncasing");
   ASSERT_EQ(xs::map::byte::to_line(&str, 801),
-            "enforcive Ibilao jubilus meisje sitively\n");
+            "enforcive Ibilao jubilus meisje sitively");
   ASSERT_EQ(xs::map::byte::to_line(&str, 1239),
-            "well-centered by-job crop-tailed vagrantism condescensivelyx\n");
+            "well-centered by-job crop-tailed vagrantism condescensivelyx");
   ASSERT_THROW(xs::map::byte::to_line(&str, 1240), std::runtime_error);
 }

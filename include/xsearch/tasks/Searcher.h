@@ -77,9 +77,8 @@ class LineIndexSearcher
                                DataChunk* data) const override;
 
  private:
-  std::vector<uint64_t> search(
-      DataChunk* data,
-      const std::vector<uint64_t>& mapping_data) const;
+  std::vector<uint64_t> search(DataChunk* data,
+                               const std::vector<uint64_t>& mapping_data) const;
 };
 
 class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
@@ -90,10 +89,10 @@ class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
                                   DataChunk* data) const override;
   std::vector<std::string> search(re2::RE2* pattern,
                                   DataChunk* data) const override;
+
  private:
   std::vector<std::string> search(
-      DataChunk* data,
-      const std::vector<uint64_t>& mapping_data) const;
+      DataChunk* data, const std::vector<uint64_t>& mapping_data) const;
 };
 
 }  // namespace xs::tasks
