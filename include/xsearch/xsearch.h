@@ -70,10 +70,15 @@ typedef Searcher<xs::DataChunk, LinesResult, std::vector<std::string>> lines;
  *  same time
  * @return: a shared_ptr of an initialized and started ExternSearcher
  */
-template <class T>
+template <typename T>
 std::shared_ptr<T> extern_search(const std::string& pattern,
                                  const std::string& file_path,
                                  const std::string& meta_file_path,
                                  int num_threads, int num_readers = 1);
+
+template <typename T>
+std::shared_ptr<T> extern_search(const std::string& pattern,
+                                 const std::string& file_path,
+                                 int num_threads);
 
 }  // namespace xs

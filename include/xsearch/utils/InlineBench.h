@@ -361,6 +361,14 @@ class InlineBenchmarkHandler {
 // =============================================================================
 class InlineBenchmarkRegistrator {
  public:
+  InlineBenchmarkRegistrator(std::string name, BenchmarkType bm_t_id) : _name(std::move(name)), _bm_t_id(bm_t_id) {
+    InlineBenchmarkRegistrator::start(_name, _bm_t_id);
+  }
+
+  ~InlineBenchmarkRegistrator() {
+    InlineBenchmarkRegistrator::stop(_name, _bm_t_id);
+  }
+
   static void start(const std::string& name, BenchmarkType bm_t_id) {
     InlineBenchmarkHandler& instance = InlineBenchmarkHandler::GetInstance();
     instance.start(name, bm_t_id);
@@ -375,6 +383,10 @@ class InlineBenchmarkRegistrator {
     InlineBenchmarkHandler& instance = InlineBenchmarkHandler::GetInstance();
     return instance.Report(fmt);
   }
+
+ private:
+  std::string _name;
+  BenchmarkType _bm_t_id;
 };
 
 // ==== MACROS
@@ -391,6 +403,11 @@ class InlineBenchmarkRegistrator {
 #define INLINE_BENCHMARK_WALL_STOP(name) \
   InlineBenchmarkRegistrator::stop(name, WALL)
 
+#define INLINE_BENCHMARK_WALL(name) \
+  InlineBenchmarkRegistrator(name, WALL)
+#define INLINE_BENCHMARK_CPU(name) \
+  InlineBenchmarkRegistrator(name, CPU)
+
 #define INLINE_BENCHMARK_REPORT(fmt) InlineBenchmarkRegistrator::report(fmt)
 #else
 // empty definitions
@@ -399,6 +416,9 @@ class InlineBenchmarkRegistrator {
 
 #define INLINE_BENCHMARK_WALL_START(name)
 #define INLINE_BENCHMARK_WALL_STOP(name)
+
+#define INLINE_BENCHMARK_WALL(name)
+#define INLINE_BENCHMARK_CPU(name)
 
 #define INLINE_BENCHMARK_REPORT(fmt) ""
 #endif

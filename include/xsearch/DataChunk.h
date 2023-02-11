@@ -88,6 +88,8 @@ class DataChunk {
   [[nodiscard]] const std::vector<ByteToNewLineMappingInfo>& getMappingData()
       const;
 
+  void setMappingData(std::vector<ByteToNewLineMappingInfo> mapping_data);
+
   /**
    * Move mapping data.
    * !! MARK: mappiing data are no available for this DataChunk instance

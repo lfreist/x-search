@@ -87,6 +87,12 @@ const std::vector<ByteToNewLineMappingInfo>& DataChunk::getMappingData() const {
 }
 
 // _____________________________________________________________________________
+void DataChunk::setMappingData(
+    std::vector<ByteToNewLineMappingInfo> mapping_data) {
+  _byte_to_nl_mapping_data = std::move(mapping_data);
+}
+
+// _____________________________________________________________________________
 std::vector<ByteToNewLineMappingInfo> DataChunk::moveMappingData() {
   return std::move(_byte_to_nl_mapping_data);
 }

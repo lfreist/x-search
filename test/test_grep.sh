@@ -35,8 +35,8 @@ echo " done"
 
 keywords=("key" "pass" "pattern" "jeez")
 regex_keywords=("pas[s|t]" "pat[t]*e")
-in_files=("$file" "tmp/$file_name.xslz4" "tmp/$file_name.xszst")
-meta_files=("tmp/$file_name.xs.meta" "tmp/$file_name.xslz4.meta" "tmp/$file_name.xszst.meta")
+in_files=("$file" "$file" "tmp/$file_name.xslz4" "tmp/$file_name.xszst")
+meta_files=("" "tmp/$file_name.xs.meta" "tmp/$file_name.xslz4.meta" "tmp/$file_name.xszst.meta")
 num_threads=(1 4)
 
 # running grep and saving outputs to /tmp

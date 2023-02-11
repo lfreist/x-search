@@ -30,4 +30,14 @@ class ZSTDDecompressor : public BaseProcessor<DataChunk> {
   void process(DataChunk* data) override;
 };
 
+class NewLineSearcher : public BaseProcessor<DataChunk> {
+ public:
+  NewLineSearcher() = default;
+
+  void process(DataChunk* data) override;
+
+ private:
+  uint64_t _line_index = 0;
+};
+
 }  // namespace xs::tasks

@@ -321,25 +321,36 @@ int main(int argc, char** argv) {
   num_threads = num_threads == 0 ? 1 : num_threads;
   // ---------------------------------------------------------------------------
 
-  // creating TaskManager with its tasks and run it ----------------------------
   std::vector<std::unique_ptr<xs::tasks::BaseProcessor<xs::DataChunk>>>
       processors;
 
   // check for compression and add decompression task --------------------------
-  xs::MetaFile metaFile(meta_file_path, std::ios::in);
-  switch (metaFile.getCompressionType()) {
-    case xs::CompressionType::LZ4:
-      processors.push_back(std::make_unique<xs::tasks::LZ4Decompressor>());
-      break;
-    case xs::CompressionType::ZSTD:
-      processors.emplace_back(std::make_unique<xs::tasks::ZSTDDecompressor>());
-      break;
-    default:
-      break;
+  if (meta_file_path.empty()) {
+    if (line_number) {
+      processors.push_back(std::make_unique<xs::tasks::NewLineSearcher>());
+    }
+  } else {
+    xs::MetaFile metaFile(meta_file_path, std::ios::in);
+    switch (metaFile.getCompressionType()) {
+      case xs::CompressionType::LZ4:
+        processors.push_back(std::make_unique<xs::tasks::LZ4Decompressor>());
+        break;
+      case xs::CompressionType::ZSTD:
+        processors.emplace_back(
+            std::make_unique<xs::tasks::ZSTDDecompressor>());
+        break;
+      default:
+        break;
+    }
   }
   // ---------------------------------------------------------------------------
-  auto reader =
-      std::make_unique<xs::tasks::ExternBlockReader>(file_path, meta_file_path);
+  std::unique_ptr<xs::tasks::BaseDataProvider<xs::DataChunk>> reader;
+  if (meta_file_path.empty()) {
+    reader = std::make_unique<xs::tasks::ExternBlockReader>(file_path);
+  } else {
+    reader = std::make_unique<xs::tasks::ExternBlockMetaReader>(file_path,
+                                                                meta_file_path);
+  }
 
   if (count) {
     // count set -> count results and output number in the end -----------------
