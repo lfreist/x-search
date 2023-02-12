@@ -10,7 +10,7 @@ namespace xs::map::bytes {
 std::vector<uint64_t> to_line_indices(
     const xs::DataChunk* data,
     const std::vector<uint64_t>& match_global_byte_offsets) {
-  const auto& mapping_data = data->getMappingData();
+  const auto& mapping_data = data->getMetaData().line_mapping_data;
   // we store the iterators outside the for loop, because we assume that the
   //  match_global_byte_offsets vector is sorted. Thus, we do not need to
   //  perform the full binary search for every single byte offset but rather can
@@ -45,8 +45,8 @@ std::vector<uint64_t> to_line_indices(
 
     // Search new lines starting from the result of the binary search above.
     while (true) {
-      if (data->data()[current_global_byte_offset - data->getOffset()] ==
-          '\n') {
+      if (data->data()[current_global_byte_offset -
+                       data->getMetaData().actual_offset] == '\n') {
         line_index += continue_by_one;
       }
       if (current_global_byte_offset == bo) {
@@ -67,7 +67,7 @@ namespace xs::map::byte {
 // _____________________________________________________________________________
 std::string to_line(xs::DataChunk* data, uint64_t match_global_byte_offset) {
   uint64_t match_local_byte_offset =
-      match_global_byte_offset - data->getOffset();
+      match_global_byte_offset - data->getMetaData().actual_offset;
   std::string result;
   if (match_local_byte_offset >= data->size()) {
     // we should never reach this point!

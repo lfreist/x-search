@@ -6,7 +6,7 @@
 // ----- Helper function -------------------------------------------------------
 // _____________________________________________________________________________
 std::string _get_regex_match_(const char* data, size_t size,
-                             const re2::RE2& pattern) {
+                              const re2::RE2& pattern) {
   re2::StringPiece input(data, size);
   re2::StringPiece match;
   re2::RE2::PartialMatch(input, pattern, &match);
@@ -99,9 +99,8 @@ void GrepResult::add(grep_result partial_result) {
           shift = match_pos + match.size();
         }
         // print rest of the string (eq. pythonic substr is str[shift:])
-        std::cout << std::string(
-                         r.str.begin() + static_cast<int64_t>(shift),
-                         r.str.end())
+        std::cout << std::string(r.str.begin() + static_cast<int64_t>(shift),
+                                 r.str.end())
                   << '\n';
       } else {
         std::cout << r.str << '\n';
@@ -111,13 +110,16 @@ void GrepResult::add(grep_result partial_result) {
 }
 
 // _____________________________________________________________________________
-GrepSearcher::GrepSearcher(bool byte_offset, bool line_number, bool only_matching, bool color) : _byte_offset(byte_offset),
-                                                                                                 _line_number(line_number),
-                                                                                                 _only_matching(only_matching),
-                                                                                                 _color(color) {}
+GrepSearcher::GrepSearcher(bool byte_offset, bool line_number,
+                           bool only_matching, bool color)
+    : _byte_offset(byte_offset),
+      _line_number(line_number),
+      _only_matching(only_matching),
+      _color(color) {}
 
 // _____________________________________________________________________________
-grep_result GrepSearcher::search(const std::string& pattern, xs::DataChunk* data) const {
+grep_result GrepSearcher::search(const std::string& pattern,
+                                 xs::DataChunk* data) const {
   std::vector<uint64_t> byte_offsets =
       _only_matching
           ? xs::search::global_byte_offsets_match(data, pattern, false)
@@ -131,10 +133,9 @@ grep_result GrepSearcher::search(const std::string& pattern, xs::DataChunk* data
   std::vector<std::string> lines;
   if (!_only_matching) {
     lines.resize(byte_offsets.size());
-    std::transform(byte_offsets.begin(), byte_offsets.end(), lines.begin(),
-                   [data](uint64_t index) {
-                     return xs::map::byte::to_line(data, index);
-                   });
+    std::transform(
+        byte_offsets.begin(), byte_offsets.end(), lines.begin(),
+        [data](uint64_t index) { return xs::map::byte::to_line(data, index); });
   }
 
   std::pair<std::vector<GrepPartialResult>, GrepResultSettings> res = {
@@ -152,8 +153,7 @@ grep_result GrepSearcher::search(const std::string& pattern, xs::DataChunk* data
 grep_result GrepSearcher::search(re2::RE2* pattern, xs::DataChunk* data) const {
   std::vector<uint64_t> byte_offsets =
       _only_matching
-          ? xs::search::regex::global_byte_offsets_match(data, *pattern,
-                                                         false)
+          ? xs::search::regex::global_byte_offsets_match(data, *pattern, false)
           : xs::search::regex::global_byte_offsets_line(data, *pattern);
   std::vector<uint64_t> line_numbers;
   if (_line_number) {
@@ -166,21 +166,23 @@ grep_result GrepSearcher::search(re2::RE2* pattern, xs::DataChunk* data) const {
     lines.resize(byte_offsets.size());
     std::transform(byte_offsets.begin(), byte_offsets.end(), lines.begin(),
                    [data, pattern](uint64_t index) {
-                     size_t local_byte_offset = index - data->getOffset();
+                     size_t local_byte_offset =
+                         index - data->getMetaData().original_offset;
                      return _get_regex_match_(data->data() + local_byte_offset,
-                                             data->size() - local_byte_offset,
-                                             *pattern);
+                                              data->size() - local_byte_offset,
+                                              *pattern);
                    });
   } else {
     lines.resize(byte_offsets.size());
-    std::transform(byte_offsets.begin(), byte_offsets.end(), lines.begin(),
-                   [data](uint64_t index) {
-                     return xs::map::byte::to_line(data, index);
-                   });
+    std::transform(
+        byte_offsets.begin(), byte_offsets.end(), lines.begin(),
+        [data](uint64_t index) { return xs::map::byte::to_line(data, index); });
   }
 
   std::pair<std::vector<GrepPartialResult>, GrepResultSettings> res = {
-      {}, {true, _line_number || _byte_offset, _color, _only_matching, pattern->pattern()}};
+      {},
+      {true, _line_number || _byte_offset, _color, _only_matching,
+       pattern->pattern()}};
   res.first.resize(byte_offsets.size());
   for (uint64_t i = 0; i < byte_offsets.size(); ++i) {
     res.first[i].index = _line_number ? line_numbers[i] : byte_offsets[i];

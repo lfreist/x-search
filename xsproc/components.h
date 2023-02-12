@@ -5,13 +5,18 @@
 
 #include <xsearch/xsearch.h>
 
-class MetaDataCreator : public xs::tasks::BaseSearcher<xs::DataChunk, xs::ChunkMetaData> {
+typedef std::pair<xs::ChunkMetaData, xs::DataChunk*> preprocess_result;
+
+class MetaDataCreator
+    : public xs::tasks::BaseSearcher<xs::DataChunk, preprocess_result> {
  public:
   MetaDataCreator() = default;
-  xs::ChunkMetaData search(const std::string& pattern, xs::DataChunk* data) const override;
+  preprocess_result search(const std::string& pattern,
+                           xs::DataChunk* data) const override;
 
  private:
-  xs::ChunkMetaData search(re2::RE2* pattern, xs::DataChunk* data) const override;
+  preprocess_result search(re2::RE2* pattern,
+                           xs::DataChunk* data) const override;
 };
 
 class MetaDataWriter : public xs::BaseResult<xs::ChunkMetaData> {

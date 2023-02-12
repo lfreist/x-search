@@ -9,106 +9,49 @@ namespace xs {
 
 // ----- public ----------------------------------------------------------------
 // _____________________________________________________________________________
-DataChunk::DataChunk(strtype data, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
-                     size_t index)
-    : _content(std::move(data)),
-      _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
-  _offset = offset;
-  _originalSize = 0;
-  _index = index;
-}
+DataChunk::DataChunk(strtype data) : _data(std::move(data)) {}
 
 // _____________________________________________________________________________
-DataChunk::DataChunk(uint64_t data_size, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
-                     size_t index)
-    : _content(data_size),
-      _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
-  _offset = offset;
-  _originalSize = 0;
-  _index = index;
-}
+DataChunk::DataChunk(strtype data, ChunkMetaData meta_data)
+    : _meta_data(std::move(meta_data)), _data(std::move(data)) {}
 
 // _____________________________________________________________________________
-DataChunk::DataChunk(strtype data, uint64_t originalSize, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
-                     size_t index)
-    : _content(std::move(data)),
-      _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
-  _originalSize = originalSize;
-  _offset = offset;
-  _index = index;
-}
+DataChunk::DataChunk(ChunkMetaData meta_data)
+    : _meta_data(std::move(meta_data)), _data(_meta_data.actual_size) {}
 
 // _____________________________________________________________________________
-DataChunk::DataChunk(uint64_t data_size, uint64_t originalSize, uint64_t offset,
-                     std::vector<ByteToNewLineMappingInfo> byte_nl_mapping,
-                     size_t index)
-    : _content(data_size),
-      _byte_to_nl_mapping_data(std::move(byte_nl_mapping)) {
-  _originalSize = originalSize;
-  _offset = offset;
-  _index = index;
-}
+strtype& DataChunk::getData() { return _data; }
 
 // _____________________________________________________________________________
-strtype& DataChunk::str() { return _content; }
+const strtype& DataChunk::getData() const { return _data; }
 
 // _____________________________________________________________________________
-uint64_t DataChunk::getOffset() const { return _offset; }
+ChunkMetaData& DataChunk::getMetaData() { return _meta_data; }
 
 // _____________________________________________________________________________
-uint64_t DataChunk::getOriginalSize() const { return _originalSize; }
+const ChunkMetaData& DataChunk::getMetaData() const { return _meta_data; }
 
 // _____________________________________________________________________________
-void DataChunk::setOffset(uint64_t offset) { _offset = offset; }
+char* DataChunk::data() { return _data.data(); }
 
 // _____________________________________________________________________________
-void DataChunk::setOriginalSize(uint64_t original_size) {
-  _originalSize = original_size;
-}
+const char* DataChunk::data() const { return _data.data(); }
 
 // _____________________________________________________________________________
-char* DataChunk::data() { return _content.data(); }
+size_t DataChunk::size() const { return _data.size(); }
 
 // _____________________________________________________________________________
-const char* DataChunk::data() const { return _content.data(); }
+void DataChunk::resize(size_t size) { _data.resize(size); }
 
 // _____________________________________________________________________________
-size_t DataChunk::size() const { return _content.size(); }
+void DataChunk::push_back(char c) { _data.push_back(c); }
 
 // _____________________________________________________________________________
-void DataChunk::resize(size_t size) { _content.resize(size); }
-
-// _____________________________________________________________________________
-const std::vector<ByteToNewLineMappingInfo>& DataChunk::getMappingData() const {
-  return _byte_to_nl_mapping_data;
-}
-
-// _____________________________________________________________________________
-void DataChunk::setMappingData(
-    std::vector<ByteToNewLineMappingInfo> mapping_data) {
-  _byte_to_nl_mapping_data = std::move(mapping_data);
-}
-
-// _____________________________________________________________________________
-std::vector<ByteToNewLineMappingInfo> DataChunk::moveMappingData() {
-  return std::move(_byte_to_nl_mapping_data);
-}
-
-// _____________________________________________________________________________
-void DataChunk::push_back(char c) { _content.push_back(c); }
-
-// _____________________________________________________________________________
-void DataChunk::reserve(size_t size) { _content.reserve(size); }
+void DataChunk::reserve(size_t size) { _data.reserve(size); }
 
 // _____________________________________________________________________________
 void DataChunk::assign(std::string data) {
-  _content.assign(data.begin(), data.end());
+  _data.assign(data.begin(), data.end());
 }
-
-// _____________________________________________________________________________
-size_t DataChunk::getIndex() const { return _index; }
 
 }  // namespace xs

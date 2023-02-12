@@ -33,7 +33,8 @@ static char dummy_text[] =
     "well-centered by-job crop-tailed vagrantism condescensivelyx";
 
 TEST(offset_mapping, to_line_indices) {
-  DataChunk str(0, 0, {{177, 2}, {394, 6}, {802, 13}, {1067, 18}, {1239, 21}});
+  DataChunk str(
+      {0, 0, 0, 0, 0, {{177, 2}, {394, 6}, {802, 13}, {1067, 18}, {1239, 21}}});
   str.assign(dummy_text);
   std::vector<uint64_t> byte_offsets(1240);
   // vector of all byte offsets
@@ -61,7 +62,8 @@ TEST(offset_mapping, to_line_indices) {
 }
 
 TEST(offset_mapping, to_line) {
-  DataChunk str(0, 0, {{176, 3}, {393, 7}, {801, 14}, {1066, 19}, {1239, 23}});
+  DataChunk str(
+      {0, 0, 0, 0, 0, {{177, 2}, {394, 6}, {802, 13}, {1067, 18}, {1239, 21}}});
   str.assign(dummy_text);
   ASSERT_EQ(
       xs::map::byte::to_line(&str, 0),

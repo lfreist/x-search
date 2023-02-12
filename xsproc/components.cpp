@@ -3,6 +3,7 @@
 
 #include "./components.h"
 
-xs::ChunkMetaData MetaDataCreator::search(const std::string& pattern, xs::DataChunk* data) const {
-
+preprocess_result MetaDataCreator::search(const std::string& pattern,
+                                          xs::DataChunk* data) const {
+  return {std::move(data->getMetaData()), data};
 }

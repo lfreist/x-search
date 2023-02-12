@@ -12,8 +12,13 @@ namespace xs::tasks {
 // _____________________________________________________________________________
 void LZ4Decompressor::process(DataChunk* data) {
   INLINE_BENCHMARK_WALL_START("decompression");
-  DataChunk chunk(data->getOriginalSize(), data->getOriginalSize(),
-                  data->getOffset(), data->moveMappingData(), data->getIndex());
+  // get and update meta data
+  auto cmd = std::move(data->getMetaData());
+  cmd.actual_size = cmd.original_size;
+  cmd.actual_offset = cmd.original_offset;
+  // create new chunk
+  DataChunk chunk(std::move(cmd));
+  // decompress into new chunk
   xs::utils::compression::LZ4::decompressToBuffer(data->data(), data->size(),
                                                   chunk.data(), chunk.size());
   *data = std::move(chunk);
@@ -23,8 +28,13 @@ void LZ4Decompressor::process(DataChunk* data) {
 // _____________________________________________________________________________
 void ZSTDDecompressor::process(DataChunk* data) {
   INLINE_BENCHMARK_WALL_START("decompression");
-  DataChunk chunk(data->getOriginalSize(), data->getOriginalSize(),
-                  data->getOffset(), data->moveMappingData(), data->getIndex());
+  // get and update meta data
+  auto cmd = std::move(data->getMetaData());
+  cmd.actual_size = cmd.original_size;
+  cmd.actual_offset = cmd.original_offset;
+  // create new chunk
+  DataChunk chunk(std::move(cmd));
+  // decompress into new chunk
   xs::utils::compression::ZSTD::decompressToBuffer(data->data(), data->size(),
                                                    chunk.data(), chunk.size());
   *data = std::move(chunk);
@@ -51,19 +61,21 @@ void NewLineSearcher::process(DataChunk* data) {
     // only add the data, if the _distance is reached
     if (current_distance >= _distance) {
       mapping_data.push_back(
-          {static_cast<uint64_t>(shift) + data->getOffset(), _line_index});
+          {static_cast<uint64_t>(shift) + data->getMetaData().original_offset,
+           _line_index});
     }
     _line_index++;
     shift++;
   }
-  data->setMappingData(std::move(mapping_data));
+  data->getMetaData().line_mapping_data = std::move(mapping_data);
   INLINE_BENCHMARK_WALL_STOP("adding line index data");
 }
 
 // _____________________________________________________________________________
 void ToLower::process(DataChunk* data) {
   INLINE_BENCHMARK_WALL_START("transforming to lower case");
-  std::transform(data->str().begin(), data->str().end(), data->str().begin(),
+  std::transform(data->getData().begin(), data->getData().end(),
+                 data->getData().begin(),
                  [](int c) { return std::tolower(c); });
   INLINE_BENCHMARK_WALL_STOP("transforming to lower case");
 }

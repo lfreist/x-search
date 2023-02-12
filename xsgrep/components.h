@@ -4,8 +4,8 @@
 #include <xsearch/xsearch.h>
 
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
 /**
  * GrepPartialResult: A struct holding all information necessary to produce a

@@ -242,10 +242,9 @@ std::shared_ptr<full> extern_search(const std::string& pattern,
 // _____________________________________________________________________________
 template <>
 std::shared_ptr<count_matches> extern_search(const std::string& pattern,
-                                const std::string& file_path,
-                                int num_threads) {
-  auto reader =
-      std::make_unique<tasks::ExternBlockReader>(file_path);
+                                             const std::string& file_path,
+                                             int num_threads) {
+  auto reader = std::make_unique<tasks::ExternBlockReader>(file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataChunk>>> processors;
   processors.push_back(std::make_unique<tasks::NewLineSearcher>());
@@ -254,17 +253,16 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<count_matches>(
-      pattern, num_threads, 1, std::move(reader),
-      std::move(processors), std::move(searcher));
+      pattern, num_threads, 1, std::move(reader), std::move(processors),
+      std::move(searcher));
 }
 
 // _____________________________________________________________________________
 template <>
 std::shared_ptr<count_lines> extern_search(const std::string& pattern,
-                                const std::string& file_path,
-                                int num_threads) {
-  auto reader =
-      std::make_unique<tasks::ExternBlockReader>(file_path);
+                                           const std::string& file_path,
+                                           int num_threads) {
+  auto reader = std::make_unique<tasks::ExternBlockReader>(file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataChunk>>> processors;
   processors.push_back(std::make_unique<tasks::NewLineSearcher>());
@@ -272,18 +270,17 @@ std::shared_ptr<count_lines> extern_search(const std::string& pattern,
   auto searcher = std::make_unique<tasks::LineCounter>();
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<count_lines>(
-      pattern, num_threads, 1, std::move(reader),
-      std::move(processors), std::move(searcher));
+  return std::make_shared<count_lines>(pattern, num_threads, 1,
+                                       std::move(reader), std::move(processors),
+                                       std::move(searcher));
 }
 
 // _____________________________________________________________________________
 template <>
 std::shared_ptr<match_byte_offsets> extern_search(const std::string& pattern,
-                                const std::string& file_path,
-                                int num_threads) {
-  auto reader =
-      std::make_unique<tasks::ExternBlockReader>(file_path);
+                                                  const std::string& file_path,
+                                                  int num_threads) {
+  auto reader = std::make_unique<tasks::ExternBlockReader>(file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataChunk>>> processors;
   processors.push_back(std::make_unique<tasks::NewLineSearcher>());
@@ -292,17 +289,16 @@ std::shared_ptr<match_byte_offsets> extern_search(const std::string& pattern,
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<match_byte_offsets>(
-      pattern, num_threads, 1, std::move(reader),
-      std::move(processors), std::move(searcher));
+      pattern, num_threads, 1, std::move(reader), std::move(processors),
+      std::move(searcher));
 }
 
 // _____________________________________________________________________________
 template <>
 std::shared_ptr<line_byte_offsets> extern_search(const std::string& pattern,
-                                const std::string& file_path,
-                                int num_threads) {
-  auto reader =
-      std::make_unique<tasks::ExternBlockReader>(file_path);
+                                                 const std::string& file_path,
+                                                 int num_threads) {
+  auto reader = std::make_unique<tasks::ExternBlockReader>(file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataChunk>>> processors;
   processors.push_back(std::make_unique<tasks::NewLineSearcher>());
@@ -311,17 +307,16 @@ std::shared_ptr<line_byte_offsets> extern_search(const std::string& pattern,
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<line_byte_offsets>(
-      pattern, num_threads, 1, std::move(reader),
-      std::move(processors), std::move(searcher));
+      pattern, num_threads, 1, std::move(reader), std::move(processors),
+      std::move(searcher));
 }
 
 // _____________________________________________________________________________
 template <>
 std::shared_ptr<line_indices> extern_search(const std::string& pattern,
-                                const std::string& file_path,
-                                int num_threads) {
-  auto reader =
-      std::make_unique<tasks::ExternBlockReader>(file_path);
+                                            const std::string& file_path,
+                                            int num_threads) {
+  auto reader = std::make_unique<tasks::ExternBlockReader>(file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataChunk>>> processors;
   processors.push_back(std::make_unique<tasks::NewLineSearcher>());
@@ -330,17 +325,16 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<line_indices>(
-      pattern, num_threads, 1, std::move(reader),
-      std::move(processors), std::move(searcher));
+      pattern, num_threads, 1, std::move(reader), std::move(processors),
+      std::move(searcher));
 }
 
 // _____________________________________________________________________________
 template <>
 std::shared_ptr<lines> extern_search(const std::string& pattern,
-                                const std::string& file_path,
-                                int num_threads) {
-  auto reader =
-      std::make_unique<tasks::ExternBlockReader>(file_path);
+                                     const std::string& file_path,
+                                     int num_threads) {
+  auto reader = std::make_unique<tasks::ExternBlockReader>(file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseProcessor<DataChunk>>> processors;
   processors.push_back(std::make_unique<tasks::NewLineSearcher>());
@@ -348,9 +342,8 @@ std::shared_ptr<lines> extern_search(const std::string& pattern,
   auto searcher = std::make_unique<tasks::LineSearcher>();
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<lines>(
-      pattern, num_threads, 1, std::move(reader),
-      std::move(processors), std::move(searcher));
+  return std::make_shared<lines>(pattern, num_threads, 1, std::move(reader),
+                                 std::move(processors), std::move(searcher));
 }
 
 }  // namespace xs

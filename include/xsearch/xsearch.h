@@ -78,7 +78,6 @@ std::shared_ptr<T> extern_search(const std::string& pattern,
 
 template <typename T>
 std::shared_ptr<T> extern_search(const std::string& pattern,
-                                 const std::string& file_path,
-                                 int num_threads);
+                                 const std::string& file_path, int num_threads);
 
 }  // namespace xs

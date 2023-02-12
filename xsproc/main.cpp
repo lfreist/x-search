@@ -110,5 +110,6 @@ int main(int argc, char** argv) {
     }
   }
   // set reader ----------------------------------------------------------------
-  auto reader = std::make_unique<xs::tasks::ExternBlockReader>(args.source_file, args.min_chunk_size);
+  auto reader = std::make_unique<xs::tasks::ExternBlockReader>(
+      args.source_file, args.min_chunk_size);
 }

@@ -29,13 +29,12 @@ ExternBlockMetaReader::getNextData() {
   INLINE_BENCHMARK_WALL_START("seeking file position");
   stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
   INLINE_BENCHMARK_WALL_STOP("seeking file position");
-  xs::DataChunk chunk(cmd.actual_size, cmd.original_size, cmd.original_offset,
-                      std::move(cmd.line_mapping_data), cmd.chunk_index);
+  xs::DataChunk chunk(std::move(cmd));
   INLINE_BENCHMARK_WALL_START("actual read");
-  stream.read(chunk.data(), static_cast<int64_t>(cmd.actual_size));
+  stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
   INLINE_BENCHMARK_WALL_STOP("actual read");
   INLINE_BENCHMARK_WALL_STOP("reading");
-  return std::make_pair(std::move(chunk), cmd.chunk_index);
+  return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
 // ----- ExternBlockReader -----------------------------------------------------
@@ -55,8 +54,13 @@ ExternBlockReader::ExternBlockReader(std::string file_path, size_t min_size,
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
   std::unique_lock lock(*_stream_mutex);
-  xs::DataChunk chunk(_min_size + _max_oversize, _current_offset, {},
-                      _current_index);
+  ChunkMetaData cmd{_current_index,
+                    _current_offset,
+                    _current_offset,
+                    _min_size + _max_oversize,
+                    _min_size + _max_oversize,
+                    {}};
+  DataChunk chunk(std::move(cmd));
   _file_stream.read(chunk.data(), static_cast<int64_t>(_min_size));
   auto num_bytes_read = _file_stream.gcount();
 
@@ -66,7 +70,8 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
     while (true) {
       if (static_cast<size_t>(additional_bytes_read) > _max_oversize) {
         throw std::runtime_error(
-            "ERROR: maximum size exceeded while reading data: " + std::to_string(additional_bytes_read));
+            "ERROR: maximum size exceeded while reading data: " +
+            std::to_string(additional_bytes_read));
       }
       _file_stream.read(chunk.data() + num_bytes_read + additional_bytes_read,
                         1);
@@ -81,6 +86,8 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
   }
   if (num_bytes_read > 0) {
     chunk.resize(num_bytes_read);
+    chunk.getMetaData().actual_size = num_bytes_read;
+    chunk.getMetaData().original_size = num_bytes_read;
     _current_offset += num_bytes_read;
     return std::make_pair(std::move(chunk), _current_index++);
   }

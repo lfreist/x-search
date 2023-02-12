@@ -105,8 +105,9 @@ std::vector<uint64_t> local_byte_offsets_match(xs::DataChunk* data,
 std::vector<uint64_t> global_byte_offsets_match(xs::DataChunk* data,
                                                 const std::string& pattern,
                                                 bool skip_to_nl) {
-  return _byte_offsets(data, pattern, skip_to_nl,
-                       [data](uint64_t v) { return v + data->getOffset(); });
+  return _byte_offsets(data, pattern, skip_to_nl, [data](uint64_t v) {
+    return v + data->getMetaData().actual_offset;
+  });
 }
 
 // _____________________________________________________________________________
@@ -122,7 +123,7 @@ std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
                                                const std::string& pattern) {
   return _byte_offsets(data, pattern, true, [data](uint64_t v) {
     return v - previous_new_line_offset_relative_to_match(data, v) +
-           data->getOffset();
+           data->getMetaData().actual_offset;
   });
 }
 
@@ -163,7 +164,7 @@ std::vector<uint64_t> regex::local_byte_offsets_match(const xs::DataChunk* data,
 std::vector<uint64_t> regex::global_byte_offsets_match(
     const xs::DataChunk* data, const re2::RE2& pattern, bool skip_to_nl) {
   return _regex_byte_offsets(data, pattern, skip_to_nl, [data](uint64_t v) {
-    return v + data->getOffset();
+    return v + data->getMetaData().actual_offset;
   });
 }
 
@@ -180,7 +181,7 @@ std::vector<uint64_t> regex::global_byte_offsets_line(const xs::DataChunk* data,
                                                       const re2::RE2& pattern) {
   return _regex_byte_offsets(data, pattern, true, [data](uint64_t v) {
     return v - previous_new_line_offset_relative_to_match(data, v) +
-           data->getOffset();
+           data->getMetaData().actual_offset;
   });
 }
 
