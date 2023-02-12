@@ -22,11 +22,11 @@ fi
 # preprocessing file:
 echo " Processing $file..."
 echo "  no compression: $file_name.xs.meta"
-"$xs_binaries/FilePreprocessor" "$file" -a none -d 500 -m "tmp/$file_name.xs.meta" >/dev/null &
+# "$xs_binaries/FilePreprocessor" "$file" -a none -d 500 -m "tmp/$file_name.xs.meta" >/dev/null &
 echo "  lz4 compression: $file_name.xslz4.meta | $file_name.xslz4"
-"$xs_binaries/FilePreprocessor" "$file" -a lz4 -d 500 -m "tmp/$file_name.xslz4.meta" -o "tmp/$file_name.xslz4" >/dev/null &
+# "$xs_binaries/FilePreprocessor" "$file" -a lz4 -d 500 -m "tmp/$file_name.xslz4.meta" -o "tmp/$file_name.xslz4" >/dev/null &
 echo "  zst compression: $file_name.xszst.meta | $file_name.xszst"
-"$xs_binaries/FilePreprocessor" "$file" -a zst -d 500 -m "tmp/$file_name.xszst.meta" -o "tmp/$file_name.xszst" >/dev/null &
+# "$xs_binaries/FilePreprocessor" "$file" -a zst -d 500 -m "tmp/$file_name.xszst.meta" -o "tmp/$file_name.xszst" >/dev/null &
 
 echo " ..."
 wait
@@ -70,7 +70,7 @@ for nt in "${num_threads[@]}"; do
     echo " file: ${in_files[index]} | ${meta_files[index]}"
     echo "  raw lines (no command line options)"
     for i in "${keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -80,7 +80,7 @@ for nt in "${num_threads[@]}"; do
       fi
     done
     for i in "${regex_keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.r_grep_.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -92,7 +92,7 @@ for nt in "${num_threads[@]}"; do
 
     echo " count matches (-c)"
     for i in "${keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -c --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -c --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_c.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -102,7 +102,7 @@ for nt in "${num_threads[@]}"; do
       fi
     done
     for i in "${regex_keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -c --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -c --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.r_grep_c.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -114,7 +114,7 @@ for nt in "${num_threads[@]}"; do
 
     echo " byte offsets (-b)"
     for i in "${keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -b --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -b --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_b.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -124,7 +124,7 @@ for nt in "${num_threads[@]}"; do
       fi
     done
     for i in "${regex_keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -b --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -b --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.r_grep_b.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -136,7 +136,7 @@ for nt in "${num_threads[@]}"; do
 
     echo " byte offsets of match (-b -o)"
     for i in "${keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -b -o --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -b -o --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_b_o.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -154,7 +154,7 @@ for nt in "${num_threads[@]}"; do
 
     echo " line numbers (-n)"
     for i in "${keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -n --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -n --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_n.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -164,7 +164,7 @@ for nt in "${num_threads[@]}"; do
       fi
     done
     for i in "${regex_keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -n --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -n --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.r_grep_n.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -176,7 +176,7 @@ for nt in "${num_threads[@]}"; do
 
     echo " line numbers match only (-n -o)"
     for i in "${keywords[@]}"; do
-      "./$xs_binaries/xsgrep" "$i" "${in_files[index]}" "${meta_files[index]}" -n -o --no-color -j "$nt" >tmp/xsgrep.tmp
+      "./$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -n -o --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_n_o.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))

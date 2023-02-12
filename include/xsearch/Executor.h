@@ -19,14 +19,15 @@
 
 namespace xs {
 
-template <class DataT, class ResT, class PartResT>
-class Searcher {
+template <class DataT, class ResT, class PartResT, typename... Args>
+class Executor {
  public:
   // ---------------------------------------------------------------------------
-  Searcher(std::string pattern, int num_threads, int max_readers,
+  Executor(std::string pattern, int num_threads, int max_readers,
            std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
            std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
-           std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>> searchers)
+           std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>> searchers,
+           Args&&... result_args)
       : _reader(std::move(reader)),
         _processors(std::move(processors)),
         _searcher(std::move(searchers)) {
@@ -40,15 +41,15 @@ class Searcher {
     if (_regex) {
       _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
     }
-    _result = std::make_unique<ResT>();
+    _result = std::make_unique<ResT>(std::forward<Args>(result_args)...);
     _running = true;
     _workers = num_threads;
     for (auto& t : _threads) {
-      t = std::thread(&Searcher::main_task, this);
+      t = std::thread(&Executor::main_task, this);
     }
   }
 
-  ~Searcher() { join(); }
+  ~Executor() { join(); }
 
   /*
   iterator begin() { return iterator(*this, 0); }

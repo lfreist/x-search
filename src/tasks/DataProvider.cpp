@@ -63,12 +63,16 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
   if (num_bytes_read > 0 && chunk.data()[num_bytes_read - 1] != '\n' &&
       !_file_stream.eof()) {
     int64_t additional_bytes_read = 0;
-    while (static_cast<size_t>(additional_bytes_read) < _max_oversize &&
-           !_file_stream.eof()) {
+    while (true) {
+      if (static_cast<size_t>(additional_bytes_read) > _max_oversize) {
+        throw std::runtime_error(
+            "ERROR: maximum size exceeded while reading data: " + std::to_string(additional_bytes_read));
+      }
       _file_stream.read(chunk.data() + num_bytes_read + additional_bytes_read,
                         1);
-      if (chunk.data()[num_bytes_read + additional_bytes_read] != '\n' ||
+      if (chunk.data()[num_bytes_read + additional_bytes_read] == '\n' ||
           _file_stream.eof()) {
+        additional_bytes_read++;
         break;
       }
       additional_bytes_read++;

@@ -3,9 +3,7 @@
 BENCHMARK() {
   exec 3>&1 4>&2
   res=$(
-    TIMEFORMAT='%E'  # get wall time in seconds
-    LC_ALL=C         # use '.' instead of ',' as delimiter
-    { time "$@" 1>&3 2>&4; } 2>&1
+    { /usr/bin/time -f "{\"wall [s]\": %e, \"user [s]\": %U, \"sys [s]\": %S, }" "$@" 1>&3 2>&4; } 2>&1
   )
   exec 3>&- 4>&-
   echo "$res"

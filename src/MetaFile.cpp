@@ -110,11 +110,10 @@ MetaFile::MetaFile(const std::string& filePath, std::ios::openmode mode,
 // _____________________________________________________________________________
 MetaFile::MetaFile(MetaFile&& XSMetaFile) noexcept
     : _metaFileStream(std::move(XSMetaFile._metaFileStream)) {
-  XSMetaFile._getChunkMutex.lock();
+  std::unique_lock lock(_stream_mutex);
   _filePath = std::move(XSMetaFile._filePath);
   _openMode = XSMetaFile._openMode;
   _compressionType = XSMetaFile._compressionType;
-  XSMetaFile._getChunkMutex.unlock();
 }
 
 // _____________________________________________________________________________
@@ -122,7 +121,7 @@ MetaFile::~MetaFile() { _metaFileStream.close(); }
 
 // _____________________________________________________________________________
 std::optional<ChunkMetaData> MetaFile::nextChunkMetaData() {
-  std::unique_lock _getChunkLock(_getChunkMutex);
+  std::unique_lock lock(_stream_mutex);
   ChunkMetaData cs = readChunkMetaData(&_metaFileStream);
   if (_metaFileStream.eof()) {
     return {};
@@ -134,7 +133,7 @@ std::optional<ChunkMetaData> MetaFile::nextChunkMetaData() {
 // _____________________________________________________________________________
 std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
   INLINE_BENCHMARK_WALL_START("read meta data");
-  std::unique_lock _getChunkLock(_getChunkMutex);
+  std::unique_lock lock(_stream_mutex);
   std::vector<ChunkMetaData> cs;
   cs.reserve(num);
   for (uint32_t i = 0; i < num; ++i) {
@@ -151,6 +150,7 @@ std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
 
 // _____________________________________________________________________________
 void MetaFile::writeChunkMetaData(const ChunkMetaData& chunk) {
+  std::unique_lock lock(_stream_mutex);
   assert(_openMode == (std::ios::out | std::ios::binary));
   assert(_compressionType != UNKNOWN);
   chunk.serialize(&_metaFileStream);

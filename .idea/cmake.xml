@@ -2,15 +2,15 @@
 <project version="4">
   <component name="CMakeSharedSettings">
     <configurations>
-      <configuration PROFILE_NAME="Benchmark" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-DBENCHMARK&quot;" />
-      <configuration PROFILE_NAME="Debug-gcc" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="gcc" />
-      <configuration PROFILE_NAME="Release-gcc" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" />
-      <configuration PROFILE_NAME="Release-clang" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="clang" />
-      <configuration PROFILE_NAME="Debug-clang" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="clang" />
-      <configuration PROFILE_NAME="thread-sanitizer" ENABLED="true" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=thread&quot;" />
-      <configuration PROFILE_NAME="address-sanitizer" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=address&quot;" />
-      <configuration PROFILE_NAME="memory-sanitizer" ENABLED="true" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=memory&quot;" />
-      <configuration PROFILE_NAME="leak-sanitizer" ENABLED="true" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=leak&quot;" />
+      <configuration PROFILE_NAME="Benchmark" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-DBENCHMARK&quot; -DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="Debug-gcc" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="Release-gcc" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="Release-clang" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="Debug-clang" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="thread-sanitizer" ENABLED="true" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=thread&quot; -DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="address-sanitizer" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=address&quot; -DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="memory-sanitizer" ENABLED="true" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=memory&quot; -DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="leak-sanitizer" ENABLED="true" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=leak&quot; -DRE2_BUILD_TESTING=off" />
     </configurations>
   </component>
 </project>

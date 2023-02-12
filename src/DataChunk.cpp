@@ -53,7 +53,7 @@ DataChunk::DataChunk(uint64_t data_size, uint64_t originalSize, uint64_t offset,
 }
 
 // _____________________________________________________________________________
-const strtype& DataChunk::str() const { return _content; }
+strtype& DataChunk::str() { return _content; }
 
 // _____________________________________________________________________________
 uint64_t DataChunk::getOffset() const { return _offset; }

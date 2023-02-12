@@ -7,7 +7,7 @@ add_library(Result ResultTypes.cpp)
 add_library(DataChunk DataChunk.cpp)
 add_library(MetaFile MetaFile.cpp)
 
-add_library(Searcher Searcher.cpp)
+add_library(Searcher Executor.cpp)
 target_link_libraries(Searcher PUBLIC DataChunk MetaFile Tasks)
 
 add_library(FilePreprocessing FilePreprocessing.cpp)

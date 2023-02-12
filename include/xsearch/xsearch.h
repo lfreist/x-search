@@ -4,10 +4,10 @@
 #pragma once
 
 #include <xsearch/DataChunk.h>
+#include <xsearch/Executor.h>
 #include <xsearch/FilePreprocessing.h>
 #include <xsearch/MetaFile.h>
 #include <xsearch/ResultTypes.h>
-#include <xsearch/Searcher.h>
 #include <xsearch/string_search/offset_mappings.h>
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
@@ -27,7 +27,7 @@
 namespace xs {
 
 /**
- * By defining full Searcher<> types, we allow the user to get easy access
+ * By defining full Executor<> types, we allow the user to get easy access
  *  to basic search functionalities including:
  *    - count: count matches
  *    - count_lines: count lines containing a match
@@ -42,15 +42,15 @@ namespace xs {
  *  E.g.: extern_search<count>(...) will start and return an ExternSearch object
  *  initialized with everything needed for counting matches.
  */
-typedef Searcher<xs::DataChunk, CountMatchesResult, uint64_t> count_matches;
-typedef Searcher<xs::DataChunk, CountLinesResult, uint64_t> count_lines;
-typedef Searcher<xs::DataChunk, MatchByteOffsetsResult, std::vector<uint64_t>>
+typedef Executor<xs::DataChunk, CountMatchesResult, uint64_t> count_matches;
+typedef Executor<xs::DataChunk, CountLinesResult, uint64_t> count_lines;
+typedef Executor<xs::DataChunk, MatchByteOffsetsResult, std::vector<uint64_t>>
     match_byte_offsets;
-typedef Searcher<xs::DataChunk, LineByteOffsetsResult, std::vector<uint64_t>>
+typedef Executor<xs::DataChunk, LineByteOffsetsResult, std::vector<uint64_t>>
     line_byte_offsets;
-typedef Searcher<xs::DataChunk, LineIndicesResult, std::vector<uint64_t>>
+typedef Executor<xs::DataChunk, LineIndicesResult, std::vector<uint64_t>>
     line_indices;
-typedef Searcher<xs::DataChunk, LinesResult, std::vector<std::string>> lines;
+typedef Executor<xs::DataChunk, LinesResult, std::vector<std::string>> lines;
 
 /**
  * A simple one-function API call to ExternSearcher.

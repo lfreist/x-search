@@ -97,7 +97,7 @@ class MetaFile {
   std::ios::openmode _openMode;
   size_t _chunk_index = 0;
 
-  std::mutex _getChunkMutex;
+  std::mutex _stream_mutex;
 };
 
 }  // namespace xs

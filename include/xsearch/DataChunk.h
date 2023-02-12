@@ -54,10 +54,10 @@ class DataChunk {
   DataChunk& operator=(DataChunk&&) noexcept = default;
 
   /**
-   * Const access to the internally hold std::basic_string
+   * Access to the internally hold std::basic_string
    * @return const reference to _content
    */
-  [[nodiscard]] const strtype& str() const;
+  strtype& str();
 
   [[nodiscard]] uint64_t getOffset() const;
   void setOffset(uint64_t offset);

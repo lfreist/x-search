@@ -2,7 +2,7 @@
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
 #include <gtest/gtest.h>
-#include <xsearch/Searcher.h>
+#include <xsearch/Executor.h>
 
 // TODO: write test.
 //  However, ExternSearcher is implicitly tested in xsearchTestMain.cpp

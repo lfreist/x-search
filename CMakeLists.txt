@@ -19,12 +19,11 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     set(MAIN_PROJECT ON)
 endif()
 
-# --- BOOST ------------------------------------------------------------------------------------------------------------
-find_package(Boost 1.74 REQUIRED COMPONENTS program_options)
-include_directories(${Boost_INCLUDE_DIR})
-# ----------------------------------------------------------------------------------------------------------------------
-
 IF(${MAIN_PROJECT})
+    # --- BOOST ------------------------------------------------------------------------------------------------------------
+    find_package(Boost 1.74 REQUIRED COMPONENTS program_options)
+    include_directories(${Boost_INCLUDE_DIR})
+    # ----------------------------------------------------------------------------------------------------------------------
     # --- GTEST --------------------------------------------------------------------------------------------------------
     add_subdirectory(third_party/googletest/)
     include_directories(third_party/googletest/googletest/include)
@@ -42,23 +41,17 @@ add_subdirectory(src)
 # ----------------------------------------------------------------------------------------------------------------------
 
 IF(${MAIN_PROJECT})
-    # ___ Library ______________________________________________________________________________________________________
+    # ___ InlineBench Library ______________________________________________________________________________________________________
     add_library(InlineBench INTERFACE include/xsearch/utils/InlineBench.h)
-
-    # ___ Executables __________________________________________________________________________________________________
-    add_executable(xsgrep xsgrep.cpp)
-    target_link_libraries(xsgrep PUBLIC xsearch boost_program_options)
-
-    add_executable(FilePreprocessor FilePreprocessorMain.cpp)
-    target_link_libraries(FilePreprocessor PUBLIC xsearch boost_program_options)
-
-    add_executable(checkit checkit.cpp)
-    target_link_libraries(checkit PUBLIC xsearch)
 endif()
 
 IF(${MAIN_PROJECT})
-    include(CTest)
+    # ___ Executables __________________________________________________________________________________________________
+    add_subdirectory(xsgrep)
+    add_subdirectory(xsproc)
+
     # ___ Tests ________________________________________________________________________________________________________
+    include(CTest)
     add_subdirectory(test)
 
     add_test(MetaFileTest test/src/MetaFileTestMain)
