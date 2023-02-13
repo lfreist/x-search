@@ -24,6 +24,7 @@ class DataWriter : public xs::BaseResult<preprocess_result> {
 
   /// Must be implemented since it is pure virtual inherited...
   constexpr size_t size() const override { return 0; }
+
  private:
   void add(preprocess_result data) override;
 

@@ -120,8 +120,8 @@ int main(int argc, char** argv) {
   xs::CompressionType compression_type = xs::from_string(args.compression_alg);
   switch (compression_type) {
     case xs::CompressionType::LZ4:
-      inplace_processors.push_back(
-          std::make_unique<xs::tasks::LZ4Compressor>(args.hc, args.compression_level));
+      inplace_processors.push_back(std::make_unique<xs::tasks::LZ4Compressor>(
+          args.hc, args.compression_level));
       break;
     case xs::CompressionType::ZSTD:
       inplace_processors.emplace_back(

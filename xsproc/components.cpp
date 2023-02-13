@@ -15,8 +15,7 @@ DataWriter::DataWriter(const std::string& meta_file_path,
                        xs::CompressionType compressionType,
                        std::unique_ptr<std::ostream> out_stream)
     : _meta_file(meta_file_path, std::ios::out, compressionType),
-      _output_stream(std::move(out_stream)) {
-}
+      _output_stream(std::move(out_stream)) {}
 
 // _____________________________________________________________________________
 void DataWriter::add(preprocess_result data, uint64_t id) {
@@ -45,7 +44,8 @@ void DataWriter::add(preprocess_result data, uint64_t id) {
 void DataWriter::add(preprocess_result data) {
   if (_output_stream != nullptr) {
     // write data to output file
-    _output_stream->write(data.second->data(), static_cast<int64_t>(data.second->size()));
+    _output_stream->write(data.second->data(),
+                          static_cast<int64_t>(data.second->size()));
   }
   _meta_file.writeChunkMetaData(data.first);
 }
