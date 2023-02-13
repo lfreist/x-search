@@ -90,8 +90,8 @@ class DataChunk {
   void assign(std::string data);
 
  private:
-  ChunkMetaData _meta_data{0, 0, 0, 0, 0, {}};
   strtype _data;
+  ChunkMetaData _meta_data{0, 0, 0, 0, 0, {}};
 };
 
 }  // namespace xs

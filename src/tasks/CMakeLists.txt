@@ -1,2 +1,2 @@
-add_library(Tasks DataProvider.cpp Processor.cpp Searcher.cpp)
+add_library(Tasks DataProvider.cpp InplaceProcessors.cpp ReturnProcessors.cpp)
 target_link_libraries(Tasks PUBLIC DataChunk Result MetaFile SearchUtils)

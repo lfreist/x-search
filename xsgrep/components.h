@@ -110,7 +110,8 @@ class GrepSearcher
    *  lines)
    * @param color: colored output
    */
-  GrepSearcher(bool line_number, bool only_matching);
+  GrepSearcher(std::string pattern, bool regex, bool line_number,
+               bool only_matching);
 
   /**
    * Search provided data according to the specified search criteria using a
@@ -119,20 +120,12 @@ class GrepSearcher
    * @param data: data that are searched
    * @return
    */
-  std::vector<GrepPartialResult> search(const std::string& pattern,
-                                        xs::DataChunk* data) const override;
-
-  /**
-   * Search provided data according to the specified search criteria using a
-   *  regex pattern
-   * @param pattern: regex pattern (with capture braces!)
-   * @param data: data that are searched
-   * @return
-   */
-  std::vector<GrepPartialResult> search(re2::RE2* pattern,
-                                        xs::DataChunk* data) const override;
+  std::vector<GrepPartialResult> process(xs::DataChunk* data) const override;
 
  private:
+  std::vector<GrepPartialResult> process_regex(xs::DataChunk* data) const;
+  std::vector<GrepPartialResult> process_plain(xs::DataChunk* data) const;
+
   /// search for line numbers
   bool _line_number;
   /// search matches only (default is searching matching lines)

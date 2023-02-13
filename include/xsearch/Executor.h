@@ -6,8 +6,8 @@
 #include <xsearch/DataChunk.h>
 #include <xsearch/ResultTypes.h>
 #include <xsearch/tasks/DataProvider.h>
-#include <xsearch/tasks/Processor.h>
-#include <xsearch/tasks/Searcher.h>
+#include <xsearch/tasks/InplaceProcessors.h>
+#include <xsearch/tasks/ReturnProcessors.h>
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/utils.h>
 
@@ -23,27 +23,21 @@ template <class DataT, class ResT, class PartResT, typename... ResArgs>
 class Executor {
  public:
   // ---------------------------------------------------------------------------
-  Executor(std::string pattern, int num_threads, int max_readers,
+  Executor(int num_threads, int max_readers,
            std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
-           std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
-           std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>> searchers,
+           std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataT>>>
+               inplace_processors,
+           std::unique_ptr<tasks::BaseReturnProcessor<DataT, PartResT>>
+               return_processor,
            ResArgs&&... result_args)
       : _result(new ResT(std::forward<ResArgs>(result_args)...)),
         _reader(std::move(reader)),
-        _processors(std::move(processors)),
-        _searcher(std::move(searchers)) {
-    if (max_readers > num_threads) {
-      max_readers = num_threads;
-    }
+        _inplace_processors(std::move(inplace_processors)),
+        _return_processor(std::move(return_processor)),
+        _workers(num_threads) {
     _threads.resize(num_threads);
     _max_readers = max_readers;
-    _pattern = std::move(pattern);
-    _regex = xs::utils::use_str_as_regex(_pattern);
-    if (_regex) {
-      _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
-    }
-    _running = true;
-    _workers = num_threads;
+    _running.store(true);
     for (auto& t : _threads) {
       t = std::thread(&Executor::main_task, this);
     }
@@ -51,16 +45,12 @@ class Executor {
 
   ~Executor() { join(); }
 
-  /*
-  iterator begin() { return iterator(*this, 0); }
-  iterator end() { return iterator(*this, 0); }
-*/
-
   ResT* getResult() { return _result.get(); }
 
   bool isRunning() { return _running.load(); }
 
   void join() {
+    std::unique_lock lock(_join_mutex);
     for (auto& t : _threads) {
       if (t.joinable()) {
         t.join();
@@ -69,17 +59,27 @@ class Executor {
     _running.store(false);
   }
 
+  void force_stop() {
+    _stop.store(true);
+    join();
+  }
+
  private:
   void main_task() {
     while (true) {
+      if (_stop.load()) {
+        break;
+      }
       auto optPair = reader_task();
       if (!optPair.has_value()) {
         break;
       }
       auto& chunk_index_pair = optPair.value();
-      processors_task(chunk_index_pair.first);
-      auto partial_results = searchers_task(chunk_index_pair.first);
-      results_join_task(std::move(partial_results), chunk_index_pair.second);
+      inplace_processors_task(&chunk_index_pair.first);
+      if (_return_processor != nullptr) {
+        auto partial_results = return_processor_task(&chunk_index_pair.first);
+        results_join_task(std::move(partial_results), chunk_index_pair.second);
+      }
     }
     if (_workers.fetch_sub(1) == 1) {
       _running.store(false);
@@ -109,22 +109,18 @@ class Executor {
     return chunk_index_pair;
   }
 
-  void processors_task(DataT& chunk) {
+  void inplace_processors_task(DataT* chunk) {
     INLINE_BENCHMARK_WALL_START("processor task");
-    for (auto& processor : _processors) {
-      processor->process(&chunk);
+    for (auto& processor : _inplace_processors) {
+      processor->process(chunk);
     }
     INLINE_BENCHMARK_WALL_STOP("processor task");
   }
 
-  PartResT searchers_task(DataT& chunk) {
+  PartResT return_processor_task(DataT* chunk) {
     INLINE_BENCHMARK_WALL_START("searcher task");
     PartResT res;
-    if (_regex) {
-      res = _searcher->search(_regex_pattern.get(), &chunk);
-    } else {
-      res = _searcher->search(_pattern, &chunk);
-    }
+    res = _return_processor->process(chunk);
     INLINE_BENCHMARK_WALL_STOP("searcher task");
     return res;
   }
@@ -135,29 +131,25 @@ class Executor {
     INLINE_BENCHMARK_WALL_STOP("results join task");
   }
 
-  std::string _file_path;
-  std::string _meta_file_path;
-  std::string _pattern;
-  bool _regex = false;
-  std::unique_ptr<re2::RE2> _regex_pattern;
-
   std::unique_ptr<ResT> _result;
 
   std::unique_ptr<tasks::BaseDataProvider<DataT>> _reader;
-  std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> _processors;
-  std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>> _searcher;
+  std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataT>>>
+      _inplace_processors;
+  std::unique_ptr<tasks::BaseReturnProcessor<DataT, PartResT>>
+      _return_processor;
 
   std::vector<std::thread> _threads;
-
-  utils::TSQueue<PartResT> _results_queue;
 
   std::mutex _reader_worker_mutex;
   std::mutex _check_reader_worker_mutex;
   std::condition_variable _reader_cv;
   int _max_readers = 2;
 
-  std::atomic<bool> _running = false;
-  std::atomic<int> _workers;
+  std::atomic<bool> _running{false};
+  std::atomic<int> _workers{1};
+  std::atomic<bool> _stop{false};
+  std::mutex _join_mutex;
 };
 
 }  // namespace xs

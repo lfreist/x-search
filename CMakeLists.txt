@@ -20,6 +20,9 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 endif()
 
 IF(${MAIN_PROJECT})
+
+    add_executable(metafile_cat metafile_cat.cpp)
+    target_link_libraries(metafile_cat PUBLIC xsearch)
     # --- BOOST ------------------------------------------------------------------------------------------------------------
     find_package(Boost 1.74 REQUIRED COMPONENTS program_options)
     include_directories(${Boost_INCLUDE_DIR})

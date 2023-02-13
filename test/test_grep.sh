@@ -19,14 +19,14 @@ if [ ! -d ./tmp/ ]; then
 fi
 # ---
 
-# preprocessing file:
+# preprocessing file: 
 echo " Processing $file..."
 echo "  no compression: $file_name.xs.meta"
-# "$xs_binaries/FilePreprocessor" "$file" -a none -d 500 -m "tmp/$file_name.xs.meta" >/dev/null &
+"$xs_binaries/xsproc/XSPreprocessor" "$file" -a none -d 500 -m "tmp/$file_name.xs.meta" >/dev/null &
 echo "  lz4 compression: $file_name.xslz4.meta | $file_name.xslz4"
-# "$xs_binaries/FilePreprocessor" "$file" -a lz4 -d 500 -m "tmp/$file_name.xslz4.meta" -o "tmp/$file_name.xslz4" >/dev/null &
+"$xs_binaries/xsproc/XSPreprocessor" "$file" -a lz4 -d 500 -m "tmp/$file_name.xslz4.meta" -o "tmp/$file_name.xslz4" >/dev/null &
 echo "  zst compression: $file_name.xszst.meta | $file_name.xszst"
-# "$xs_binaries/FilePreprocessor" "$file" -a zst -d 500 -m "tmp/$file_name.xszst.meta" -o "tmp/$file_name.xszst" >/dev/null &
+"$xs_binaries/xsproc/XSPreprocessor" "$file" -a zst -d 500 -m "tmp/$file_name.xszst.meta" -o "tmp/$file_name.xszst" >/dev/null &
 
 echo " ..."
 wait

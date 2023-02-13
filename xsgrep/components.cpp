@@ -122,16 +122,25 @@ void GrepResult::add(std::vector<GrepPartialResult> partial_result) {
 }
 
 // _____________________________________________________________________________
-GrepSearcher::GrepSearcher(bool line_number, bool only_matching)
-    : _line_number(line_number), _only_matching(only_matching) {}
+GrepSearcher::GrepSearcher(std::string pattern, bool regex, bool line_number,
+                           bool only_matching)
+    : BaseSearcher(std::move(pattern), regex),
+      _line_number(line_number),
+      _only_matching(only_matching) {}
 
 // _____________________________________________________________________________
-std::vector<GrepPartialResult> GrepSearcher::search(const std::string& pattern,
-                                                    xs::DataChunk* data) const {
+std::vector<GrepPartialResult> GrepSearcher::process(
+    xs::DataChunk* data) const {
+  return _regex ? process_regex(data) : process_plain(data);
+}
+
+// _____________________________________________________________________________
+std::vector<GrepPartialResult> GrepSearcher::process_plain(
+    xs::DataChunk* data) const {
   std::vector<uint64_t> byte_offsets =
       _only_matching
-          ? xs::search::global_byte_offsets_match(data, pattern, false)
-          : xs::search::global_byte_offsets_line(data, pattern);
+          ? xs::search::global_byte_offsets_match(data, _pattern, false)
+          : xs::search::global_byte_offsets_line(data, _pattern);
   std::vector<uint64_t> line_numbers;
   if (_line_number) {
     line_numbers = xs::map::bytes::to_line_indices(data, byte_offsets);
@@ -149,18 +158,19 @@ std::vector<GrepPartialResult> GrepSearcher::search(const std::string& pattern,
   std::vector<GrepPartialResult> res(byte_offsets.size());
   for (uint64_t i = 0; i < byte_offsets.size(); ++i) {
     res[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
-    res[i].str = _only_matching ? pattern : lines[i];
+    res[i].str = _only_matching ? _pattern : lines[i];
   }
   return res;
 }
 
 // _____________________________________________________________________________
-std::vector<GrepPartialResult> GrepSearcher::search(re2::RE2* pattern,
-                                                    xs::DataChunk* data) const {
+std::vector<GrepPartialResult> GrepSearcher::process_regex(
+    xs::DataChunk* data) const {
   std::vector<uint64_t> byte_offsets =
       _only_matching
-          ? xs::search::regex::global_byte_offsets_match(data, *pattern, false)
-          : xs::search::regex::global_byte_offsets_line(data, *pattern);
+          ? xs::search::regex::global_byte_offsets_match(data, *_re_pattern,
+                                                         false)
+          : xs::search::regex::global_byte_offsets_line(data, *_re_pattern);
   std::vector<uint64_t> line_numbers;
   if (_line_number) {
     line_numbers = xs::map::bytes::to_line_indices(data, byte_offsets);
@@ -171,12 +181,12 @@ std::vector<GrepPartialResult> GrepSearcher::search(re2::RE2* pattern,
   if (_only_matching) {
     lines.resize(byte_offsets.size());
     std::transform(byte_offsets.begin(), byte_offsets.end(), lines.begin(),
-                   [data, pattern](uint64_t index) {
+                   [&](uint64_t index) {
                      size_t local_byte_offset =
                          index - data->getMetaData().original_offset;
                      return _get_regex_match_(data->data() + local_byte_offset,
                                               data->size() - local_byte_offset,
-                                              *pattern);
+                                              *_re_pattern);
                    });
   } else {
     lines.resize(byte_offsets.size());

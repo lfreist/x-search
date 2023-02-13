@@ -12,9 +12,8 @@
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
 #include <xsearch/tasks/DataProvider.h>
-#include <xsearch/tasks/Processor.h>
-#include <xsearch/tasks/ResultCollector.h>
-#include <xsearch/tasks/Searcher.h>
+#include <xsearch/tasks/InplaceProcessors.h>
+#include <xsearch/tasks/ReturnProcessors.h>
 #include <xsearch/utils/IOColor.h>
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/TSQueue.h>

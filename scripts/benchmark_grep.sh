@@ -16,3 +16,17 @@ DROP_RAM_CACHE() {
   LOG "RAM caches dropped"
 }
 
+DROP_RAM_CACHE
+
+echo "grep -n:"
+time /bin/grep pattern ../30gb.dummy.txt -n | cat > /dev/null
+
+DROP_RAM_CACHE
+
+echo "xs/grep -n:"
+time build/xsgrep/grep pattern ../30gb.dummy.txt -n | cat > /dev/null
+
+DROP_RAM_CACHE
+
+echo "xs/grep -n with meta file:"
+time /bin/grep pattern ../30gb.dummy.txt ../30gb.dummy.xs.meta -n | cat > /dev/null

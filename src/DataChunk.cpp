@@ -13,11 +13,11 @@ DataChunk::DataChunk(strtype data) : _data(std::move(data)) {}
 
 // _____________________________________________________________________________
 DataChunk::DataChunk(strtype data, ChunkMetaData meta_data)
-    : _meta_data(std::move(meta_data)), _data(std::move(data)) {}
+    : _data(std::move(data)), _meta_data(std::move(meta_data)) {}
 
 // _____________________________________________________________________________
 DataChunk::DataChunk(ChunkMetaData meta_data)
-    : _meta_data(std::move(meta_data)), _data(_meta_data.actual_size) {}
+    : _data(meta_data.actual_size), _meta_data(std::move(meta_data)) {}
 
 // _____________________________________________________________________________
 strtype& DataChunk::getData() { return _data; }

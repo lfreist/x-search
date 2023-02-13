@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 
   // ===== Setup xs::Executor for searching ====================================
 
-  std::vector<std::unique_ptr<xs::tasks::BaseProcessor<xs::DataChunk>>>
+  std::vector<std::unique_ptr<xs::tasks::BaseInplaceProcessor<xs::DataChunk>>>
       processors;
 
   // check for compression and add decompression task --------------------------
@@ -167,26 +167,28 @@ int main(int argc, char** argv) {
   // set searchers -------------------------------------------------------------
   if (args.count) {
     // count set -> count results and output number in the end -----------------
-    auto searcher = std::make_unique<xs::tasks::LineCounter>();
+    auto searcher = std::make_unique<xs::tasks::LineCounter>(
+        args.pattern, xs::utils::use_str_as_regex(args.pattern));
     auto extern_searcher =
         xs::Executor<xs::DataChunk, xs::CountResult, uint64_t>(
-            args.pattern, args.num_threads, args.num_max_readers,
-            std::move(reader), std::move(processors), std::move(searcher));
+            args.num_threads, args.num_max_readers, std::move(reader),
+            std::move(processors), std::move(searcher));
     extern_searcher.join();
     std::cout << extern_searcher.getResult()->size() << std::endl;
     // -------------------------------------------------------------------------
   } else {
     // no count set -> run grep and output results
-    auto searcher =
-        std::make_unique<GrepSearcher>(args.line_number, args.only_matching);
+    auto searcher = std::make_unique<GrepSearcher>(
+        args.pattern, xs::utils::use_str_as_regex(args.pattern),
+        args.line_number, args.only_matching);
     auto res = std::make_unique<GrepResult>(
         GrepResult(args.pattern, args.line_number || args.byte_offset,
                    args.only_matching, !args.no_color));
     auto extern_searcher =
         xs::Executor<xs::DataChunk, GrepResult, std::vector<GrepPartialResult>,
                      std::string, bool, bool, bool>(
-            args.pattern, args.num_threads, args.num_max_readers,
-            std::move(reader), std::move(processors), std::move(searcher),
+            args.num_threads, args.num_max_readers, std::move(reader),
+            std::move(processors), std::move(searcher),
             std::string(args.pattern), args.line_number || args.byte_offset,
             bool(args.only_matching), !args.no_color);
     // TODO: Question: I need to pass an rvalue (this is why i use bool(...).
@@ -202,4 +204,5 @@ int main(int argc, char** argv) {
     std::cout << INLINE_BENCHMARK_REPORT(benchmark_format) << std::endl;
   }
 #endif
+  return 0;
 }

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <lz4.h>
+#include <lz4hc.h>
 
 #include <vector>
 
@@ -21,12 +22,18 @@ class LZ4 {
    * @return compressed data
    */
   static std::vector<char> compress(const char* src, int numBytes,
-                                    int acceleration = 1) {
+                                    bool hc = false, int compression_lvl = 1) {
     std::vector<char> result(LZ4_compressBound(numBytes));
-    auto compressedSize =
-        LZ4_compress_fast(src, result.data(), numBytes,
-                          static_cast<int>(result.size()), acceleration);
-    result.resize(compressedSize);
+    if (hc) {
+      auto compressedSize =
+          LZ4_compress_HC(src, result.data(), numBytes,
+                          static_cast<int>(result.size()), compression_lvl);
+      result.resize(compressedSize);
+    } else {
+      auto compressedSize = LZ4_compress_default(
+          src, result.data(), numBytes, static_cast<int>(result.size()));
+      result.resize(compressedSize);
+    }
     return result;
   }
 
