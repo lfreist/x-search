@@ -177,13 +177,20 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
   } else {
     // no count set -> run grep and output results
-    auto searcher = std::make_unique<GrepSearcher>(
-        args.byte_offset, args.line_number, args.only_matching, !args.no_color);
-    auto extern_searcher = xs::Executor<
-        xs::DataChunk, GrepResult,
-        std::pair<std::vector<GrepPartialResult>, GrepResultSettings>>(
-        args.pattern, args.num_threads, args.num_max_readers, std::move(reader),
-        std::move(processors), std::move(searcher));
+    auto searcher =
+        std::make_unique<GrepSearcher>(args.line_number, args.only_matching);
+    auto res = std::make_unique<GrepResult>(
+        GrepResult(args.pattern, args.line_number || args.byte_offset,
+                   args.only_matching, !args.no_color));
+    auto extern_searcher =
+        xs::Executor<xs::DataChunk, GrepResult, std::vector<GrepPartialResult>,
+                     std::string, bool, bool, bool>(
+            args.pattern, args.num_threads, args.num_max_readers,
+            std::move(reader), std::move(processors), std::move(searcher),
+            std::string(args.pattern), args.line_number || args.byte_offset,
+            bool(args.only_matching), !args.no_color);
+    // TODO: Question: I need to pass an rvalue (this is why i use bool(...).
+    //  Is there a better way doing this?
     extern_searcher.join();
   }
 

@@ -19,7 +19,7 @@
 
 namespace xs {
 
-template <class DataT, class ResT, class PartResT, typename... Args>
+template <class DataT, class ResT, class PartResT, typename... ResArgs>
 class Executor {
  public:
   // ---------------------------------------------------------------------------
@@ -27,8 +27,9 @@ class Executor {
            std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
            std::vector<std::unique_ptr<tasks::BaseProcessor<DataT>>> processors,
            std::unique_ptr<tasks::BaseSearcher<DataT, PartResT>> searchers,
-           Args&&... result_args)
-      : _reader(std::move(reader)),
+           ResArgs&&... result_args)
+      : _result(new ResT(std::forward<ResArgs>(result_args)...)),
+        _reader(std::move(reader)),
         _processors(std::move(processors)),
         _searcher(std::move(searchers)) {
     if (max_readers > num_threads) {
@@ -41,7 +42,6 @@ class Executor {
     if (_regex) {
       _regex_pattern = std::make_unique<re2::RE2>("(" + _pattern + ")");
     }
-    _result = std::make_unique<ResT>(std::forward<Args>(result_args)...);
     _running = true;
     _workers = num_threads;
     for (auto& t : _threads) {

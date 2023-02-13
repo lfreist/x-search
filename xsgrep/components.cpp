@@ -20,7 +20,21 @@ bool GrepPartialResult::operator<(const GrepPartialResult& other) const {
 }
 
 // _____________________________________________________________________________
-void GrepResult::add(grep_result partial_result, uint64_t id) {
+GrepResult::GrepResult(std::string pattern) : _pattern(std::move(pattern)) {}
+
+// _____________________________________________________________________________
+GrepResult::GrepResult(std::string pattern, bool index, bool only_matching,
+                       bool color)
+    : _pattern(std::move(pattern)),
+      _index(index),
+      _only_matching(only_matching),
+      _color(color) {
+  _regex = xs::utils::use_str_as_regex(_pattern);
+}
+
+// _____________________________________________________________________________
+void GrepResult::add(std::vector<GrepPartialResult> partial_result,
+                     uint64_t id) {
   std::unique_lock lock(*this->_mutex);
   if (_current_index == id) {
     add(std::move(partial_result));
@@ -47,33 +61,31 @@ void GrepResult::add(grep_result partial_result, uint64_t id) {
 constexpr size_t GrepResult::size() const { return 0; }
 
 // _____________________________________________________________________________
-void GrepResult::add(grep_result partial_result) {
-  auto& res = partial_result.first;
-  auto& settings = partial_result.second;
-  for (auto& r : res) {
-    if (settings.index) {
-      if (settings.color) {
+void GrepResult::add(std::vector<GrepPartialResult> partial_result) {
+  for (auto& r : partial_result) {
+    if (_index) {
+      if (_color) {
         std::cout << GREEN << r.index << CYAN << ":" << COLOR_RESET;
       } else {
         std::cout << r.index << ":";
       }
     }
-    if (settings.only_matching) {
-      if (settings.color) {
+    if (_only_matching) {
+      if (_color) {
         std::cout << RED << r.str << COLOR_RESET << '\n';
       } else {
         std::cout << r.str << '\n';
       }
     } else {
-      if (settings.color) {
+      if (_color) {
         // search for every occurrence of pattern within the string and
         // print it out colored while the rest is printed uncolored.
         size_t shift = 0;
-        std::string match = settings.pattern;
+        std::string match = _pattern;
         while (true) {
           size_t match_pos;
-          if (settings.regex) {
-            re2::RE2 re_pattern(settings.pattern);
+          if (_regex) {
+            re2::RE2 re_pattern(_pattern);
             re2::StringPiece input(r.str.data() + shift, r.str.size() - shift);
             re2::StringPiece re_match;
             auto tmp = re2::RE2::PartialMatch(input, re_pattern, &re_match);
@@ -84,7 +96,7 @@ void GrepResult::add(grep_result partial_result) {
               break;
             }
           } else {
-            match_pos = r.str.find(settings.pattern, shift);
+            match_pos = r.str.find(_pattern, shift);
           }
           if (match_pos == std::string::npos) {
             break;
@@ -110,16 +122,12 @@ void GrepResult::add(grep_result partial_result) {
 }
 
 // _____________________________________________________________________________
-GrepSearcher::GrepSearcher(bool byte_offset, bool line_number,
-                           bool only_matching, bool color)
-    : _byte_offset(byte_offset),
-      _line_number(line_number),
-      _only_matching(only_matching),
-      _color(color) {}
+GrepSearcher::GrepSearcher(bool line_number, bool only_matching)
+    : _line_number(line_number), _only_matching(only_matching) {}
 
 // _____________________________________________________________________________
-grep_result GrepSearcher::search(const std::string& pattern,
-                                 xs::DataChunk* data) const {
+std::vector<GrepPartialResult> GrepSearcher::search(const std::string& pattern,
+                                                    xs::DataChunk* data) const {
   std::vector<uint64_t> byte_offsets =
       _only_matching
           ? xs::search::global_byte_offsets_match(data, pattern, false)
@@ -138,19 +146,17 @@ grep_result GrepSearcher::search(const std::string& pattern,
         [data](uint64_t index) { return xs::map::byte::to_line(data, index); });
   }
 
-  std::pair<std::vector<GrepPartialResult>, GrepResultSettings> res = {
-      {},
-      {false, _line_number || _byte_offset, _color, _only_matching, pattern}};
-  res.first.resize(byte_offsets.size());
+  std::vector<GrepPartialResult> res(byte_offsets.size());
   for (uint64_t i = 0; i < byte_offsets.size(); ++i) {
-    res.first[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
-    res.first[i].str = _only_matching ? pattern : lines[i];
+    res[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
+    res[i].str = _only_matching ? pattern : lines[i];
   }
   return res;
 }
 
 // _____________________________________________________________________________
-grep_result GrepSearcher::search(re2::RE2* pattern, xs::DataChunk* data) const {
+std::vector<GrepPartialResult> GrepSearcher::search(re2::RE2* pattern,
+                                                    xs::DataChunk* data) const {
   std::vector<uint64_t> byte_offsets =
       _only_matching
           ? xs::search::regex::global_byte_offsets_match(data, *pattern, false)
@@ -179,15 +185,11 @@ grep_result GrepSearcher::search(re2::RE2* pattern, xs::DataChunk* data) const {
         [data](uint64_t index) { return xs::map::byte::to_line(data, index); });
   }
 
-  std::pair<std::vector<GrepPartialResult>, GrepResultSettings> res = {
-      {},
-      {true, _line_number || _byte_offset, _color, _only_matching,
-       pattern->pattern()}};
-  res.first.resize(byte_offsets.size());
+  std::vector<GrepPartialResult> res(byte_offsets.size());
   for (uint64_t i = 0; i < byte_offsets.size(); ++i) {
-    res.first[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
+    res[i].index = _line_number ? line_numbers[i] : byte_offsets[i];
     // we have placed either the line or the regex match in here above!
-    res.first[i].str = lines[i];
+    res[i].str = lines[i];
   }
   return res;
 }

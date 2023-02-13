@@ -56,9 +56,15 @@ class NewLineSearcher : public BaseProcessor<DataChunk> {
 
  private:
   uint64_t _line_index = 0;
+  uint64_t _next_chunk_id = 0;
   /// all _distance bytes, the mapping data are added.
   ///  At most one mapping data pair per line is added.
   const uint64_t _distance = 500;
+
+  std::unique_ptr<std::mutex> _line_index_mutex =
+      std::make_unique<std::mutex>();
+  std::unique_ptr<std::condition_variable> _line_index_cv =
+      std::make_unique<std::condition_variable>();
 };
 
 /**

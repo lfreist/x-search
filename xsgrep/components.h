@@ -47,21 +47,15 @@ struct GrepResultSettings {
 };
 
 /**
- * grep_result is a typedef to the result type used by the GrepResult and
- * GrepSearcher classes
- */
-typedef std::pair<std::vector<GrepPartialResult>, GrepResultSettings>
-    grep_result;
-
-/**
  * GrepResult: The actual result class that inherits xs::BaseResult.
  *  It collects a pair of a vector of GrepPartialResults and corresponding
  *  GrepResultSettings.
  *  Both are provided from the searcher used.
  */
-class GrepResult : public xs::BaseResult<grep_result> {
+class GrepResult : public xs::BaseResult<std::vector<GrepPartialResult>> {
  public:
-  GrepResult() = default;
+  explicit GrepResult(std::string pattern);
+  GrepResult(std::string pattern, bool index, bool only_matching, bool color);
 
   /**
    * Collect results and pass them ordered to the private add method.
@@ -71,7 +65,7 @@ class GrepResult : public xs::BaseResult<grep_result> {
    * @param partial_result:
    * @param id: used for ordered output. Must be a closed sequence {0..X} of int
    */
-  void add(grep_result partial_result, uint64_t id) override;
+  void add(std::vector<GrepPartialResult> partial_result, uint64_t id) override;
 
   /**
    * Dummy implementation. Always returns 0. Must be implemented because of pure
@@ -87,19 +81,27 @@ class GrepResult : public xs::BaseResult<grep_result> {
    *  Always writes to standard out.
    * @param partial_result
    */
-  void add(grep_result partial_result) override;
+  void add(std::vector<GrepPartialResult> partial_result) override;
 
   /// Buffer for results that are received not in order
-  std::unordered_map<uint64_t, grep_result> _buffer;
+  std::unordered_map<uint64_t, std::vector<GrepPartialResult>> _buffer;
   /// Indicates the index of the result that is written next
   uint64_t _current_index = 0;
+
+  /// grep output settings
+  std::string _pattern;
+  bool _regex = false;
+  bool _index = false;
+  bool _only_matching = false;
+  bool _color = true;
 };
 
 /**
  * GrepSearcher: The searcher used by the xs::Executor for searching results.
  */
 class GrepSearcher
-    : public xs::tasks::BaseSearcher<xs::DataChunk, grep_result> {
+    : public xs::tasks::BaseSearcher<xs::DataChunk,
+                                     std::vector<GrepPartialResult>> {
  public:
   /**
    * @param byte_offset: search byte offsets
@@ -108,8 +110,7 @@ class GrepSearcher
    *  lines)
    * @param color: colored output
    */
-  GrepSearcher(bool byte_offset, bool line_number, bool only_matching,
-               bool color);
+  GrepSearcher(bool line_number, bool only_matching);
 
   /**
    * Search provided data according to the specified search criteria using a
@@ -118,8 +119,8 @@ class GrepSearcher
    * @param data: data that are searched
    * @return
    */
-  grep_result search(const std::string& pattern,
-                     xs::DataChunk* data) const override;
+  std::vector<GrepPartialResult> search(const std::string& pattern,
+                                        xs::DataChunk* data) const override;
 
   /**
    * Search provided data according to the specified search criteria using a
@@ -128,15 +129,12 @@ class GrepSearcher
    * @param data: data that are searched
    * @return
    */
-  grep_result search(re2::RE2* pattern, xs::DataChunk* data) const override;
+  std::vector<GrepPartialResult> search(re2::RE2* pattern,
+                                        xs::DataChunk* data) const override;
 
  private:
-  /// search for byte offsets
-  bool _byte_offset;
   /// search for line numbers
   bool _line_number;
   /// search matches only (default is searching matching lines)
   bool _only_matching;
-  /// colored output
-  bool _color;
 };
