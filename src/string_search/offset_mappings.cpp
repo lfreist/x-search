@@ -28,6 +28,7 @@ std::vector<uint64_t> to_line_indices(
     //  backwards later (depends on the relative position of the closest mapping
     //  data...)
     int continue_by_one = -1;
+    int skip_first = 0;
     if (bo > first->globalByteOffset) {
       first = std::lower_bound(
           first, last, bo,
@@ -38,10 +39,11 @@ std::vector<uint64_t> to_line_indices(
         continue_by_one = 1;
         // set to last element of vector
         first -= 1;
+        skip_first = -1;
       }
     }
     uint64_t line_index = first->globalLineIndex;
-    uint64_t current_global_byte_offset = first->globalByteOffset;
+    uint64_t current_global_byte_offset = first->globalByteOffset - skip_first;
 
     // Search new lines starting from the result of the binary search above.
     while (true) {
