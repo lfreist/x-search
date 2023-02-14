@@ -34,7 +34,7 @@ static char dummy_text[] =
 
 TEST(offset_mapping, to_line_indices) {
   DataChunk str(
-      {0, 0, 0, 0, 0, {{177, 2}, {394, 6}, {802, 13}, {1067, 18}, {1239, 21}}});
+      {0, 0, 0, 0, 0, {{177, 3}, {394, 7}, {802, 14}, {1067, 19}, {1239, 22}}});
   str.assign(dummy_text);
   std::vector<uint64_t> byte_offsets(1240);
   // vector of all byte offsets
@@ -58,12 +58,20 @@ TEST(offset_mapping, to_line_indices) {
 
   auto tmp = map::bytes::to_line_indices(&str, byte_offsets);
 
-  ASSERT_EQ(map::bytes::to_line_indices(&str, byte_offsets), line_indices);
+  auto s = line_indices.size();
+  for (size_t ind = 0; ind < line_indices.size(); ++ind) {
+    if (tmp[ind] != line_indices[ind]) {
+      int a = 0;
+    }
+    ASSERT_EQ(tmp[ind], line_indices[ind]);
+  }
+
+  // ASSERT_EQ(map::bytes::to_line_indices(&str, byte_offsets), line_indices);
 }
 
 TEST(offset_mapping, to_line) {
   DataChunk str(
-      {0, 0, 0, 0, 0, {{177, 2}, {394, 6}, {802, 13}, {1067, 18}, {1239, 21}}});
+      {0, 0, 0, 0, 0, {{177, 3}, {394, 7}, {802, 14}, {1067, 19}, {1239, 22}}});
   str.assign(dummy_text);
   ASSERT_EQ(
       xs::map::byte::to_line(&str, 0),

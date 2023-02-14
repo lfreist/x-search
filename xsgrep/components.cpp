@@ -23,14 +23,13 @@ bool GrepPartialResult::operator<(const GrepPartialResult& other) const {
 GrepResult::GrepResult(std::string pattern) : _pattern(std::move(pattern)) {}
 
 // _____________________________________________________________________________
-GrepResult::GrepResult(std::string pattern, bool index, bool only_matching,
-                       bool color)
+GrepResult::GrepResult(std::string pattern, bool regex, bool index,
+                       bool only_matching, bool color)
     : _pattern(std::move(pattern)),
+      _regex(regex),
       _index(index),
       _only_matching(only_matching),
-      _color(color) {
-  _regex = xs::utils::use_str_as_regex(_pattern);
-}
+      _color(color) {}
 
 // _____________________________________________________________________________
 void GrepResult::add(std::vector<GrepPartialResult> partial_result,

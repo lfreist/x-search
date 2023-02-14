@@ -10,10 +10,8 @@ namespace xs::map::bytes {
 /**
  * Map byte offsets from match_local_byte offsets to line indices
  *
- * !! MARK:
- *     - match_local_byte_offsets must be sorted!
- *     - data._byte_to_nl_mapping_data must not be empty!
- * !!
+ * @attention: - match_local_byte_offsets must be sorted!
+ *             - data._byte_to_nl_mapping_data must not be empty!
  *
  * @param data
  * @param match_local_byte_offsets

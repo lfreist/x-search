@@ -55,7 +55,8 @@ struct GrepResultSettings {
 class GrepResult : public xs::BaseResult<std::vector<GrepPartialResult>> {
  public:
   explicit GrepResult(std::string pattern);
-  GrepResult(std::string pattern, bool index, bool only_matching, bool color);
+  GrepResult(std::string pattern, bool regex, bool index, bool only_matching,
+             bool color);
 
   /**
    * Collect results and pass them ordered to the private add method.

@@ -101,6 +101,10 @@ void NewLineSearcher::process(DataChunk* data) {
   uint64_t current_distance = 0;
   uint64_t local_line_index = 0;
   uint64_t prev_shift = 0;
+  // Add first byte of data to mapping data.
+  //  This assures that at least one mapping data pair is available for each
+  //  chunk, even, if the mapping distance is larger than the chunk size.
+  mapping_data.push_back({data->getMetaData().original_offset, 0});
   while (true) {
     // By searching the next new line char, we assure that at most one
     //  mapping data pair is added, even if the _distance is reached before.
@@ -110,6 +114,16 @@ void NewLineSearcher::process(DataChunk* data) {
     }
     current_distance += shift - prev_shift;
     prev_shift = shift;
+    // We store the line index of the next line rather than that of the found
+    //  line. This is because we do not want to map the byte offset of the
+    //  new line char to a line index. Why? Simply because matches found
+    //  within search processes most likely are NOT new line chars but
+    //  byte offsets of the first char of a line.
+    local_line_index++;
+    shift++;
+    if (static_cast<uint64_t>(shift) >= data->size()) {
+      break;
+    }
     // only add the data, if the _distance is reached
     if (current_distance >= _distance) {
       mapping_data.push_back(
@@ -117,8 +131,6 @@ void NewLineSearcher::process(DataChunk* data) {
            local_line_index});
       current_distance = 0;
     }
-    local_line_index++;
-    shift++;
   }
   // We have searched all local line indices and now want to transform them to
   //  global line indices. Therefor, we need to now the line indices of the

@@ -17,9 +17,9 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
 set(MAIN_PROJECT OFF)
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     set(MAIN_PROJECT ON)
-endif()
+endif ()
 
-IF(${MAIN_PROJECT})
+IF (${MAIN_PROJECT})
 
     add_executable(metafile_cat metafile_cat.cpp)
     target_link_libraries(metafile_cat PUBLIC xsearch)
@@ -31,7 +31,7 @@ IF(${MAIN_PROJECT})
     add_subdirectory(third_party/googletest/)
     include_directories(third_party/googletest/googletest/include)
     # ------------------------------------------------------------------------------------------------------------------
-endif()
+endif ()
 
 # --- RE2 --------------------------------------------------------------------------------------------------------------
 add_subdirectory(third_party/re2/)
@@ -43,12 +43,14 @@ include_directories(${PROJECT_SOURCE_DIR}/include/)
 add_subdirectory(src)
 # ----------------------------------------------------------------------------------------------------------------------
 
-IF(${MAIN_PROJECT})
+IF (${MAIN_PROJECT})
     # ___ InlineBench Library ______________________________________________________________________________________________________
     add_library(InlineBench INTERFACE include/xsearch/utils/InlineBench.h)
-endif()
+endif ()
 
-IF(${MAIN_PROJECT})
+option(EXE_TESTS "run exhaustive executable tests" OFF)
+
+IF (${MAIN_PROJECT})
     # ___ Executables __________________________________________________________________________________________________
     add_subdirectory(xsgrep)
     add_subdirectory(xsproc)
@@ -65,4 +67,17 @@ IF(${MAIN_PROJECT})
     add_test(SearchWrappersTest test/src/string_search/SearchWrappersTestMain)
     add_test(SimdSearchTest test/src/string_search/SimdSearchTestMain)
     add_test(xsearchTest test/src/xsearchTestMain)
-endif()
+
+    # executable exhaustive tests --------------------------------------------------------------------------------------
+    IF (EXE_TESTS)
+        configure_file(files/words.txt files/words.txt COPYONLY)
+        configure_file(scripts/createTestFile.py scripts/createTestFile.py COPYONLY)
+        add_test(grepTest bash test/test_grep.sh ${CMAKE_BINARY_DIR})
+        add_test(preprocessorTest bash test/test_grep.sh ${CMAKE_BINARY_DIR})
+
+        set_tests_properties(grepTest PROPERTIES TIMEOUT 10000)
+        set_tests_properties(grepTest PROPERTIES LABELS "grep_exe_test")
+        set_tests_properties(preprocessorTest PROPERTIES TIMEOUT 10000)
+        set_tests_properties(preprocessorTest PROPERTIES LABELS "preprocessor_exe_test")
+    endif ()
+endif ()

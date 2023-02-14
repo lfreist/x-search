@@ -64,8 +64,8 @@ TEST(MetaFileTest, nextChunkMetaData) {
   ASSERT_EQ(cs.chunk_index, 42);
   ASSERT_EQ(cs.original_offset, 179001);
   ASSERT_EQ(cs.actual_offset, 162345);
-  ASSERT_EQ(cs.original_size, 1407);
-  ASSERT_EQ(cs.actual_size, 1354);
+  ASSERT_EQ(cs.original_size, 1406);
+  ASSERT_EQ(cs.actual_size, 1352);
 }
 
 TEST(MetaFileTest, nextChunkMetaDataMultiple) {
@@ -82,8 +82,8 @@ TEST(MetaFileTest, nextChunkMetaDataMultiple) {
   ASSERT_EQ(chunk_sizes.size(), 38);
   ASSERT_EQ(chunk_sizes[37].original_offset, 179001);
   ASSERT_EQ(chunk_sizes[37].actual_offset, 162345);
-  ASSERT_EQ(chunk_sizes[37].original_size, 1407);
-  ASSERT_EQ(chunk_sizes[37].actual_size, 1354);
+  ASSERT_EQ(chunk_sizes[37].original_size, 1406);
+  ASSERT_EQ(chunk_sizes[37].actual_size, 1352);
 }
 
 TEST(MetaFileTest, writeChunkMetaData) {

@@ -26,6 +26,7 @@ struct GrepArgs {
   bool no_color = false;
   bool ignore_case = false;
   size_t chunk_size = 16777216;
+  bool fixed_strings = false;
 };
 
 int main(int argc, char** argv) {
@@ -80,6 +81,9 @@ int main(int argc, char** argv) {
   add("chunk-size,s",
       po::value<size_t>(&args.chunk_size)->default_value(16777216),
       "min size of a single chunk that is read (default 16 MiB");
+  add("fixed-strings,F",
+      po::bool_switch(&args.fixed_strings)->default_value(false),
+      "PATTERN is string (force no regex)");
 #ifdef BENCHMARK
   add("benchmark-file", po::value<std::string>(&benchmark_file),
       "set output file of benchmark measurements.");
@@ -168,7 +172,8 @@ int main(int argc, char** argv) {
   if (args.count) {
     // count set -> count results and output number in the end -----------------
     auto searcher = std::make_unique<xs::tasks::LineCounter>(
-        args.pattern, xs::utils::use_str_as_regex(args.pattern));
+        args.pattern,
+        xs::utils::use_str_as_regex(args.pattern) && !args.fixed_strings);
     auto extern_searcher =
         xs::Executor<xs::DataChunk, xs::CountResult, uint64_t>(
             args.num_threads, args.num_max_readers, std::move(reader),
@@ -179,20 +184,18 @@ int main(int argc, char** argv) {
   } else {
     // no count set -> run grep and output results
     auto searcher = std::make_unique<GrepSearcher>(
-        args.pattern, xs::utils::use_str_as_regex(args.pattern),
+        args.pattern,
+        xs::utils::use_str_as_regex(args.pattern) && !args.fixed_strings,
         args.line_number, args.only_matching);
-    auto res = std::make_unique<GrepResult>(
-        GrepResult(args.pattern, args.line_number || args.byte_offset,
-                   args.only_matching, !args.no_color));
     auto extern_searcher =
         xs::Executor<xs::DataChunk, GrepResult, std::vector<GrepPartialResult>,
-                     std::string, bool, bool, bool>(
+                     std::string, bool, bool, bool, bool>(
             args.num_threads, args.num_max_readers, std::move(reader),
             std::move(processors), std::move(searcher),
-            std::string(args.pattern), args.line_number || args.byte_offset,
-            bool(args.only_matching), !args.no_color);
-    // TODO: Question: I need to pass an rvalue (this is why i use bool(...).
-    //  Is there a better way doing this?
+            std::string(args.pattern),
+            !args.fixed_strings && xs::utils::use_str_as_regex(args.pattern),
+            args.line_number || args.byte_offset, bool(args.only_matching),
+            !args.no_color);
     extern_searcher.join();
   }
 
