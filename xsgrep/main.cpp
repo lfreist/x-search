@@ -27,6 +27,7 @@ struct GrepArgs {
   bool ignore_case = false;
   size_t chunk_size = 16777216;
   bool fixed_strings = false;
+  bool no_mmap = false;
 };
 
 int main(int argc, char** argv) {
@@ -84,6 +85,8 @@ int main(int argc, char** argv) {
   add("fixed-strings,F",
       po::bool_switch(&args.fixed_strings)->default_value(false),
       "PATTERN is string (force no regex)");
+  add("no-mmap", po::bool_switch(&args.no_mmap)->default_value(false),
+      "do not use mmap but read data instead");
 #ifdef BENCHMARK
   add("benchmark-file", po::value<std::string>(&benchmark_file),
       "set output file of benchmark measurements.");
@@ -161,11 +164,21 @@ int main(int argc, char** argv) {
   // set reader ----------------------------------------------------------------
   std::unique_ptr<xs::tasks::BaseDataProvider<xs::DataChunk>> reader;
   if (args.meta_file_path.empty()) {
-    reader = std::make_unique<xs::tasks::ExternBlockReader>(args.file_path,
-                                                            args.chunk_size);
+    if (args.no_mmap) {
+      reader = std::make_unique<xs::tasks::ExternBlockReader>(args.file_path,
+                                                              args.chunk_size);
+    } else {
+      reader = std::make_unique<xs::tasks::ExternBlockReaderMMAP>(
+          args.file_path, args.chunk_size);
+    }
   } else {
-    reader = std::make_unique<xs::tasks::ExternBlockMetaReader>(
-        args.file_path, args.meta_file_path);
+    if (args.no_mmap) {
+      reader = std::make_unique<xs::tasks::ExternBlockMetaReader>(
+          args.file_path, args.meta_file_path);
+    } else {
+      reader = std::make_unique<xs::tasks::ExternBlockMetaReaderMMAP>(
+          args.file_path, args.meta_file_path);
+    }
   }
 
   // set searchers -------------------------------------------------------------

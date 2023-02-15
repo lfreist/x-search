@@ -1,6 +1,7 @@
 // Copyright 2022, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
+#include <sys/mman.h>
 #include <xsearch/DataChunk.h>
 
 #include <utility>
@@ -9,21 +10,43 @@ namespace xs {
 
 // ----- public ----------------------------------------------------------------
 // _____________________________________________________________________________
-DataChunk::DataChunk(strtype data) : _data(std::move(data)) {}
+DataChunk::DataChunk(char* data, size_t size)
+    : _data(new char[size]), _size(size) {
+  memcpy(_data, data, _size);
+}
 
 // _____________________________________________________________________________
-DataChunk::DataChunk(strtype data, ChunkMetaData meta_data)
-    : _data(std::move(data)), _meta_data(std::move(meta_data)) {}
+DataChunk::DataChunk(char* data, size_t size, ChunkMetaData meta_data)
+    : _data(new char[size]), _size(size), _meta_data(std::move(meta_data)) {
+  memcpy(_data, data, _size);
+}
 
 // _____________________________________________________________________________
 DataChunk::DataChunk(ChunkMetaData meta_data)
-    : _data(meta_data.actual_size), _meta_data(std::move(meta_data)) {}
+    : _data(new char[meta_data.actual_size]),
+      _size(meta_data.actual_size),
+      _meta_data(std::move(meta_data)) {}
 
 // _____________________________________________________________________________
-strtype& DataChunk::getData() { return _data; }
+DataChunk::~DataChunk() {
+  if (!_data_moved) {
+    if (_mmap) {
+      munmap(_data, _size);
+    } else {
+      delete[] _data;
+    }
+  }
+}
 
 // _____________________________________________________________________________
-const strtype& DataChunk::getData() const { return _data; }
+DataChunk::DataChunk(DataChunk&& chunk) noexcept
+    : _data(chunk._data),
+      _size(chunk._size),
+      _mmap(chunk._mmap),
+      _mmap_offset(chunk._mmap_offset),
+      _meta_data(std::move(chunk._meta_data)) {
+  chunk._data_moved = true;
+}
 
 // _____________________________________________________________________________
 ChunkMetaData& DataChunk::getMetaData() { return _meta_data; }
@@ -32,26 +55,31 @@ ChunkMetaData& DataChunk::getMetaData() { return _meta_data; }
 const ChunkMetaData& DataChunk::getMetaData() const { return _meta_data; }
 
 // _____________________________________________________________________________
-char* DataChunk::data() { return _data.data(); }
+char* DataChunk::data() const {
+  if (_mmap) {
+    return _data + _mmap_offset;
+  }
+  return _data;
+}
 
 // _____________________________________________________________________________
-const char* DataChunk::data() const { return _data.data(); }
+size_t DataChunk::size() const { return _size; }
 
 // _____________________________________________________________________________
-size_t DataChunk::size() const { return _data.size(); }
-
-// _____________________________________________________________________________
-void DataChunk::resize(size_t size) { _data.resize(size); }
-
-// _____________________________________________________________________________
-void DataChunk::push_back(char c) { _data.push_back(c); }
-
-// _____________________________________________________________________________
-void DataChunk::reserve(size_t size) { _data.reserve(size); }
+void DataChunk::resize(size_t size) {
+  _size = size;
+  delete[] _data;
+  _data = new char[_size];
+}
 
 // _____________________________________________________________________________
 void DataChunk::assign(std::string data) {
-  _data.assign(data.begin(), data.end());
+  if (_size != data.size()) {
+    _size = data.size();
+    delete[] _data;
+    _data = new char[_size];
+  }
+  memcpy(_data, data.data(), _size);
 }
 
 }  // namespace xs

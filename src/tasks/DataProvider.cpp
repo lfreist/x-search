@@ -1,8 +1,14 @@
 // Copyright 2023, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <xsearch/tasks/DataProvider.h>
 #include <xsearch/utils/InlineBench.h>
+
+#include <cstdlib>
 
 namespace xs::tasks {
 
@@ -25,6 +31,63 @@ ExternBlockMetaReader::getNextData() {
     return {};
   }
   auto& cmd = optCmd.value();
+  INLINE_BENCHMARK_WALL_START_GLOBAL("seeking file position");
+  stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
+  INLINE_BENCHMARK_WALL_STOP("seeking file position");
+  xs::DataChunk chunk(std::move(cmd));
+  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
+  stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
+  INLINE_BENCHMARK_WALL_STOP("actual read");
+  return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
+}
+
+// ----- ExternBlockMetaReaderMMAP ---------------------------------------------
+// _____________________________________________________________________________
+ExternBlockMetaReaderMMAP::ExternBlockMetaReaderMMAP(
+    std::string file_path, const std::string& meta_file_path)
+    : _file_path(std::move(file_path)),
+      _meta_file(meta_file_path, std::ios::in) {}
+
+// _____________________________________________________________________________
+std::optional<std::pair<DataChunk, uint64_t>>
+ExternBlockMetaReaderMMAP::getNextData() {
+  INLINE_BENCHMARK_WALL_START(read, "reading");
+  auto optCmd = _meta_file.nextChunkMetaData();
+  if (!optCmd.has_value()) {
+    return {};
+  }
+  auto cmd = std::move(optCmd.value());
+  INLINE_BENCHMARK_WALL_START_GLOBAL("construct stream");
+  int fd = open(_file_path.c_str(), O_RDONLY);
+  INLINE_BENCHMARK_WALL_STOP("construct stream");
+  if (fd < 0) {
+    exit(1);
+  }
+  xs::DataChunk chunk;
+  size_t page_size = sysconf(_SC_PAGE_SIZE);
+  size_t page_offset = cmd.actual_offset % page_size;
+  if (page_size > cmd.actual_offset && page_offset != 0) {
+    return ExternBlockMetaReaderMMAP::getData(_file_path, std::move(cmd));
+  }
+
+  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
+  chunk._data = static_cast<char*>(
+      mmap(nullptr, cmd.actual_size + page_offset, PROT_READ, MAP_PRIVATE, fd,
+           static_cast<int64_t>(cmd.actual_offset - page_offset)));
+  INLINE_BENCHMARK_WALL_STOP("actual read");
+  chunk.set_size(cmd.actual_size);
+  chunk.set_mmap_offset(page_offset);
+  chunk.set_mmap();
+  chunk.getMetaData() = std::move(cmd);
+  close(fd);
+  return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
+}
+
+// _____________________________________________________________________________
+std::optional<std::pair<DataChunk, uint64_t>>
+ExternBlockMetaReaderMMAP::getData(const std::string& file_path,
+                                   ChunkMetaData cmd) {
+  std::ifstream stream(file_path);
   INLINE_BENCHMARK_WALL_START_GLOBAL("seeking file position");
   stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
   INLINE_BENCHMARK_WALL_STOP("seeking file position");
@@ -95,6 +158,68 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
     return std::make_pair(std::move(chunk), _current_index++);
   }
   return {};
+}
+
+ExternBlockReaderMMAP::ExternBlockReaderMMAP(std::string file_path,
+                                             size_t max_size)
+    : _file_path(std::move(file_path)),
+      _max_size(max_size),
+      _mmap_read_size(max_size - max_size % sysconf(_SC_PAGE_SIZE) +
+                      sysconf(_SC_PAGE_SIZE)) {
+  int fd = open(_file_path.c_str(), O_RDONLY);
+  _file_size = lseek(fd, 0, SEEK_END);
+  close(fd);
+}
+
+std::optional<std::pair<DataChunk, uint64_t>>
+ExternBlockReaderMMAP::getNextData() {
+  std::unique_lock lock(*_stream_mutex);
+  if (_current_offset >= _file_size) {
+    return {};
+  }
+  INLINE_BENCHMARK_WALL_START(read, "reading");
+  INLINE_BENCHMARK_WALL_START_GLOBAL("construct stream");
+  int fd = open(_file_path.c_str(), O_RDONLY);
+  INLINE_BENCHMARK_WALL_STOP("construct stream");
+  if (fd < 0) {
+    throw std::runtime_error("ERROR: Could not open file '" + _file_path + "'");
+  }
+  xs::DataChunk chunk;
+  size_t page_size = sysconf(_SC_PAGE_SIZE);
+  size_t page_offset = _current_offset % page_size;
+  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
+  chunk._data = static_cast<char*>(
+      mmap(nullptr, _mmap_read_size + page_size, PROT_READ, MAP_PRIVATE, fd,
+           static_cast<int64_t>(_current_offset - page_offset)));
+  INLINE_BENCHMARK_WALL_STOP("actual read");
+  // search new line char
+  size_t size = std::min<size_t>(_file_size - _current_offset, _max_size);
+  INLINE_BENCHMARK_WALL_START(_, "searching previous new line");
+  size_t offset = page_offset + size;
+  if (size == _max_size) {
+    while (true) {
+      if (chunk._data[offset] == '\n') {
+        break;
+      }
+      offset--;
+      if (offset <= 0) {
+        throw std::runtime_error("ERROR: failed to find new line char.");
+      }
+    }
+  } else {
+    int i = 0;
+  }
+  INLINE_BENCHMARK_WALL_STOP("searching previous new line");
+  size_t actual_size = offset - page_offset;
+  chunk.set_size(actual_size);
+  chunk.set_mmap_offset(page_offset);
+  chunk.set_mmap();
+  chunk.getMetaData() = {_current_index, _current_offset, _current_offset,
+                         actual_size,    actual_size,     {}};
+  close(fd);
+  _current_offset += actual_size;
+  _current_index++;
+  return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
 }  // namespace xs::tasks

@@ -13,7 +13,8 @@
 
 namespace xs {
 
-using strtype = std::vector<char, xs::utils::just_allocator<char>>;
+// using strtype = std::vector<char, xs::utils::just_allocator<char>>;
+using strtype = char*;
 
 /**
  * SFString is a string type object, internally holding a std::basic_string
@@ -33,23 +34,18 @@ class DataChunk {
 
  public:
   DataChunk() = default;
-  DataChunk(strtype data, ChunkMetaData meta_data);
-  explicit DataChunk(strtype data);
+  DataChunk(char* data, size_t size, ChunkMetaData meta_data);
+  explicit DataChunk(strtype data, size_t size);
   explicit DataChunk(ChunkMetaData meta_data);
+
+  ~DataChunk();
 
   // delete copy constructor
   DataChunk(const DataChunk&) = delete;
   DataChunk& operator=(const DataChunk&) = delete;
   // move constructor
-  DataChunk(DataChunk&&) noexcept = default;
+  DataChunk(DataChunk&& chunk) noexcept;
   DataChunk& operator=(DataChunk&&) noexcept = default;
-
-  /**
-   * Access to the internally hold std::basic_string
-   * @return reference to _data
-   */
-  strtype& getData();
-  [[nodiscard]] const strtype& getData() const;
 
   ChunkMetaData& getMetaData();
   [[nodiscard]] const ChunkMetaData& getMetaData() const;
@@ -57,12 +53,7 @@ class DataChunk {
   /**
    * wrapper method for this->_data.data()
    */
-  char* data();
-
-  /**
-   * wrapper method for this->_data.data()
-   */
-  [[nodiscard]] const char* data() const;
+  [[nodiscard]] char* data() const;
 
   /**
    * wrapper method for this->_data.size()
@@ -75,22 +66,22 @@ class DataChunk {
   void resize(size_t size);
 
   /**
-   * wrapper method for this->_data.push_back()
-   */
-  void push_back(char c);
-
-  /**
-   * wrapper method for this->_data.reserve()
-   */
-  void reserve(size_t size);
-
-  /**
    * wrapper method for this->_data.assign()
    */
   void assign(std::string data);
 
+  // TODO: make private again!
+  char* _data = nullptr;
+  void set_size(size_t size) { _size = size; };
+  void set_mmap() { _mmap = true; };
+  void set_mmap_offset(size_t offset) { _mmap_offset = offset; }
+
  private:
-  strtype _data;
+  // indicates if _data must be destructed or if it is owned by another process
+  bool _data_moved = false;
+  size_t _size = 0;
+  bool _mmap = false;
+  size_t _mmap_offset = 0;
   ChunkMetaData _meta_data{0, 0, 0, 0, 0, {}};
 };
 

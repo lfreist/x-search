@@ -34,6 +34,21 @@ class ExternBlockMetaReader : public BaseDataProvider<DataChunk> {
 };
 
 // _____________________________________________________________________________
+class ExternBlockMetaReaderMMAP : public BaseDataProvider<DataChunk> {
+ public:
+  ExternBlockMetaReaderMMAP(std::string file_path,
+                            const std::string& meta_file_path);
+
+  std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
+
+ private:
+  static std::optional<std::pair<DataChunk, uint64_t>> getData(
+      const std::string& file_path, ChunkMetaData meta_data);
+  std::string _file_path;
+  MetaFile _meta_file;
+};
+
+// _____________________________________________________________________________
 class ExternBlockReader : public BaseDataProvider<DataChunk> {
  public:
   explicit ExternBlockReader(std::string file_path, size_t min_size = 16777216,
@@ -48,6 +63,25 @@ class ExternBlockReader : public BaseDataProvider<DataChunk> {
   uint64_t _current_index = 0;
   uint64_t _current_offset = 0;
   std::ifstream _file_stream;
+  std::unique_ptr<std::mutex> _stream_mutex = std::make_unique<std::mutex>();
+};
+
+// _____________________________________________________________________________
+class ExternBlockReaderMMAP : public BaseDataProvider<DataChunk> {
+ public:
+  explicit ExternBlockReaderMMAP(std::string file_path,
+                                 size_t max_size = 16777216);
+
+  std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
+
+ private:
+  const std::string _file_path;
+  const size_t _max_size;
+  const size_t _mmap_read_size;
+  size_t _file_size;
+  uint64_t _current_index = 0;
+  uint64_t _current_offset = 0;
+  uint64_t _buffer_position = 0;
   std::unique_ptr<std::mutex> _stream_mutex = std::make_unique<std::mutex>();
 };
 

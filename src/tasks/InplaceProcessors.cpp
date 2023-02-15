@@ -6,6 +6,7 @@
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/compression/Lz4Wrapper.h>
 #include <xsearch/utils/compression/ZstdWrapper.h>
+#include <xsearch/utils/string_manipulation.h>
 
 namespace xs::tasks {
 
@@ -58,9 +59,7 @@ void LZ4Compressor::process(DataChunk* data) {
   cmd.actual_offset = _offset;
   _offset += compressed.size();
   _next_chunk_id++;
-  *data = DataChunk({std::make_move_iterator(compressed.begin()),
-                     std::make_move_iterator(compressed.end())},
-                    std::move(cmd));
+  *data = DataChunk(compressed.data(), compressed.size(), std::move(cmd));
   _offset_cv->notify_all();
 }
 
@@ -82,9 +81,7 @@ void ZSTDCompressor::process(DataChunk* data) {
   cmd.actual_offset = _offset;
   _offset += compressed.size();
   _next_chunk_id++;
-  *data = DataChunk({std::make_move_iterator(compressed.begin()),
-                     std::make_move_iterator(compressed.end())},
-                    std::move(cmd));
+  *data = DataChunk(compressed.data(), compressed.size(), std::move(cmd));
   _offset_cv->notify_all();
 }
 
@@ -152,9 +149,7 @@ void NewLineSearcher::process(DataChunk* data) {
 // _____________________________________________________________________________
 void ToLower::process(DataChunk* data) {
   INLINE_BENCHMARK_WALL_START(_, "transforming to lower case");
-  std::transform(data->getData().begin(), data->getData().end(),
-                 data->getData().begin(),
-                 [](int c) { return std::tolower(c); });
+  utils::simd::toLower(data->data(), data->size());
 }
 
 }  // namespace xs::tasks
