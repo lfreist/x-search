@@ -132,7 +132,7 @@ std::optional<ChunkMetaData> MetaFile::nextChunkMetaData() {
 
 // _____________________________________________________________________________
 std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
-  INLINE_BENCHMARK_WALL_START("read meta data");
+  INLINE_BENCHMARK_WALL_START(_, "read meta data");
   std::unique_lock lock(_stream_mutex);
   std::vector<ChunkMetaData> cs;
   cs.reserve(num);
@@ -144,7 +144,6 @@ std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
     cmd.chunk_index = _chunk_index++;
     cs.emplace_back(cmd);
   }
-  INLINE_BENCHMARK_WALL_STOP("read meta data");
   return cs;
 }
 

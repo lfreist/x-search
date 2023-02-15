@@ -16,24 +16,22 @@ ExternBlockMetaReader::ExternBlockMetaReader(std::string file_path,
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, uint64_t>>
 ExternBlockMetaReader::getNextData() {
-  INLINE_BENCHMARK_WALL_START("reading");
-  INLINE_BENCHMARK_WALL_START("construct stream");
+  INLINE_BENCHMARK_WALL_START(read, "reading");
+  INLINE_BENCHMARK_WALL_START_GLOBAL("construct stream");
   std::ifstream stream(_file_path);
   INLINE_BENCHMARK_WALL_STOP("construct stream");
   auto optCmd = _meta_file.nextChunkMetaData();
   if (!optCmd.has_value()) {
-    INLINE_BENCHMARK_WALL_STOP("reading");
     return {};
   }
   auto& cmd = optCmd.value();
-  INLINE_BENCHMARK_WALL_START("seeking file position");
+  INLINE_BENCHMARK_WALL_START_GLOBAL("seeking file position");
   stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
   INLINE_BENCHMARK_WALL_STOP("seeking file position");
   xs::DataChunk chunk(std::move(cmd));
-  INLINE_BENCHMARK_WALL_START("actual read");
+  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
   stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
   INLINE_BENCHMARK_WALL_STOP("actual read");
-  INLINE_BENCHMARK_WALL_STOP("reading");
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
@@ -54,6 +52,7 @@ ExternBlockReader::ExternBlockReader(std::string file_path, size_t min_size,
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
   std::unique_lock lock(*_stream_mutex);
+  INLINE_BENCHMARK_WALL_START(read, "reading");
   ChunkMetaData cmd{_current_index,
                     _current_offset,
                     _current_offset,
@@ -61,12 +60,15 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
                     _min_size + _max_oversize,
                     {}};
   DataChunk chunk(std::move(cmd));
+  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
   _file_stream.read(chunk.data(), static_cast<int64_t>(_min_size));
+  INLINE_BENCHMARK_WALL_STOP("actual read");
   auto num_bytes_read = _file_stream.gcount();
 
   if (num_bytes_read > 0 && chunk.data()[num_bytes_read - 1] != '\n' &&
       !_file_stream.eof()) {
     int64_t additional_bytes_read = 0;
+    INLINE_BENCHMARK_WALL_START_GLOBAL("read until next new line");
     while (true) {
       if (static_cast<size_t>(additional_bytes_read) > _max_oversize) {
         throw std::runtime_error(
@@ -82,6 +84,7 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
       }
       additional_bytes_read++;
     }
+    INLINE_BENCHMARK_WALL_STOP("read until next new line");
     num_bytes_read += additional_bytes_read;
   }
   if (num_bytes_read > 0) {

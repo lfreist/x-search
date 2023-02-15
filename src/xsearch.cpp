@@ -200,54 +200,6 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
       std::move(searcher));
 }
 
-/*
-// _____________________________________________________________________________
-// implementation for collecting all results
-template <>
-std::shared_ptr<full> extern_search(const std::string& pattern,
-                                    const std::string& file_path,
-                                    const std::string& meta_file_path,
-                                    int num_threads, int num_readers) {
-  auto reader =
-      std::make_unique<tasks::ExternBlockMetaReader>(file_path, meta_file_path);
-  // check for compression and add decompression task --------------------------
-  std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataChunk>>>
-processors; MetaFile metaFile(meta_file_path, std::ios::in); switch
-(metaFile.getCompressionType()) { case CompressionType::LZ4:
-      processors.push_back(std::make_unique<tasks::LZ4Decompressor>());
-      break;
-    case CompressionType::ZSTD:
-      processors.emplace_back(std::make_unique<tasks::ZSTDDecompressor>());
-      break;
-    default:
-      break;
-  }
-  // ---------------------------------------------------------------------------
-  std::vector<
-      std::unique_ptr<tasks::BaseSearcher<DataChunk, FullPartialResult>>>
-      searcher;
-
-  // we need a searcher for every result we are seeking for...
-  //  MARK: the order matters, since we can use previous results for some
-  //   searches (e.g. use byte_offset data for nl mapping searcher instead of
-  //   searching byte offsets there again).
-  searcher.push_back(
-      std::make_unique<tasks::MatchBytePositionSearcher<FullPartialResult>>());
-  searcher.push_back(
-      std::make_unique<tasks::LineBytePositionSearcher<FullPartialResult>>());
-  searcher.push_back(
-      std::make_unique<tasks::LineIndexSearcher<FullPartialResult>>());
-  searcher.push_back(
-      std::make_unique<tasks::LineSearcher<FullPartialResult>>());
-
-  // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<full>(pattern, num_threads, num_readers,
-                                std::move(reader), std::move(processors),
-                                std::move(searcher),
-                                std::make_unique<FullResult>());
-}
- */
-
 // ===== Implementations for Reader without metafile ===========================
 // _____________________________________________________________________________
 template <>

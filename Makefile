@@ -32,7 +32,7 @@ build: init
 	cmake --build build --config Release -j $(nproc) 2>/dev/null
 
 build_benchmark: init
-	cmake -B build-benchmark -DCMAKE_BUILD_TYPE=Benchmark -DRE2_BUILD_TESTING=off 2>/dev/null
+	cmake -B build-benchmark -DCMAKE_BUILD_TYPE=Benchmark -DRE2_BUILD_TESTING=off -DXS_BENCHMARKS=ON 2>/dev/null
 	cmake --build build-benchmark --config Benchmark -j $(nproc) 2>/dev/null
 
 build_sanitizer: init
@@ -42,9 +42,9 @@ build_sanitizer: init
 	cmake --build build-address-sanitizer -j $(nproc) 2>/dev/null
 
 build_exe_test: init
-	cmake -B build-exe-test-thread-sanitizer -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DCMAKE_CXX_COMPILER=/usr/bin/clang++-15 -DRE2_BUILD_TESTING=off -DEXE_TESTS=ON
+	cmake -B build-exe-test-thread-sanitizer -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DCMAKE_CXX_COMPILER=/usr/bin/clang++-15 -DRE2_BUILD_TESTING=off -DXS_EXE_TESTS=ON
 	cmake --build build-exe-test-thread-sanitizer -j $(nproc) 2>/dev/null
-	cmake -B build-exe-test-address-sanitizer -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=address" -DCMAKE_CXX_COMPILER=/usr/bin/clang++-15 -DRE2_BUILD_TESTING=off -DEXE_TESTS=ON
+	cmake -B build-exe-test-address-sanitizer -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=address" -DCMAKE_CXX_COMPILER=/usr/bin/clang++-15 -DRE2_BUILD_TESTING=off -DXS_EXE_TESTS=ON
 	cmake --build build-exe-test-address-sanitizer -j $(nproc) 2>/dev/null
 
 test: grep_test preprocessor_test lib_test
@@ -65,11 +65,7 @@ check_style:
 	bash ./format_check.sh
 
 benchmark: build_benchmark init_test_runs
-	bash ./scripts/benchmark_pattern_size.sh
-	bash ./scripts/benchmark_pattern_density.sh
-	bash ./scripts/benchmark_file_size.sh
-	bash ./scripts/benchmark_compression.sh
-	bash ./scripts/benchmark_nl_mapping.sh
+	sudo ctest --test-dir build-benchmark --label-regex benchmark_
 
 clean:
 	rm -rf build

@@ -11,7 +11,7 @@ namespace xs::tasks {
 
 // _____________________________________________________________________________
 void LZ4Decompressor::process(DataChunk* data) {
-  INLINE_BENCHMARK_WALL_START("decompression");
+  INLINE_BENCHMARK_WALL_START(_, "decompression");
   // get and update meta data
   auto cmd = std::move(data->getMetaData());
   cmd.actual_size = cmd.original_size;
@@ -22,12 +22,11 @@ void LZ4Decompressor::process(DataChunk* data) {
   xs::utils::compression::LZ4::decompressToBuffer(data->data(), data->size(),
                                                   chunk.data(), chunk.size());
   *data = std::move(chunk);
-  INLINE_BENCHMARK_WALL_STOP("decompression");
 }
 
 // _____________________________________________________________________________
 void ZSTDDecompressor::process(DataChunk* data) {
-  INLINE_BENCHMARK_WALL_START("decompression");
+  INLINE_BENCHMARK_WALL_START(_, "decompression");
   // get and update meta data
   auto cmd = std::move(data->getMetaData());
   cmd.actual_size = cmd.original_size;
@@ -38,7 +37,6 @@ void ZSTDDecompressor::process(DataChunk* data) {
   xs::utils::compression::ZSTD::decompressToBuffer(data->data(), data->size(),
                                                    chunk.data(), chunk.size());
   *data = std::move(chunk);
-  INLINE_BENCHMARK_WALL_STOP("decompression");
 }
 
 // _____________________________________________________________________________
@@ -47,8 +45,8 @@ LZ4Compressor::LZ4Compressor(bool hc, int lvl)
 
 // _____________________________________________________________________________
 void LZ4Compressor::process(DataChunk* data) {
+  INLINE_BENCHMARK_WALL_START(_, "compression");
   assert(data->size() <= std::numeric_limits<int>::max());
-  INLINE_BENCHMARK_WALL_START("compression");
   auto compressed = xs::utils::compression::LZ4::compress(
       data->data(), static_cast<int>(data->size()), _hc, _compression_level);
   auto cmd = std::move(data->getMetaData());
@@ -71,8 +69,8 @@ ZSTDCompressor::ZSTDCompressor(int lvl) : _compression_level(lvl) {}
 
 // _____________________________________________________________________________
 void ZSTDCompressor::process(DataChunk* data) {
+  INLINE_BENCHMARK_WALL_START(_, "compression");
   assert(data->size() <= std::numeric_limits<int>::max());
-  INLINE_BENCHMARK_WALL_START("compression");
   auto compressed = xs::utils::compression::ZSTD::compress(
       data->data(), static_cast<int>(data->size()), _compression_level);
   auto cmd = std::move(data->getMetaData());
@@ -95,7 +93,7 @@ NewLineSearcher::NewLineSearcher(uint64_t distance) : _distance(distance) {}
 
 // _____________________________________________________________________________
 void NewLineSearcher::process(DataChunk* data) {
-  INLINE_BENCHMARK_WALL_START("adding line index data");
+  INLINE_BENCHMARK_WALL_START(_, "adding line index data");
   std::vector<ByteToNewLineMappingInfo> mapping_data;
   int64_t shift = 0;
   uint64_t current_distance = 0;
@@ -149,16 +147,14 @@ void NewLineSearcher::process(DataChunk* data) {
   data->getMetaData().line_mapping_data = std::move(mapping_data);
   _next_chunk_id++;
   _line_index_cv->notify_all();
-  INLINE_BENCHMARK_WALL_STOP("adding line index data");
 }
 
 // _____________________________________________________________________________
 void ToLower::process(DataChunk* data) {
-  INLINE_BENCHMARK_WALL_START("transforming to lower case");
+  INLINE_BENCHMARK_WALL_START(_, "transforming to lower case");
   std::transform(data->getData().begin(), data->getData().end(),
                  data->getData().begin(),
                  [](int c) { return std::tolower(c); });
-  INLINE_BENCHMARK_WALL_STOP("transforming to lower case");
 }
 
 }  // namespace xs::tasks

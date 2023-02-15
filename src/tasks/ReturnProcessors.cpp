@@ -15,10 +15,9 @@ MatchCounter::MatchCounter(std::string pattern, bool regex)
 
 // _____________________________________________________________________________
 uint64_t MatchCounter::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START("searching count");
+  INLINE_BENCHMARK_WALL_START(_, "searching count");
   uint64_t count = _regex ? search::regex::count(data, *_re_pattern, false)
                           : search::count(data, _pattern, false);
-  INLINE_BENCHMARK_WALL_STOP("searching count");
   return count;
 }
 
@@ -29,10 +28,9 @@ LineCounter::LineCounter(std::string pattern, bool regex)
 
 // _____________________________________________________________________________
 uint64_t LineCounter::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START("searching count");
+  INLINE_BENCHMARK_WALL_START(_, "searching count");
   auto count = _regex ? search::regex::count(data, *_re_pattern, true)
                       : search::count(data, _pattern, true);
-  INLINE_BENCHMARK_WALL_STOP("searching count");
   return count;
 }
 // ===== MatchBytePositionSearcher =============================================
@@ -45,11 +43,10 @@ MatchBytePositionSearcher::MatchBytePositionSearcher(std::string pattern,
 // _____________________________________________________________________________
 std::vector<uint64_t> MatchBytePositionSearcher::process(
     DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START("searching byte position");
+  INLINE_BENCHMARK_WALL_START(_, "searching byte position");
   auto tmp = _regex ? search::regex::global_byte_offsets_match(
                           data, *_re_pattern, false)
                     : search::global_byte_offsets_match(data, _pattern, false);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
   return tmp;
 }
 
@@ -62,11 +59,10 @@ LineBytePositionSearcher::LineBytePositionSearcher(std::string pattern,
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineBytePositionSearcher::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START("searching byte position");
+  INLINE_BENCHMARK_WALL_START(_, "searching byte position");
   auto tmp = _regex
                  ? search::regex::global_byte_offsets_line(data, *_re_pattern)
                  : search::global_byte_offsets_line(data, _pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
   return tmp;
 }
 
@@ -78,20 +74,18 @@ LineIndexSearcher::LineIndexSearcher(std::string pattern, bool regex)
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineIndexSearcher::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START("searching byte position");
+  INLINE_BENCHMARK_WALL_START(_, "searching byte position");
   auto mapping_data =
       _regex ? search::regex::global_byte_offsets_line(data, *_re_pattern)
              : search::global_byte_offsets_line(data, _pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
   return map(data, mapping_data);
 }
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineIndexSearcher::map(
     DataChunk* data, const std::vector<uint64_t>& mapping_data) {
-  INLINE_BENCHMARK_WALL_START("mapping line index");
+  INLINE_BENCHMARK_WALL_START(_, "mapping to line indices");
   auto tmp = map::bytes::to_line_indices(data, mapping_data);
-  INLINE_BENCHMARK_WALL_STOP("mapping line index");
   return tmp;
 }
 
@@ -103,17 +97,17 @@ LineSearcher::LineSearcher(std::string pattern, bool regex)
 
 // _____________________________________________________________________________
 std::vector<std::string> LineSearcher::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START("searching byte position");
+  INLINE_BENCHMARK_WALL_START(_, "searching byte position");
   auto mapping_data =
       _regex ? search::regex::global_byte_offsets_line(data, *_re_pattern)
              : search::global_byte_offsets_line(data, _pattern);
-  INLINE_BENCHMARK_WALL_STOP("searching byte position");
   return map(data, mapping_data);
 }
 
 // _____________________________________________________________________________
 std::vector<std::string> LineSearcher::map(
     DataChunk* data, const std::vector<uint64_t>& mapping_data) {
+  INLINE_BENCHMARK_WALL_START(_, "mapping to lines");
   std::vector<std::string> tmp;
   tmp.reserve(mapping_data.size());
   for (const auto bo : mapping_data) {

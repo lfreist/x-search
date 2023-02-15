@@ -26,8 +26,8 @@ BENCHMARK_DIR_PLAIN=./benchmark/plain/chunk_size/$(date +"%Y%m%d-%H-%M-%S")
 
 PATTERN="pattern"
 DENSITY=32
-FILE_SIZE_GB=1
-NL_MAPPING_DATA=(1 500 1000 5000 32000)
+FILE_SIZE=1
+CHUNK_SIZE=(1 500 1000 4000 16000 32000 64000)
 
 LOG() {
   echo "[$(date +'%T')]:  $1"
@@ -49,29 +49,30 @@ fi
 
 if [ ! -f "$FILE" ]; then
   LOG "Writing file..."
-  python3 "$BINARY_DIR/scripts/createTestFile.py" -s "$FILE_SIZE_GB" -o "$FILE" --keyword "$PATTERN" --density "$DENSITY" "$BINARY_DIR/files/words.txt" --progress
+  python3 "$BINARY_DIR/scripts/createTestFile.py" -s "$FILE_SIZE" -o "$FILE" --keyword "$PATTERN" --density "$DENSITY" "$BINARY_DIR/files/words.txt" --progress
 fi
 
-FILE_SIZE=$(wc -c < "$FILE")
-
 # run benchmarks with preprocessing
-for md in "${NL_MAPPING_DATA[@]}"; do
-  LOG "preprocessing file: -d md"
-  "$BINARY_DIR/xsproc/XSPreprocessor" "$FILE" -a none -d "md" -m "$FILE.meta" -j 4 >/dev/null &
+for cs in "${CHUNK_SIZE[@]}"; do
+  LOG "preprocessing file: -s $cs"
+  "$BINARY_DIR/xsproc/XSPreprocessor" $FILE -m $FILE.meta -s "$cs" -j 4
   DROP_RAM_CACHE
   LOG "running xs/grep"
-  "$BINARY_DIR/xsgrep/grep" "$PATTERN" "$FILE" "$FILE.meta" -n --benchmark-file "$BENCHMARK_DIR_PREPROCESSED/$md.json" --benchmark-format json >/dev/null
-  truncate -s -1 "$BENCHMARK_DIR_PREPROCESSED/$md.json"
+  "$BINARY_DIR/xsgrep/grep" $PATTERN $FILE $FILE.meta --benchmark-file "$BENCHMARK_DIR_PREPROCESSED/$cs.json" --benchmark-format json >/dev/null
+  truncate -s -1 "$BENCHMARK_DIR_PREPROCESSED/$cs.json"
   meta_size=$(wc -c < "$FILE.meta")
-  echo ",\"original size\": $FILE_SIZE,\"mapping data distance\": $md,\"meta file size\": $meta_size}" >> "$BENCHMARK_DIR_PREPROCESSED/$md.json"
-  clang-format-14 -i "$BENCHMARK_DIR_PREPROCESSED/$md.json"
+  file_size=$(wc -c < "$FILE")
+  echo ",\"original size\": $file_size,\"chunk size\": $cs,\"meta file size\": $meta_size}" >> "$BENCHMARK_DIR_PREPROCESSED/$cs.json"
+  clang-format-14 -i "$BENCHMARK_DIR_PREPROCESSED/$cs.json"
 done
 
 # run benchmarks without preprocessing
-DROP_RAM_CACHE
-LOG "running xs-grep"
-"$BINARY_DIR/xsgrep/grep" "$PATTERN" "$FILE" -n --benchmark-file "$BENCHMARK_DIR_PREPROCESSED/res.json" --benchmark-format json >/dev/null
-truncate -s -1 "$BENCHMARK_DIR_PREPROCESSED/res.json"
-
-echo ",\"original size\": $FILE_SIZE,\"nl mapping\": 0,\"meta file size\": 0}" >> "$BENCHMARK_DIR_PREPROCESSED/res.json"
-clang-format-14 -i "$BENCHMARK_DIR_PREPROCESSED/res.json"
+for cs in "${CHUNK_SIZE[@]}"; do
+  DROP_RAM_CACHE
+  LOG "running xs/grep -s $cs"
+  "$BINARY_DIR/xsgrep/grep" $PATTERN $FILE -s "$cs" --benchmark-file "$BENCHMARK_DIR_PLAIN/$cs.json" --benchmark-format json >/dev/null
+  truncate -s -1 "$BENCHMARK_DIR_PLAIN/$cs.json"
+  file_size=$(wc -c < "$FILE")
+  echo ",\"original size\": $file_size\"chunk size\": $cs,\"meta file size\": 0}" >> "$BENCHMARK_DIR_PLAIN/$cs.json"
+  clang-format-14 -i "$BENCHMARK_DIR_PLAIN/$cs.json"
+done

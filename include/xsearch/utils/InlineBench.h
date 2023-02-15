@@ -24,8 +24,7 @@
 #define __IB_WINDOWS__
 #endif
 
-// ==== CPU Timer
-// =============================================================================
+// ==== CPU Timer ==============================================================
 class CPUTime {
  public:
 #if defined(__IB_UNIX__)
@@ -46,8 +45,7 @@ class CPUTime {
 #endif
 };
 
-// ==== implementations
-// =============================================================================
+// ==== implementations ========================================================
 /**
  * dynamic code benchmark base class
  * @tparam TimePoint
@@ -116,10 +114,6 @@ class InlineBenchmarkCPU : public InlineBenchmark<int64_t> {
     auto& pair = res_vector.back();
     if (pair.second == 0) {
       pair.second = now;
-    } else {
-      throw std::runtime_error(
-          "Stopping code benchmark failed, since this benchmark id has not "
-          "started a timer on this thread yet.");
     }
   };
 
@@ -182,16 +176,14 @@ class InlineBenchmarkWall
     if (pair.second == std::chrono::time_point<std::chrono::steady_clock,
                                                std::chrono::nanoseconds>{}) {
       pair.second = std::chrono::steady_clock::now();
-    } else {
-      throw std::runtime_error(
-          "Stopping code benchmark failed, since this benchmark id has not "
-          "started a timer on this thread yet.");
     }
   };
 
   [[nodiscard]] std::map<std::thread::id, int64_t> getResults() const override {
     std::map<std::thread::id, int64_t> result;
     for (const auto& [thread_id, intervals] : _resultPairs) {
+      // MARK: look up is O(log n) -> this reference might be super
+      // unnecessary...
       auto& value = result[thread_id];
       value = 0;
       for (const auto& [start, end] : intervals) {
@@ -220,8 +212,7 @@ std::ostream& operator<<(std::ostream& os, const InlineBenchmark<T>& c_bm) {
   return os;
 }
 
-// ==== handler
-// =============================================================================
+// ==== handler ================================================================
 enum BenchmarkType { CPU, WALL };
 
 class InlineBenchmarkHandler {
@@ -357,8 +348,7 @@ class InlineBenchmarkHandler {
   std::map<const std::string, InlineBenchmarkWall> _Wall_benchmarks;
 };
 
-// ==== registrator
-// =============================================================================
+// ==== registrator ============================================================
 class InlineBenchmarkRegistrator {
  public:
   InlineBenchmarkRegistrator(std::string name, BenchmarkType bm_t_id)
@@ -390,34 +380,36 @@ class InlineBenchmarkRegistrator {
   BenchmarkType _bm_t_id;
 };
 
-// ==== MACROS
-// =============================================================================
+// ==== MACROS =================================================================
 
 #ifdef BENCHMARK
-#define INLINE_BENCHMARK_CPU_START(name) \
+
+#define INLINE_BENCHMARK_CPU_START(var, name) \
+  InlineBenchmarkRegistrator var =            \
+      InlineBenchmarkRegistrator(std::string(#name), CPU)
+#define INLINE_BENCHMARK_CPU_START_GLOBAL(name) \
   InlineBenchmarkRegistrator::start(name, CPU)
 #define INLINE_BENCHMARK_CPU_STOP(name) \
-  InlineBenchmarkRegistrator::stop(name, CPU)
-
-#define INLINE_BENCHMARK_WALL_START(name) \
+  InlineBenchmarkRegistrator::stop(std::string(#name), CPU)
+#define INLINE_BENCHMARK_WALL_START(var, name) \
+  InlineBenchmarkRegistrator var = InlineBenchmarkRegistrator(name, WALL)
+#define INLINE_BENCHMARK_WALL_START_GLOBAL(name) \
   InlineBenchmarkRegistrator::start(name, WALL)
 #define INLINE_BENCHMARK_WALL_STOP(name) \
   InlineBenchmarkRegistrator::stop(name, WALL)
 
-#define INLINE_BENCHMARK_WALL(name) InlineBenchmarkRegistrator(name, WALL)
-#define INLINE_BENCHMARK_CPU(name) InlineBenchmarkRegistrator(name, CPU)
-
-#define INLINE_BENCHMARK_REPORT(fmt) InlineBenchmarkRegistrator::report(fmt)
+#define INLINE_BENCHMARK_REPORT(fmt) InlineBenchmarkRegistrator::report(#fmt)
 #else
 // empty definitions
-#define INLINE_BENCHMARK_CPU_START(name)
+#define INLINE_BENCHMARK_CPU_START(var, name)
 #define INLINE_BENCHMARK_CPU_STOP(name)
 
-#define INLINE_BENCHMARK_WALL_START(name)
+#define INLINE_BENCHMARK_CPU_START_GLOBAL(name)
+
+#define INLINE_BENCHMARK_WALL_START(var, name)
 #define INLINE_BENCHMARK_WALL_STOP(name)
 
-#define INLINE_BENCHMARK_WALL(name)
-#define INLINE_BENCHMARK_CPU(name)
+#define INLINE_BENCHMARK_WALL_START_GLOBAL(name)
 
 #define INLINE_BENCHMARK_REPORT(fmt) ""
 #endif

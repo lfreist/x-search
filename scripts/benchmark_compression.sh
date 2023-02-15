@@ -1,34 +1,32 @@
 #!/usr/bin/env bash
 
-# Benchmark description:
-#  Goal: Runtime of different compression algorithms (zstd, lz4) and different compression levels
-#
-#  Settings:
-#   - file size fixed
-#   - pattern: "pattern"
-#   - density: 0 -> we only measure decompression times here
-#   - compression algorithms: none, zstd, lz4
-#   - compression levels: 1, 2, 3, 4, 5, 6, 7, 8, 9
+if [ "$#" -eq 2 ]; then
+  BINARY_DIR="$1"
+  FILE="$2"
+elif [ "$#" -eq 1 ]; then
+  BINARY_DIR="$1"
+  FILE="tmp/default.out"
+else
+  echo "Usage:"
+  echo "./benchmark_compression </path/to/binaries> [<path/to/file.txt>]"
+  echo ""
+  exit 1
+fi
 
 if [ "$EUID" -ne 0 ]; then
   echo "================================================================================"
-  printf "\x1b[31mERROR: Dropping RAM caches requires root privileges!\x1b[m"
+  printf "\x1b[31mERROR: Dropping RAM caches requires root privileges!\x1b[m\n"
   echo "In order to achieve reproducible benchmarks, we need to drop RAM caches."
   echo "================================================================================"
   exit 1
 fi
 
-FILE_DIR=./tmp
-EXE_DIR=./build-benchmark
-BENCHMARK_DIR=./benchmark/compression/$(date +"%Y%m%d-%H-%M-%S")
-KEYWORD="pattern"
-DENSITY=0
-LEVELS=(1 2 3 4 5 6 7 8 9)
+BENCHMARK_DIR_PREPROCESSED=./benchmark/preprocessed/nl_mapping/$(date +"%Y%m%d-%H-%M-%S")
+BENCHMARK_DIR_PLAIN=./benchmark/plain/nl_mapping/$(date +"%Y%m%d-%H-%M-%S")
+PATTERN="pattern"
+DENSITY=32
 FILE_SIZE=1
-
-if [ ! -d "$BENCHMARK_DIR" ]; then
-  mkdir -p "$BENCHMARK_DIR"
-fi
+COMPRESSIONS=("-a zstd -l 1" "-a zstd -l 2" "-a zstd -l 3" "-a zstd -l 4" "-a zstd -l 5" "-a zstd -l 6" "-a lz4" "-a lz4 --hc -l 1" "-a lz4 --hc -l 5" "-a lz4 --hc -l 12")
 
 LOG() {
   echo "[$(date +'%T')]:  $1"
@@ -41,64 +39,30 @@ DROP_RAM_CACHE() {
   LOG "RAM caches dropped"
 }
 
-if [ ! -d "$BENCHMARK_DIR" ]; then
-  mkdir -p "$BENCHMARK_DIR"
+if [ ! -d "$BENCHMARK_DIR_PREPROCESSED" ]; then
+  mkdir -p "$BENCHMARK_DIR_PREPROCESSED"
+fi
+if [ ! -d "$BENCHMARK_DIR_PLAIN" ]; then
+  mkdir -p "$BENCHMARK_DIR_PLAIN"
 fi
 
-if [ ! -d $FILE_DIR ]; then
-  LOG "creating temporary file directory 'tmp'"
-  mkdir $FILE_DIR
+if [ ! -f "$FILE" ]; then
+  LOG "Writing test file..."
+  python3 "$BINARY_DIR/scripts/createTestFile.py" -s $FILE_SIZE -o $FILE --keyword $PATTERN --density $DENSITY "$BINARY_DIR/files/words.txt" >/dev/null
 fi
 
-LOG "Writing test files..."
-if [ ! -f "$FILE_DIR/$FILE_SIZE-gb.txt" ]; then
-  python3 scripts/createTestFile.py -s "$FILE_SIZE" -o "$FILE_DIR/$FILE_SIZE-gb.txt" --keyword "$KEYWORD" --density "$DENSITY" files/words.txt >/dev/null &
-fi
-
-wait
-
-LOG "Preprocessing files using LZ4..."
-for lvl in "${LEVELS[@]}"; do
-  if [ ! -f "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sf.lz4" ]; then
-    "$EXE_DIR/SFPreprocessorMain" "$FILE_DIR/$FILE_SIZE-gb.txt" -o "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sflz4" -a lz4 -l "$lvl" -d 500 -m "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sflz4.meta" > /dev/null &
-  fi
-done
-
-wait
-
-LOG "Preprocessing files using ZSTD..."
-for lvl in "${LEVELS[@]}"; do
-  if [ ! -f "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sf.zst" ]; then
-    "$EXE_DIR/SFPreprocessorMain" "$FILE_DIR/$FILE_SIZE-gb.txt" -o "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sfzst" -a zstd -l "$lvl" -d 500 -m "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sfzst.meta" > /dev/null &
-  fi
-done
-
-wait
-LOG "Done preprocessing files."
+FILE_SIZE=$(wc -c < "$FILE")
 
 # run benchmarks
-for lvl in "${LEVELS[@]}"; do
+for comp in "${COMPRESSIONS[@]}"; do
+  LOG "preprocessing: $comp"
+  "$BINARY_DIR/xsproc/XSPreprocessor" $FILE -o $FILE.pp -m $FILE.meta "$comp" -j 4
   DROP_RAM_CACHE
-  LOG "Running benchmark for LZ4 level $lvl"
-  if "$EXE_DIR/sfgrep" "$KEYWORD" "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sflz4" "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sflz4.meta" -n --benchmark "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-lz4.json" >/dev/null; then
-    truncate -s -1 "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-lz4.json"
-    size=$(wc -c < "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sf.lz4")
-    echo ",\"compressed size\": $size,\"original size\": $((FILE_SIZE * 1000 * 1000 * 1000))}" >> "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-lz4.json"
-    clang-format-14 -i "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-lz4.json"
-  else
-    LOG "Error running: ./sfgrep $KEYWORD $FILE_SIZE-gb-lvl-$lvl.sflz4 ..."
-  fi
-done
-
-for lvl in "${LEVELS[@]}"; do
-  DROP_RAM_CACHE
-  LOG "Running benchmark for ZSTD level $lvl"
-  if "$EXE_DIR/sfgrep" "$KEYWORD" "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sfzst" "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sfzst.meta" -n --benchmark "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-zstd.json" >/dev/null; then
-    truncate -s -1 "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-zstd.json"
-    size=$(wc -c < "$FILE_DIR/$FILE_SIZE-gb-lvl-$lvl.sf.zst")
-    echo ",\"compressed size\": $size,\"original size\": $((FILE_SIZE * 1000 * 1000 * 1000))}" >> "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-zstd.json"
-    clang-format-14 -i "$BENCHMARK_DIR/$FILE_SIZE-gb-lvl-$lvl-alg-zstd.json"
-  else
-    LOG "Error running: ./sfgrep $KEYWORD $FILE_SIZE-gb-lvl-$lvl.sfzst ..."
-  fi
+  LOG " grep:"
+  "$BINARY_DIR/xsgrep/grep" "$KEYWORD" $FILE.pp $FILE.meta --benchmark-file "$BENCHMARK_DIR_PREPROCESSED/$comp.json" --benchmark-format json >/dev/null;
+  truncate -s -1 "$BENCHMARK_DIR_PREPROCESSED/$comp.json"
+  size=$(wc -c < "$FILE.pp")
+  meta_file_size=$(wc -c < "$FILE.meta")
+  echo ",\"compressed size\": $size,\"original size\": $FILE_SIZE,\"meta file size\": $meta_file_size,\"preprocessing\": $comp}" >> "$BENCHMARK_DIR/$comp.json"
+  clang-format-14 -i "$BENCHMARK_DIR/$comp.json"
 done

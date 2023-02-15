@@ -61,6 +61,7 @@ constexpr size_t GrepResult::size() const { return 0; }
 
 // _____________________________________________________________________________
 void GrepResult::add(std::vector<GrepPartialResult> partial_result) {
+  INLINE_BENCHMARK_WALL_START(_, "formatting and printing");
   for (auto& r : partial_result) {
     if (_index) {
       if (_color) {
@@ -130,6 +131,7 @@ GrepSearcher::GrepSearcher(std::string pattern, bool regex, bool line_number,
 // _____________________________________________________________________________
 std::vector<GrepPartialResult> GrepSearcher::process(
     xs::DataChunk* data) const {
+  INLINE_BENCHMARK_WALL_START(_, "searching");
   return _regex ? process_regex(data) : process_plain(data);
 }
 

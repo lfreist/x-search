@@ -30,7 +30,7 @@ struct GrepArgs {
 };
 
 int main(int argc, char** argv) {
-  INLINE_BENCHMARK_WALL("total");
+  INLINE_BENCHMARK_WALL_START(_, "total");
   GrepArgs args;
 #ifdef BENCHMARK
   std::string benchmark_file;
