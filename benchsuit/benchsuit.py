@@ -43,6 +43,7 @@ class Result:
         self.wall_times += other.wall_times
         self.usr_times += other.usr_times
         self.sys_times += other.sys_times
+        return self
 
     def wall(self):
         return self.wall_times
@@ -136,7 +137,7 @@ class Result:
         return False
 
     def __str__(self):
-        return f"{self.mean('wall')}\t{self.mean('usr')}\t{self.mean('sys')}\t{self.mean('cpu')}\t"
+        return f"{self.mean('wall')}\t{self.mean('usr')}\t{self.mean('sys')}\t{self.mean('cpu')}"
 
 
 class Command:
@@ -155,18 +156,27 @@ class Command:
 
     def run(self, path_to_timed: str = "./benchsuit/timed") -> Result:
         assert shutil.which(path_to_timed) is not None
-        print(self.get_timed_cmd(path_to_timed))
-        process = subprocess.Popen(self.get_timed_cmd(path_to_timed), stdout=subprocess.PIPE)
-        out, err = process.communicate()
-        out = str(out)
+        out = subprocess.Popen(self.get_timed_cmd(path_to_timed), stdout=subprocess.PIPE).communicate()[0]
+        out = out.decode()
         wall, usr, sys = str(out).split('\t')
-        return Result(self, wall, usr, sys)
+        try:
+            return Result(self, float(wall), float(usr), float(sys))
+        except ValueError:
+            raise CommandFailedError(f"Error occurred while running {self.get_timed_cmd(path_to_timed)}.")
 
     def __str__(self):
         return f"{self.name}: {' '.join(self.cmd)!r}"
 
 
-class InvalidCommand(Exception):
+class InvalidCommandError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return self.msg
+
+
+class CommandFailedError(Exception):
     def __init__(self, msg):
         self.msg = msg
 
@@ -175,38 +185,40 @@ class InvalidCommand(Exception):
 
 
 class Benchmark:
-    def __init__(self, name: str, pattern: str, commands: List[Command], description: str = "", warmup_cycles: int = 1,
+    def __init__(self, name: str, pattern: str, commands: List[Command], description: str = "",
                  benchmark_count: int = 10, drop_ram_cache: bool = True):
         self.name = name
         self.pattern = pattern
         self.commands = commands
         self.description = description
-        self.warmup_cycles = warmup_cycles
         self.benchmark_count = benchmark_count
         self.drop_ram_cache = drop_ram_cache
         for cmd in self.commands:
             if not cmd.exists():
-                raise InvalidCommand(f"{cmd} could not be found.")
+                raise InvalidCommandError(f"{cmd} could not be found.")
 
     def _run_warmup(self):
-        print("Running warmup...")
-        for _ in range(self.warmup_cycles):
+        if not self.drop_ram_cache:
+            log("Running warmup...")
+            counter = 0
             for cmd in self.commands:
-                if self.drop_ram_cache:
-                    # Drop systems RAM cache precedent
-                    DROP_RAM_CACHE()
+                log(f"{counter}/{len(self.commands)}", end='\r', flush=True)
                 cmd.run()
+                counter += 1
+            log("Warmup done.")
 
     def _run_benchmarks(self):
-        result = BenchmarkResult(self)
+        bm_result = BenchmarkResult(self)
+        log("Running Benchmarks...")
         for n in range(self.benchmark_count):
             for cmd in self.commands:
                 log(f"{n}/{self.benchmark_count}: {cmd.name}", end='\r', flush=True)
                 if self.drop_ram_cache:
                     DROP_RAM_CACHE()
-                timings = cmd.run()
-                result += cmd.run()
-        return result
+                res = cmd.run()
+                bm_result += res
+        log("done")
+        return bm_result
 
     def run(self):
         log(f"running {self.benchmark_count} benchmarks on {len(self.commands)} commands")
@@ -226,39 +238,39 @@ class BenchmarkResult:
         self.results = {}  # keys: command names, values: Result
 
     def __iadd__(self, res: Result):
-        if res.name in self.results:
+        if res.name in self.results.keys():
+            self.results[res.name] += res
+        else:
             self.results[res.name] = res
-        self.results[res.name] += res
         return self
 
     def get_df(self) -> pd.DataFrame:
         data = {
-            "name": [], "description": [], "command": [],
+            "name": [], "command": [],
             "min wall [s]": [], "max wall [s]": [], "mean wall [s]": [], "stdev wall [s]": [],
             "min usr [s]": [], "max usr [s]": [], "mean usr [s]": [], "stdev usr [s]": [],
             "min sys [s]": [], "max sys [s]": [], "mean sys [s]": [], "stdev sys [s]": [],
             "min cpu [s]": [], "max cpu [s]": [], "mean cpu [s]": [], "stdev cpu [s]": []
         }
-        for name, result in self.results.items():
+        for name, res in self.results.items():
             data["name"].append(name)
-            data["description"].append(result.description)
-            data["command"].append(result.command)
-            data["min wall [s]"].append(result.min("wall"))
-            data["max wall [s]"].append(result.max("wall"))
-            data["mean wall [s]"].append(result.mean("wall"))
-            data["stdev wall [s]"].append(result.stdev("wall"))
-            data["min usr [s]"].append(result.min("usr"))
-            data["max usr [s]"].append(result.max("usr"))
-            data["mean usr [s]"].append(result.mean("usr"))
-            data["stdev usr [s]"].append(result.stdev("usr"))
-            data["min sys [s]"].append(result.min("sys"))
-            data["max sys [s]"].append(result.max("sys"))
-            data["mean sys [s]"].append(result.mean("sys"))
-            data["stdev sys [s]"].append(result.stdev("sys"))
-            data["min cpu [s]"].append(result.min("cpu"))
-            data["max cpu [s]"].append(result.max("cpu"))
-            data["mean cpu [s]"].append(result.mean("cpu"))
-            data["stdev cpu [s]"].append(result.stdev("cpu"))
+            data["command"].append(res.command)
+            data["min wall [s]"].append(res.min("wall"))
+            data["max wall [s]"].append(res.max("wall"))
+            data["mean wall [s]"].append(res.mean("wall"))
+            data["stdev wall [s]"].append(res.stdev("wall"))
+            data["min usr [s]"].append(res.min("usr"))
+            data["max usr [s]"].append(res.max("usr"))
+            data["mean usr [s]"].append(res.mean("usr"))
+            data["stdev usr [s]"].append(res.stdev("usr"))
+            data["min sys [s]"].append(res.min("sys"))
+            data["max sys [s]"].append(res.max("sys"))
+            data["mean sys [s]"].append(res.mean("sys"))
+            data["stdev sys [s]"].append(res.stdev("sys"))
+            data["min cpu [s]"].append(res.min("cpu"))
+            data["max cpu [s]"].append(res.max("cpu"))
+            data["mean cpu [s]"].append(res.mean("cpu"))
+            data["stdev cpu [s]"].append(res.stdev("cpu"))
         return pd.DataFrame(data)
 
     def get_dict(self) -> Dict:
@@ -278,7 +290,7 @@ class BenchmarkResult:
         with open(path, "w") as f:
             f.write(json.dumps(self.get_dict()))
 
-    def write_csv(self, path: str, sep: str = ',', sort_by: str = "") -> None:
+    def write_csv(self, path: str, sep: str = ',', sort_by: str = "mean wall [s]") -> None:
         df = self.get_df()
         try:
             df = df.sort_values(by=sort_by)
@@ -293,33 +305,49 @@ class BenchmarkResult:
         return f"Results for {self.benchmark}.\n"
 
 
-def benchmark_subtitles_en_literal_disk(pattern: str) -> Benchmark:
-    """
-    Benchmark plain text search
-    """
+def benchmark_subtitles_en_literal_disk_byte_offset(pattern: str) -> Benchmark:
     data_path = os.path.join(DATA_DIR, DATA_FILE_NAME)
-    meta_path = os.path.join(DATA_DIR, META_FILE_NAME)
-    # patterns = ["short", "A little bit", "Sherlock Holmes", "jeez Rick"]
     commands = [
-        Command("GNU grep", ["/usr/bin/grep", pattern, data_path]),
-        Command("GNU grep -b", ["/usr/bin/grep", pattern, data_path, "-b"]),
-        Command("GNU grep -n", ["/usr/bin/grep", pattern, data_path, "-n"]),
-        Command("xs grep", ["build/xsgrep/grep", pattern, data_path]),
-        Command("xs grep -b", ["build/xsgrep/grep", pattern, data_path, "-b"]),
-        Command("xs grep -n", ["build/xsgrep/grep", pattern, data_path, "-n"]),
-        Command("xs grep --no-map", ["build/xsgrep/grep", pattern, data_path, "--no-map"]),
-        Command("xs grep -j", ["build/xsgrep/grep", pattern, data_path, "-j", "-1"]),
-        Command("xs grep -b -j", ["build/xsgrep/grep", pattern, data_path, "-b", "-j", "-1"]),
-        Command("xs grep -n -j", ["build/xsgrep/grep", pattern, data_path, "-n", "-j", "-1"]),
-        Command("xs grep --no-map -j", ["build/xsgrep/grep", pattern, data_path, "--no-map", "-j", "-1"]),
+        Command("GNU grep", ["/usr/bin/grep", pattern, data_path, "-b"]),
+        Command("xs grep", ["build/xsgrep/grep", pattern, data_path, "-b"]),
+        Command("xs grep --no-mmap", ["build/xsgrep/grep", pattern, data_path, "--no-mmap", "-b"]),
+        Command("xs grep -j", ["build/xsgrep/grep", pattern, data_path, "-j", "-1", "-b"]),
+        Command("xs grep --no-mmap -j", ["build/xsgrep/grep", pattern, data_path, "--no-mmap", "-j", "-1", "-b"]),
+        Command("ripgrep", ["rg", pattern, data_path, "-b"]),
+        Command("ripgrep --no-mmap", ["rg", pattern, data_path, "--no-mmap", "-b"]),
+        Command("ripgrep -j 1", ["rg", pattern, data_path, "-j", "1", "-b"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, data_path, "-j", "1", "--no-mmap", "-b"]),
     ]
     return Benchmark("literal", pattern, commands,
                      description=f"Comparison benchmark using pattern {pattern!r} reading data from disk",
                      drop_ram_cache=True)
 
 
+def benchmark_subtitles_en_literal_disk(pattern: str) -> Benchmark:
+    """
+    Benchmark plain text search
+    """
+    data_path = os.path.join(DATA_DIR, DATA_FILE_NAME)
+    commands = [
+        Command("GNU grep", ["/usr/bin/grep", pattern, data_path]),
+        Command("xs grep", ["build/xsgrep/grep", pattern, data_path]),
+        Command("xs grep --no-mmap", ["build/xsgrep/grep", pattern, data_path, "--no-mmap"]),
+        Command("xs grep -j", ["build/xsgrep/grep", pattern, data_path, "-j", "-1"]),
+        Command("xs grep --no-mmap -j", ["build/xsgrep/grep", pattern, data_path, "--no-mmap", "-j", "-1"]),
+        Command("ripgrep", ["rg", pattern, data_path]),
+        Command("ripgrep --no-mmap", ["rg", pattern, data_path, "--no-mmap"]),
+        Command("ripgrep -j 1", ["rg", pattern, data_path, "-j", "1"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, data_path, "-j", "1", "--no-mmap"]),
+    ]
+    return Benchmark("literal", pattern, commands,
+                     description=f"Comparison benchmark using pattern {pattern!r} reading data from disk",
+                     benchmark_count=3,
+                     drop_ram_cache=True)
+
+
 def log(*args, **kwargs):
     if not SILENT:
+        print(80 * " ", end='\r', flush=True)
         print(*args, **kwargs)
 
 
@@ -333,7 +361,7 @@ def set_up_data():
         num_bytes = 0
         with open(data_path, "wb") as f:
             for chunk in data.iter_content(chunk_size=16384):
-                log(f"{num_bytes/1000000:.2f} MiB written", end='\r', flush=True)
+                log(f"{num_bytes / 1000000:.2f} MiB written", end='\r', flush=True)
                 f.write(chunk)
                 num_bytes += len(chunk)
         log()
@@ -341,6 +369,6 @@ def set_up_data():
 
 if __name__ == "__main__":
     set_up_data()
-    bm = benchmark_subtitles_en_literal_disk("Sherlock Holmes")
+    bm = benchmark_subtitles_en_literal_disk("Sherlock")
     result = bm.run()
-    print(result.get_df())
+    result.write_csv("benchmark.csv")
