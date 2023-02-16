@@ -26,7 +26,7 @@ BENCHMARK_DIR_PLAIN=./benchmark/plain/chunk_size/$(date +"%Y%m%d-%H-%M-%S")
 
 PATTERN="pattern"
 DENSITY=32
-FILE_SIZE_GB=1
+FILE_SIZE_GB=0.05
 NL_MAPPING_DATA=(1 500 1000 5000 32000)
 
 LOG() {

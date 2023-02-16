@@ -398,7 +398,7 @@ class InlineBenchmarkRegistrator {
 #define INLINE_BENCHMARK_WALL_STOP(name) \
   InlineBenchmarkRegistrator::stop(name, WALL)
 
-#define INLINE_BENCHMARK_REPORT(fmt) InlineBenchmarkRegistrator::report(#fmt)
+#define INLINE_BENCHMARK_REPORT(fmt) InlineBenchmarkRegistrator::report(fmt)
 #else
 // empty definitions
 #define INLINE_BENCHMARK_CPU_START(var, name)

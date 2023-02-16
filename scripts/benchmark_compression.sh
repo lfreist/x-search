@@ -25,7 +25,7 @@ BENCHMARK_DIR_PREPROCESSED=./benchmark/preprocessed/nl_mapping/$(date +"%Y%m%d-%
 BENCHMARK_DIR_PLAIN=./benchmark/plain/nl_mapping/$(date +"%Y%m%d-%H-%M-%S")
 PATTERN="pattern"
 DENSITY=32
-FILE_SIZE=1
+FILE_SIZE=0.05
 COMPRESSIONS=("-a zstd -l 1" "-a zstd -l 2" "-a zstd -l 3" "-a zstd -l 4" "-a zstd -l 5" "-a zstd -l 6" "-a lz4" "-a lz4 --hc -l 1" "-a lz4 --hc -l 5" "-a lz4 --hc -l 12")
 
 LOG() {

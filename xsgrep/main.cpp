@@ -164,7 +164,8 @@ int main(int argc, char** argv) {
   // set reader ----------------------------------------------------------------
   std::unique_ptr<xs::tasks::BaseDataProvider<xs::DataChunk>> reader;
   if (args.meta_file_path.empty()) {
-    if (args.no_mmap) {
+    if (args.no_mmap ||
+        args.chunk_size < static_cast<uint64_t>(sysconf(_SC_PAGE_SIZE))) {
       reader = std::make_unique<xs::tasks::ExternBlockReader>(args.file_path,
                                                               args.chunk_size);
     } else {
@@ -212,8 +213,9 @@ int main(int argc, char** argv) {
     extern_searcher.join();
   }
 
+  INLINE_BENCHMARK_WALL_STOP("total");
 #ifdef BENCHMARK
-  if (optionsMap.count("benchmark")) {
+  if (optionsMap.count("benchmark-file")) {
     std::ofstream out_stream(benchmark_file);
     out_stream << INLINE_BENCHMARK_REPORT(benchmark_format);
   } else {

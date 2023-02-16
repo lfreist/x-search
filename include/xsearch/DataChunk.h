@@ -43,42 +43,70 @@ class DataChunk {
   // delete copy constructor
   DataChunk(const DataChunk&) = delete;
   DataChunk& operator=(const DataChunk&) = delete;
-  // move constructor
-  DataChunk(DataChunk&& chunk) noexcept;
-  DataChunk& operator=(DataChunk&&) noexcept = default;
 
+  /**
+   * Move constructor:
+   *  transfers ownership of other._data to this->_data
+   * @param other
+   */
+  DataChunk(DataChunk&& other) noexcept;
+
+  /**
+   * Move assignment constructor:
+   *  transfers ownership of other._data to this->_data
+   * @param other
+   */
+  DataChunk& operator=(DataChunk&& other) noexcept;
+
+  /**
+   * get reference to _meta_data
+   * @return
+   */
   ChunkMetaData& getMetaData();
+
+  /**
+   *
+   * get const reference to _meta_data
+   * @return
+   */
   [[nodiscard]] const ChunkMetaData& getMetaData() const;
 
   /**
-   * wrapper method for this->_data.data()
+   * direct access to _data
    */
   [[nodiscard]] char* data() const;
 
   /**
-   * wrapper method for this->_data.size()
+   * size of _data
    */
   [[nodiscard]] size_t size() const;
 
   /**
-   * wrapper method for this->_data.resize()
-   */
-  void resize(size_t size);
-
-  /**
-   * wrapper method for this->_data.assign()
+   * copy content of data.data() into _data
    */
   void assign(std::string data);
 
-  // TODO: make private again!
-  char* _data = nullptr;
-  void set_size(size_t size) { _size = size; };
-  void set_mmap() { _mmap = true; };
-  void set_mmap_offset(size_t offset) { _mmap_offset = offset; }
+  /**
+   * Transfer ownership of char* read using mmap.
+   * @param data read char*
+   * @param size size of char* (not including mmap_offset!)
+   * @param mmap_offset offset relative to start of data, if mmap started
+   * reading before start of the data hold here.
+   */
+  void assign_mmap_data(char* data, size_t size, size_t mmap_offset);
+
+  /**
+   * Overwrites _size. if size > _size, _data is resized and the first _size
+   *  bytes remain the same. if size < _size, _data is unchanged and only _size
+   * is decreased.
+   *
+   * @attention Does nothing, if _mmap is true!
+   * @param size
+   */
+  void set_size(size_t size);
 
  private:
-  // indicates if _data must be destructed or if it is owned by another process
-  bool _data_moved = false;
+  char* _data = nullptr;
   size_t _size = 0;
   bool _mmap = false;
   size_t _mmap_offset = 0;

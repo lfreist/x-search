@@ -25,8 +25,7 @@ BENCHMARK_DIR_PREPROCESSED=./benchmark/preprocessed/chunk_size/$(date +"%Y%m%d-%
 BENCHMARK_DIR_PLAIN=./benchmark/plain/chunk_size/$(date +"%Y%m%d-%H-%M-%S")
 
 PATTERN="pattern"
-DENSITY=32
-FILE_SIZE=1
+FILE_SIZE=0.05
 PATTERN_DENSITY=(1 4 16 256 65536 0)
 
 LOG() {

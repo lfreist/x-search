@@ -81,7 +81,6 @@ class ExternBlockReaderMMAP : public BaseDataProvider<DataChunk> {
   size_t _file_size;
   uint64_t _current_index = 0;
   uint64_t _current_offset = 0;
-  uint64_t _buffer_position = 0;
   std::unique_ptr<std::mutex> _stream_mutex = std::make_unique<std::mutex>();
 };
 

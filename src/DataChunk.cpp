@@ -29,23 +29,42 @@ DataChunk::DataChunk(ChunkMetaData meta_data)
 
 // _____________________________________________________________________________
 DataChunk::~DataChunk() {
-  if (!_data_moved) {
+  if (_mmap) {
+    munmap(_data, _size);
+  } else {
+    delete[] _data;
+  }
+}
+
+// _____________________________________________________________________________
+DataChunk::DataChunk(DataChunk&& other) noexcept
+    : _data(other._data),
+      _size(other._size),
+      _mmap(other._mmap),
+      _mmap_offset(other._mmap_offset),
+      _meta_data(std::move(other._meta_data)) {
+  other._mmap = false;
+  other._size = 0;
+  other._data = nullptr;
+}
+
+// _____________________________________________________________________________
+DataChunk& DataChunk::operator=(DataChunk&& other) noexcept {
+  if (this != &other) {
     if (_mmap) {
       munmap(_data, _size);
     } else {
       delete[] _data;
     }
+    _data = other._data;
+    _size = other._size;
+    _mmap = other._mmap;
+    _mmap_offset = other._mmap_offset;
+    _meta_data = std::move(other._meta_data);
+    other._data = nullptr;
+    other._size = 0;
   }
-}
-
-// _____________________________________________________________________________
-DataChunk::DataChunk(DataChunk&& chunk) noexcept
-    : _data(chunk._data),
-      _size(chunk._size),
-      _mmap(chunk._mmap),
-      _mmap_offset(chunk._mmap_offset),
-      _meta_data(std::move(chunk._meta_data)) {
-  chunk._data_moved = true;
+  return *this;
 }
 
 // _____________________________________________________________________________
@@ -56,30 +75,49 @@ const ChunkMetaData& DataChunk::getMetaData() const { return _meta_data; }
 
 // _____________________________________________________________________________
 char* DataChunk::data() const {
-  if (_mmap) {
-    return _data + _mmap_offset;
-  }
-  return _data;
+  // _mmap_offset is 0 if _mmap = false
+  return _data + _mmap_offset;
 }
 
 // _____________________________________________________________________________
 size_t DataChunk::size() const { return _size; }
 
 // _____________________________________________________________________________
-void DataChunk::resize(size_t size) {
-  _size = size;
-  delete[] _data;
-  _data = new char[_size];
-}
-
-// _____________________________________________________________________________
 void DataChunk::assign(std::string data) {
   if (_size != data.size()) {
+    if (_mmap) {
+      munmap(_data, _size);
+    } else {
+      delete[] _data;
+    }
     _size = data.size();
-    delete[] _data;
     _data = new char[_size];
   }
   memcpy(_data, data.data(), _size);
+}
+
+// _____________________________________________________________________________
+void DataChunk::assign_mmap_data(char* data, size_t size, size_t mmap_offset) {
+  if (_mmap) {
+    munmap(_data, _size);
+  } else {
+    delete[] _data;
+  }
+  _data = data;
+  _size = size;
+  _mmap = true;
+  _mmap_offset = mmap_offset;
+}
+
+// _____________________________________________________________________________
+void DataChunk::set_size(size_t size) {
+  if (size > _size) {
+    char* tmp = new char[size];
+    memmove(tmp, _data, _size);
+    delete[] _data;
+    _data = tmp;
+  }
+  _size = size;
 }
 
 }  // namespace xs

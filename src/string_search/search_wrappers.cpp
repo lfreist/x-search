@@ -18,19 +18,18 @@ std::vector<uint64_t> _byte_offsets(
     }) {
   std::vector<uint64_t> results;
   size_t data_size = data->size();
-  char* data_c = data->data();
-  const char* pattern_c = pattern.c_str();
+  const char* pattern_c = pattern.data();
   size_t shift = 0;
   while (shift < data->size()) {
-    int64_t match =
-        simd::findNext(pattern_c, pattern.size(), data_c, data_size, shift);
+    int64_t match = simd::findNext(pattern_c, pattern.size(), data->data(),
+                                   data_size, shift);
     if (match == -1) {
       break;
     }
     results.push_back(func(match));
     shift = match + pattern.size();
     if (skip_to_nl) {
-      match = simd::findNextNewLine(data_c, data_size, shift);
+      match = simd::findNextNewLine(data->data(), data_size, shift);
       if (match == -1) {
         break;
       }
@@ -79,7 +78,7 @@ uint64_t previous_new_line_offset_relative_to_match(
     }
     relative_offset++;
     if (relative_offset >= match_local_byte_offset) {
-      return match_local_byte_offset;
+      return match_local_byte_offset - 1;
     }
   }
 }
@@ -131,19 +130,18 @@ std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
 uint64_t count(xs::DataChunk* data, const std::string& pattern,
                bool skip_to_nl) {
   uint64_t result = 0;
-  char* data_c = data->data();
-  const char* pattern_c = pattern.c_str();
+  const char* pattern_c = pattern.data();
   size_t shift = 0;
   while (shift < data->size()) {
-    int64_t match = xs::search::simd::findNext(pattern_c, pattern.size(),
-                                               data_c, data->size(), shift);
+    int64_t match = xs::search::simd::findNext(
+        pattern_c, pattern.size(), data->data(), data->size(), shift);
     if (match == -1) {
       break;
     }
     result++;
     shift = match + pattern.size();
     if (skip_to_nl) {
-      match = simd::findNextNewLine(data_c, data->size(), shift);
+      match = simd::findNextNewLine(data->data(), data->size(), shift);
       if (match == -1) {
         break;
       }

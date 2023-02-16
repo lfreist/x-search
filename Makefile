@@ -32,7 +32,7 @@ build: init
 	cmake --build build --config Release -j $(nproc) 2>/dev/null
 
 build_benchmark: init
-	cmake -B build-benchmark -DCMAKE_BUILD_TYPE=Benchmark -DRE2_BUILD_TESTING=off -DXS_BENCHMARKS=ON 2>/dev/null
+	cmake -B build-benchmark -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-DBENCHMARK" -DRE2_BUILD_TESTING=off -DXS_BENCHMARKS=ON 2>/dev/null
 	cmake --build build-benchmark --config Benchmark -j $(nproc) 2>/dev/null
 
 build_sanitizer: init

@@ -11,10 +11,10 @@ if [ "$#" -eq 2 ]; then
   file="$2"
 elif [ "$#" -eq 1 ]; then
   xs_binaries="$1"
-  file="tmp/dummy.txt"
+  file="tmp/default.out"
   if [ ! -f "$file" ]; then
     echo "writing test file..."
-    python3 "$xs_binaries/scripts/createTestFile.py" --size 0.2 "$xs_binaries/files/words.txt" --output "$file"
+    python3 "$xs_binaries/scripts/createTestFile.py" --size 0.1 "$xs_binaries/files/words.txt" --output "$file"
   fi
 else
   echo "Usage:"
@@ -99,6 +99,27 @@ for nt in "${num_threads[@]}"; do
         errors=$((errors + 1))
       fi
     done
+    echo "  --no-mmap"
+    for i in "${keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.grep_.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+    for i in "${regex_keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.r_grep_.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
 
     echo " count matches (-c)"
     for i in "${keywords[@]}"; do
@@ -113,6 +134,28 @@ for nt in "${num_threads[@]}"; do
     done
     for i in "${regex_keywords[@]}"; do
       "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -c --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.r_grep_c.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+
+    echo "  --no-mmap"
+    for i in "${keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -c --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.grep_c.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+    for i in "${regex_keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -c --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.r_grep_c.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -156,9 +199,42 @@ for nt in "${num_threads[@]}"; do
       fi
     done
 
+    echo "  --no-mmap"
+    for i in "${keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -b --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.grep_b.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "  %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+    for i in "${regex_keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -b --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.r_grep_b.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "  %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+
     echo " byte offsets of match (-b -o)"
     for i in "${keywords[@]}"; do
       "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -b -o --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.grep_b_o.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+    echo "  --no-mmap"
+    for i in "${keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -b -o --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_b_o.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
@@ -196,9 +272,43 @@ for nt in "${num_threads[@]}"; do
       fi
     done
 
+    echo "  --no-mmap"
+    for i in "${keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -n --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.grep_n.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+    for i in "${regex_keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -n --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.r_grep_n.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+
     echo " line numbers match only (-n -o)"
     for i in "${keywords[@]}"; do
       "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -n -o --no-color -j "$nt" >tmp/xsgrep.tmp
+      if diff tmp/xsgrep.tmp "tmp/$i.grep_n_o.tmp" >/dev/null; then
+        printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
+        success=$((success + 1))
+      else
+        printf "   %s: \x1b[31mFAILED!\x1b[m\n" "$i"
+        errors=$((errors + 1))
+      fi
+    done
+
+    echo "  --no-mmap"
+    for i in "${keywords[@]}"; do
+      "$xs_binaries/xsgrep/grep" "$i" "${in_files[index]}" "${meta_files[index]}" -n -o --no-mmap --no-color -j "$nt" >tmp/xsgrep.tmp
       if diff tmp/xsgrep.tmp "tmp/$i.grep_n_o.tmp" >/dev/null; then
         printf "   %s: \x1b[32mPASSED\x1b[m\n" "$i"
         success=$((success + 1))
