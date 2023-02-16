@@ -23,7 +23,7 @@ struct GrepArgs {
   bool byte_offset = false;
   bool line_number = false;
   bool only_matching = false;
-  bool no_color = false;
+  bool color = false;
   bool ignore_case = false;
   size_t chunk_size = 16777216;
   bool fixed_strings = false;
@@ -75,8 +75,6 @@ int main(int argc, char** argv) {
       "print line number with output lines");
   add("only-matching,o", po::bool_switch(&args.only_matching),
       "show only nonempty parts of lines that match");
-  add("no-color", po::bool_switch(&args.no_color)->default_value(false),
-      "do not use colored output");
   add("ignore-case,i", po::bool_switch(&args.ignore_case)->default_value(false),
       "ignore case distinctions in patterns and data");
   add("chunk-size,s",
@@ -113,6 +111,7 @@ int main(int argc, char** argv) {
     std::cerr << options << std::endl;
     return 1;
   }
+  args.color = isatty(STDOUT_FILENO);
 
   // fix number of threads -----------------------------------------------------
   //  a) 0 -> 1
@@ -209,7 +208,7 @@ int main(int argc, char** argv) {
             std::string(args.pattern),
             !args.fixed_strings && xs::utils::use_str_as_regex(args.pattern),
             args.line_number || args.byte_offset, bool(args.only_matching),
-            !args.no_color);
+            bool(args.color));
     extern_searcher.join();
   }
 
