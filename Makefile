@@ -67,6 +67,10 @@ check_style:
 benchmark: build_benchmark init_test_runs
 	sudo ctest --test-dir build-benchmark --label-regex benchmark_
 
+install: build
+	sudo cp build/xsgrep/grep /usr/bin/xsgrep
+	sudo cp build/xsproc/XSPreprocessor /usr/bin/xspp
+
 clean:
 	rm -rf build
 	rm -rf build-benchmark

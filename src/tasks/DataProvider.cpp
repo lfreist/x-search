@@ -148,7 +148,7 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
     num_bytes_read += additional_bytes_read;
   }
   if (num_bytes_read > 0) {
-    chunk.set_size(num_bytes_read);
+    chunk.resize(num_bytes_read);
     chunk.getMetaData().actual_size = num_bytes_read;
     chunk.getMetaData().original_size = num_bytes_read;
     _current_offset += num_bytes_read;

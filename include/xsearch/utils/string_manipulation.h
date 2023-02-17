@@ -7,6 +7,12 @@
 
 namespace xs::utils::simd {
 
-void toLower(char* tr, size_t size);
+/**
+ * Convert src into lower case
+ * @param src
+ * @param size
+ * @param dest
+ */
+void toLower(char* src, size_t size);
 
-}
+}  // namespace xs::utils::simd

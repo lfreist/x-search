@@ -28,6 +28,9 @@ DataChunk::DataChunk(ChunkMetaData meta_data)
       _meta_data(std::move(meta_data)) {}
 
 // _____________________________________________________________________________
+DataChunk::DataChunk(size_t size) : _data(new char[size]), _size(size) {}
+
+// _____________________________________________________________________________
 DataChunk::~DataChunk() {
   if (_mmap) {
     munmap(_data, _size);
@@ -110,7 +113,7 @@ void DataChunk::assign_mmap_data(char* data, size_t size, size_t mmap_offset) {
 }
 
 // _____________________________________________________________________________
-void DataChunk::set_size(size_t size) {
+void DataChunk::resize(size_t size) {
   if (size > _size) {
     char* tmp = new char[size];
     memmove(tmp, _data, _size);
@@ -119,5 +122,8 @@ void DataChunk::set_size(size_t size) {
   }
   _size = size;
 }
+
+// _____________________________________________________________________________
+bool DataChunk::is_mmap() const { return _mmap; }
 
 }  // namespace xs

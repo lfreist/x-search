@@ -37,6 +37,7 @@ class DataChunk {
   DataChunk(char* data, size_t size, ChunkMetaData meta_data);
   explicit DataChunk(strtype data, size_t size);
   explicit DataChunk(ChunkMetaData meta_data);
+  explicit DataChunk(size_t size);
 
   ~DataChunk();
 
@@ -103,7 +104,9 @@ class DataChunk {
    * @attention Does nothing, if _mmap is true!
    * @param size
    */
-  void set_size(size_t size);
+  void resize(size_t size);
+
+  [[nodiscard]] bool is_mmap() const;
 
  private:
   char* _data = nullptr;

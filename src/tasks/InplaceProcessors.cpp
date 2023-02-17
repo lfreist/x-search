@@ -148,6 +148,15 @@ void NewLineSearcher::process(DataChunk* data) {
 
 // _____________________________________________________________________________
 void ToLower::process(DataChunk* data) {
+  if (data->is_mmap()) {
+    INLINE_BENCHMARK_WALL_START(copy, "copying mmap data for transformation");
+    DataChunk chunk(data->data(), data->size());
+    INLINE_BENCHMARK_WALL_STOP("copying mmap data for transformation");
+    INLINE_BENCHMARK_WALL_START(_, "transforming to lower case");
+    utils::simd::toLower(chunk.data(), chunk.size());
+    *data = std::move(chunk);
+    return;
+  }
   INLINE_BENCHMARK_WALL_START(_, "transforming to lower case");
   utils::simd::toLower(data->data(), data->size());
 }

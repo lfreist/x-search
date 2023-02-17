@@ -63,7 +63,8 @@ int main(int argc, char** argv) {
       "metafile of the corresponding FILE");
   add("help,h", "prints this help message");
   add("version,V", "display version information and exit");
-  add("threads,j", po::value<int>(&args.num_threads)->default_value(1),
+  add("threads,j",
+      po::value<int>(&args.num_threads)->default_value(1)->implicit_value(-1),
       "number of threads");
   add("max-readers", po::value<int>(&args.num_max_readers)->default_value(0),
       "number of concurrent reading tasks (default is number of threads");
@@ -117,7 +118,7 @@ int main(int argc, char** argv) {
   //  a) 0 -> 1
   //  b) < 0 -> number of threads available
   //  c) > number of threads available -> number of threads available
-  int max_threads = static_cast<int>(std::thread::hardware_concurrency());
+  int max_threads = static_cast<int>(std::thread::hardware_concurrency()) / 2;
   args.num_threads = args.num_threads < 0 ? max_threads : args.num_threads;
   args.num_threads =
       args.num_threads > max_threads ? max_threads : args.num_threads;
