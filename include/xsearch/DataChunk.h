@@ -42,8 +42,8 @@ class DataChunk {
   ~DataChunk();
 
   // delete copy constructor
-  DataChunk(const DataChunk&) = delete;
-  DataChunk& operator=(const DataChunk&) = delete;
+  DataChunk(const DataChunk& other);
+  DataChunk& operator=(const DataChunk& other);
 
   /**
    * Move constructor:

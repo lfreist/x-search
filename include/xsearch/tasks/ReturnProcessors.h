@@ -30,8 +30,10 @@ class BaseReturnProcessor {
 template <class DataT, typename ResT>
 class BaseSearcher : public BaseReturnProcessor<DataT, ResT> {
  public:
-  BaseSearcher(std::string pattern, bool regex)
-      : _pattern(std::move(pattern)), _regex(regex) {
+  BaseSearcher(std::string pattern, bool regex, bool case_insensitive)
+      : _pattern(std::move(pattern)),
+        _regex(regex),
+        _case_insensitive(case_insensitive) {
     if (_regex) {
       _re_pattern = std::make_unique<re2::RE2>('(' + _pattern + ')');
     }
@@ -42,18 +44,19 @@ class BaseSearcher : public BaseReturnProcessor<DataT, ResT> {
   std::string _pattern;
   std::unique_ptr<re2::RE2> _re_pattern;
   bool _regex = false;
+  bool _case_insensitive = false;
 };
 
 class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
  public:
-  MatchCounter(std::string pattern, bool regex);
+  MatchCounter(std::string pattern, bool regex, bool case_insensitive);
 
   uint64_t process(DataChunk* data) const override;
 };
 
 class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
  public:
-  LineCounter(std::string pattern, bool regex);
+  LineCounter(std::string pattern, bool regex, bool case_insensitive);
 
   uint64_t process(DataChunk* data) const override;
 };
@@ -61,7 +64,8 @@ class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
 class MatchBytePositionSearcher
     : public BaseSearcher<DataChunk, std::vector<uint64_t>> {
  public:
-  MatchBytePositionSearcher(std::string pattern, bool regex);
+  MatchBytePositionSearcher(std::string pattern, bool regex,
+                            bool case_insensitive);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
 };
@@ -69,7 +73,8 @@ class MatchBytePositionSearcher
 class LineBytePositionSearcher
     : public BaseSearcher<DataChunk, std::vector<uint64_t>> {
  public:
-  LineBytePositionSearcher(std::string pattern, bool regex);
+  LineBytePositionSearcher(std::string pattern, bool regex,
+                           bool case_insensitive);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
 };
@@ -77,7 +82,7 @@ class LineBytePositionSearcher
 class LineIndexSearcher
     : public BaseSearcher<DataChunk, std::vector<uint64_t>> {
  public:
-  LineIndexSearcher(std::string pattern, bool regex);
+  LineIndexSearcher(std::string pattern, bool regex, bool case_insensitive);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
 
@@ -88,7 +93,7 @@ class LineIndexSearcher
 
 class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
  public:
-  LineSearcher(std::string pattern, bool regex);
+  LineSearcher(std::string pattern, bool regex, bool case_insensitive);
 
   std::vector<std::string> process(DataChunk* data) const override;
 

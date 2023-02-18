@@ -5,77 +5,130 @@
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/tasks/ReturnProcessors.h>
 #include <xsearch/utils/InlineBench.h>
+#include <xsearch/utils/string_manipulation.h>
 
 namespace xs::tasks {
 
 // ===== MatchCounter ==========================================================
 // _____________________________________________________________________________
-MatchCounter::MatchCounter(std::string pattern, bool regex)
-    : BaseSearcher<DataChunk, uint64_t>(std::move(pattern), regex) {}
+MatchCounter::MatchCounter(std::string pattern, bool regex,
+                           bool case_insensitive)
+    : BaseSearcher<DataChunk, uint64_t>(std::move(pattern), regex,
+                                        case_insensitive) {}
 
 // _____________________________________________________________________________
 uint64_t MatchCounter::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START(_, "searching count");
-  uint64_t count = _regex ? search::regex::count(data, *_re_pattern, false)
-                          : search::count(data, _pattern, false);
-  return count;
+  if (_case_insensitive) {
+    DataChunk tmp_chunk(*data);
+    INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
+    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    INLINE_BENCHMARK_WALL_STOP("transform to lower case");
+    INLINE_BENCHMARK_WALL_START(total, "searching count");
+    return _regex ? search::regex::count(&tmp_chunk, *_re_pattern, false)
+                  : search::count(&tmp_chunk, _pattern, false);
+  }
+  INLINE_BENCHMARK_WALL_START(total, "searching count");
+  return _regex ? search::regex::count(data, *_re_pattern, false)
+                : search::count(data, _pattern, false);
 }
 
 // ===== LineCounter ===========================================================
 // _____________________________________________________________________________
-LineCounter::LineCounter(std::string pattern, bool regex)
-    : BaseSearcher<DataChunk, uint64_t>(std::move(pattern), regex) {}
+LineCounter::LineCounter(std::string pattern, bool regex, bool case_insensitive)
+    : BaseSearcher<DataChunk, uint64_t>(std::move(pattern), regex,
+                                        case_insensitive) {}
 
 // _____________________________________________________________________________
 uint64_t LineCounter::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START(_, "searching count");
-  auto count = _regex ? search::regex::count(data, *_re_pattern, true)
-                      : search::count(data, _pattern, true);
-  return count;
+  if (_case_insensitive) {
+    DataChunk tmp_chunk(*data);
+    INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
+    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    INLINE_BENCHMARK_WALL_STOP("transform to lower case");
+    INLINE_BENCHMARK_WALL_START(total, "searching count");
+    return _regex ? search::regex::count(&tmp_chunk, *_re_pattern, true)
+                  : search::count(&tmp_chunk, _pattern, true);
+  }
+  INLINE_BENCHMARK_WALL_START(total, "searching count");
+  return _regex ? search::regex::count(data, *_re_pattern, true)
+                : search::count(data, _pattern, true);
 }
 // ===== MatchBytePositionSearcher =============================================
 // _____________________________________________________________________________
 MatchBytePositionSearcher::MatchBytePositionSearcher(std::string pattern,
-                                                     bool regex)
-    : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern),
-                                                     regex) {}
+                                                     bool regex,
+                                                     bool case_insensitive)
+    : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern), regex,
+                                                     case_insensitive) {}
 
 // _____________________________________________________________________________
 std::vector<uint64_t> MatchBytePositionSearcher::process(
     DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START(_, "searching byte position");
-  auto tmp = _regex ? search::regex::global_byte_offsets_match(
-                          data, *_re_pattern, false)
-                    : search::global_byte_offsets_match(data, _pattern, false);
-  return tmp;
+  if (_case_insensitive) {
+    DataChunk tmp_chunk(*data);
+    INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
+    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    INLINE_BENCHMARK_WALL_STOP("transform to lower case");
+    INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
+    return _regex
+               ? search::regex::global_byte_offsets_match(&tmp_chunk,
+                                                          *_re_pattern, false)
+               : search::global_byte_offsets_match(&tmp_chunk, _pattern, false);
+  }
+  INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
+  return _regex ? search::regex::global_byte_offsets_match(data, *_re_pattern,
+                                                           false)
+                : search::global_byte_offsets_match(data, _pattern, false);
 }
 
 // ===== LineBytePositionSearcher ==============================================
 // _____________________________________________________________________________
 LineBytePositionSearcher::LineBytePositionSearcher(std::string pattern,
-                                                   bool regex)
-    : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern),
-                                                     regex) {}
+                                                   bool regex,
+                                                   bool case_insensitive)
+    : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern), regex,
+                                                     case_insensitive) {}
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineBytePositionSearcher::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START(_, "searching byte position");
-  auto tmp = _regex
-                 ? search::regex::global_byte_offsets_line(data, *_re_pattern)
-                 : search::global_byte_offsets_line(data, _pattern);
-  return tmp;
+  if (_case_insensitive) {
+    DataChunk tmp_chunk(*data);
+    INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
+    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    INLINE_BENCHMARK_WALL_STOP("transform to lower case");
+    INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
+    return _regex ? search::regex::global_byte_offsets_line(&tmp_chunk,
+                                                            *_re_pattern)
+                  : search::global_byte_offsets_line(&tmp_chunk, _pattern);
+  }
+  INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
+  return _regex ? search::regex::global_byte_offsets_line(data, *_re_pattern)
+                : search::global_byte_offsets_line(data, _pattern);
 }
 
 // ===== LineIndexSearcher =====================================================
 // _____________________________________________________________________________
-LineIndexSearcher::LineIndexSearcher(std::string pattern, bool regex)
-    : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern),
-                                                     regex) {}
+LineIndexSearcher::LineIndexSearcher(std::string pattern, bool regex,
+                                     bool case_insensitive)
+    : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern), regex,
+                                                     case_insensitive) {}
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineIndexSearcher::process(DataChunk* data) const {
-  INLINE_BENCHMARK_WALL_START(_, "searching byte position");
-  auto mapping_data =
+  std::vector<uint64_t> mapping_data;
+  if (_case_insensitive) {
+    DataChunk tmp_chunk(*data);
+    INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
+    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    INLINE_BENCHMARK_WALL_STOP("transform to lower case");
+    INLINE_BENCHMARK_WALL_START(total, "searching line indices");
+    mapping_data =
+        _regex
+            ? search::regex::global_byte_offsets_line(&tmp_chunk, *_re_pattern)
+            : search::global_byte_offsets_line(&tmp_chunk, _pattern);
+  }
+  INLINE_BENCHMARK_WALL_START(total, "searching line indices");
+  mapping_data =
       _regex ? search::regex::global_byte_offsets_line(data, *_re_pattern)
              : search::global_byte_offsets_line(data, _pattern);
   return map(data, mapping_data);
@@ -91,14 +144,27 @@ std::vector<uint64_t> LineIndexSearcher::map(
 
 // ===== LineSearcher ==========================================================
 // _____________________________________________________________________________
-LineSearcher::LineSearcher(std::string pattern, bool regex)
-    : BaseSearcher<DataChunk, std::vector<std::string>>(std::move(pattern),
-                                                        regex) {}
+LineSearcher::LineSearcher(std::string pattern, bool regex,
+                           bool case_insensitive)
+    : BaseSearcher<DataChunk, std::vector<std::string>>(
+          std::move(pattern), regex, case_insensitive) {}
 
 // _____________________________________________________________________________
 std::vector<std::string> LineSearcher::process(DataChunk* data) const {
+  std::vector<uint64_t> mapping_data;
+  if (_case_insensitive) {
+    DataChunk tmp_chunk(*data);
+    INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
+    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    INLINE_BENCHMARK_WALL_STOP("transform to lower case");
+    INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
+    mapping_data =
+        _regex
+            ? search::regex::global_byte_offsets_line(&tmp_chunk, *_re_pattern)
+            : search::global_byte_offsets_line(&tmp_chunk, _pattern);
+  }
   INLINE_BENCHMARK_WALL_START(_, "searching byte position");
-  auto mapping_data =
+  mapping_data =
       _regex ? search::regex::global_byte_offsets_line(data, *_re_pattern)
              : search::global_byte_offsets_line(data, _pattern);
   return map(data, mapping_data);

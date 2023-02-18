@@ -17,7 +17,9 @@
  * GNU grep output looks like: "[index]:str"
  */
 struct GrepPartialResult {
-  uint64_t index = 0;
+  uint64_t byte_offset_match = 0;
+  uint64_t byte_offset_line = 0;
+  uint64_t line_number = 0;
   std::string str;
 
   /**
@@ -55,8 +57,8 @@ struct GrepResultSettings {
 class GrepResult : public xs::BaseResult<std::vector<GrepPartialResult>> {
  public:
   explicit GrepResult(std::string pattern);
-  GrepResult(std::string pattern, bool regex, bool index, bool only_matching,
-             bool color);
+  GrepResult(std::string pattern, bool regex, bool byte_offset,
+             bool line_number, bool only_matching, bool color);
 
   /**
    * Collect results and pass them ordered to the private add method.
@@ -92,7 +94,8 @@ class GrepResult : public xs::BaseResult<std::vector<GrepPartialResult>> {
   /// grep output settings
   std::string _pattern;
   bool _regex = false;
-  bool _index = false;
+  bool _byte_offset = false;
+  bool _line_number = false;
   bool _only_matching = false;
   bool _color = true;
 };
@@ -111,8 +114,8 @@ class GrepSearcher
    *  lines)
    * @param color: colored output
    */
-  GrepSearcher(std::string pattern, bool regex, bool line_number,
-               bool only_matching);
+  GrepSearcher(std::string pattern, bool regex, bool case_insensitive,
+               bool line_number, bool only_matching);
 
   /**
    * Search provided data according to the specified search criteria using a

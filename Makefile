@@ -1,6 +1,6 @@
 NAME=x-search
 
-.PHONY: all test lib_test grep_test check_style benchmark clean help
+.PHONY: all test lib_test grep_test check_style benchmark clean help install
 
 help:
 	@echo "--------------------------------------------------------------------------------"

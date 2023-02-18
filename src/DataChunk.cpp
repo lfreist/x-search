@@ -40,6 +40,29 @@ DataChunk::~DataChunk() {
 }
 
 // _____________________________________________________________________________
+DataChunk::DataChunk(const DataChunk& other)
+    : _data(new char[other._size]),
+      _size(other._size),
+      _mmap(false),
+      _mmap_offset(0),
+      _meta_data(other._meta_data) {
+  memcpy(_data, other.data(), _size);
+}
+
+// _____________________________________________________________________________
+DataChunk& DataChunk::operator=(const DataChunk& other) {
+  if (this != &other) {
+    _size = other._size;
+    _data = new char[_size];
+    _mmap = false;
+    _mmap_offset = 0;
+    _meta_data = other._meta_data;
+    memcpy(_data, other.data(), _size);
+  }
+  return *this;
+}
+
+// _____________________________________________________________________________
 DataChunk::DataChunk(DataChunk&& other) noexcept
     : _data(other._data),
       _size(other._size),

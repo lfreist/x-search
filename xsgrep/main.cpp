@@ -156,7 +156,6 @@ int main(int argc, char** argv) {
 
   // check if data should be transformed to lower case (--ignore-case) ---------
   if (args.ignore_case) {
-    processors.push_back(std::make_unique<xs::tasks::ToLower>());
     std::transform(args.pattern.begin(), args.pattern.end(),
                    args.pattern.begin(), [](int c) { return ::tolower(c); });
   }
@@ -187,7 +186,8 @@ int main(int argc, char** argv) {
     // count set -> count results and output number in the end -----------------
     auto searcher = std::make_unique<xs::tasks::LineCounter>(
         args.pattern,
-        xs::utils::use_str_as_regex(args.pattern) && !args.fixed_strings);
+        xs::utils::use_str_as_regex(args.pattern) && !args.fixed_strings,
+        args.ignore_case);
     auto extern_searcher =
         xs::Executor<xs::DataChunk, xs::CountResult, uint64_t>(
             args.num_threads, args.num_max_readers, std::move(reader),
@@ -200,16 +200,16 @@ int main(int argc, char** argv) {
     auto searcher = std::make_unique<GrepSearcher>(
         args.pattern,
         xs::utils::use_str_as_regex(args.pattern) && !args.fixed_strings,
-        args.line_number, args.only_matching);
+        args.ignore_case, args.line_number, args.only_matching);
     auto extern_searcher =
         xs::Executor<xs::DataChunk, GrepResult, std::vector<GrepPartialResult>,
-                     std::string, bool, bool, bool, bool>(
+                     std::string, bool, bool, bool, bool, bool>(
             args.num_threads, args.num_max_readers, std::move(reader),
             std::move(processors), std::move(searcher),
             std::string(args.pattern),
             !args.fixed_strings && xs::utils::use_str_as_regex(args.pattern),
-            args.line_number || args.byte_offset, bool(args.only_matching),
-            bool(args.color));
+            bool(args.byte_offset), bool(args.line_number),
+            bool(args.only_matching), bool(args.color));
     extern_searcher.join();
   }
 

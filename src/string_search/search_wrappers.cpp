@@ -78,7 +78,7 @@ uint64_t previous_new_line_offset_relative_to_match(
     }
     relative_offset++;
     if (relative_offset >= match_local_byte_offset) {
-      return match_local_byte_offset - 1;
+      return match_local_byte_offset;
     }
   }
 }
