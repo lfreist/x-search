@@ -118,8 +118,7 @@ void GrepResult::add(std::vector<GrepPartialResult> partial_result) {
           std::cout << std::string(
                            r.str.begin() + static_cast<int64_t>(shift),
                            r.str.begin() + static_cast<int64_t>(match_pos))
-                    << RED
-                    << std::string(r.str.data() + match_pos, _pattern.size())
+                    << RED << std::string(r.str.data() + match_pos, match_size)
                     << COLOR_RESET;
           // start next search at new shift
           shift = match_pos + _pattern.size();

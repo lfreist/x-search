@@ -6,6 +6,7 @@ Author: Leon Freist <freist@informatik.uni-freiburg.de>
 """
 import os
 import shutil
+import sys
 import time
 from typing import List, Dict
 import subprocess
@@ -13,17 +14,23 @@ import statistics
 import pandas as pd
 import json
 import requests
-import psutil
 import re
 import platform
 import argparse
+import uuid
 
 DATA_DIR = "bench_data"
-DATA_FILE_NAME = "en.sample.txt"
-META_FILE_NAME = "en.sample.meta"
+DATA_FILE = "en.sample.txt"
+META_FILE = "en.sample.meta"
+DATA_FILE_PATH = ""
+META_FILE_PATH = ""
 DATA_DOWNLOAD_URL = "https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2016/mono/en.txt.gz"
+OUTPUT_DIR = "bench_results"
+RESULT_META_DATA = ""
 
 SILENT = False
+
+OUTPUT_FORMAT = ["json", "csv", "markdown"]
 
 
 def get_cpu_name():
@@ -34,25 +41,15 @@ def get_cpu_name():
             return re.sub(".*model name.*:", "", line, 1).strip()
 
 
-def get_disk(file_path: str) -> str:
-    try:
-        device_id = os.stat(file_path).st_dev
-        # Get the partition that the file is on
-        partition = psutil.disk_partitions(all=True)
-        return [p for p in partition if os.stat(p.mountpoint).st_dev == device_id][0].device
-    except PermissionError:
-        return ""
-
-
 def DROP_RAM_CACHE():
     subprocess.run("sync")
     with open("/proc/sys/vm/drop_caches", "w") as f:
-        f.write("1")
+        f.write("3")
     # give the system some time to get up...
     time.sleep(1)
 
 
-class Result:
+class ComparisonResult:
     def __init__(self, command, wall: float, usr: float, sys: float):
         self.name = command.name
         self.command = " ".join(command.cmd)
@@ -114,12 +111,20 @@ class Result:
 
     def stdev(self, measure_type: str) -> float:
         if measure_type.lower() == "wall":
+            if len(self.wall_times) < 2:
+                return float("nan")
             return statistics.stdev(self.wall_times)
         elif measure_type.lower() == "usr":
+            if len(self.usr_times) < 2:
+                return float("nan")
             return statistics.stdev(self.usr_times)
         elif measure_type.lower() == "sys":
+            if len(self.sys_times) < 2:
+                return float("nan")
             return statistics.stdev(self.sys_times)
         elif measure_type.lower() == "cpu":
+            if len(self.cpu()) < 2:
+                return float("nan")
             return statistics.stdev(self.cpu())
         raise IndexError(f"{measure_type} unknown. Use one of ('wall', 'usr', 'sys').")
 
@@ -163,9 +168,10 @@ class Result:
 
 
 class Command:
-    def __init__(self, name: str, cmd: List[str]):
+    def __init__(self, name: str, cmd: List[str], is_baseline: bool = False):
         self.name = name
         self.cmd = cmd
+        self.is_baseline = is_baseline
 
     def exists(self) -> bool:
         return shutil.which(self.get_binary_name()) is not None
@@ -173,18 +179,20 @@ class Command:
     def get_binary_name(self) -> str:
         return self.cmd[0]
 
-    def get_timed_cmd(self, timed: str) -> List[str]:
-        return [timed] + self.cmd
+    def get_timed_cmd(self) -> List[str] | str:
+        if type(self.cmd) == str:
+            return f"/usr/bin/time -f '%e\t%U\t%S' {self.cmd}"
+        return ["/usr/bin/time", "-f", "%e\t%U\t%S"] + self.cmd
 
-    def run(self, path_to_timed: str = "./benchsuit/timed") -> Result:
-        assert shutil.which(path_to_timed) is not None
-        out = subprocess.Popen(self.get_timed_cmd(path_to_timed), stdout=subprocess.PIPE).communicate()[0]
+    def run(self) -> ComparisonResult:
+        out = subprocess.Popen(self.get_timed_cmd(), stderr=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                               shell=(type(self.cmd) == str)).communicate()[1]
         out = out.decode()
-        wall, usr, sys = str(out).split('\t')
+        wall, usr, _sys = str(out).split('\t')
         try:
-            return Result(self, float(wall), float(usr), float(sys))
+            return ComparisonResult(self, float(wall), float(usr), float(_sys))
         except ValueError:
-            raise CommandFailedError(f"Error occurred while running {self.get_timed_cmd(path_to_timed)}.")
+            raise CommandFailedError(f"Error occurred while running {self.get_timed_cmd()}.")
 
     def __str__(self):
         return f"{self.name}: {' '.join(self.cmd)!r}"
@@ -206,45 +214,58 @@ class CommandFailedError(Exception):
         return self.msg
 
 
-class Benchmark:
-    def __init__(self, name: str, pattern: str, commands: List[Command], file: str, description: str = "",
-                 benchmark_count: int = 10, drop_ram_cache: bool = True):
+class ComparisonBenchmark:
+    def __init__(self, name: str, pattern: str, commands: List[Command], file: str,
+                 initial_command: List[Command] = None, base_line_cmd: Command = None,
+                 description: str = "",
+                 benchmark_count: int = 3, cache: bool = False):
         self.name = name
         self.pattern = pattern
         self.commands = commands
+        self.base_line_cmd = base_line_cmd
         self.description = description
         self.file = file
         self.benchmark_count = benchmark_count
-        self.drop_ram_cache = drop_ram_cache
+        self.cache = cache
+        self.initial_command = initial_command
         for cmd in self.commands:
             if not cmd.exists():
                 raise InvalidCommandError(f"{cmd} could not be found.")
 
     def _run_warmup(self):
-        if not self.drop_ram_cache:
-            log("Running warmup...")
+        if self.cache:
+            log("  Running warmup...")
             counter = 0
             for cmd in self.commands:
-                log(f"{counter}/{len(self.commands)}", end='\r', flush=True)
+                log(f"  {counter}/{len(self.commands)}", end='\r', flush=True)
                 cmd.run()
                 counter += 1
-            log("Warmup done.")
+            log("  Warmup done.")
 
     def _run_benchmarks(self):
         bm_result = BenchmarkResult(self)
-        log("Running Benchmarks...")
         for n in range(self.benchmark_count):
-            for cmd in self.commands:
-                log(f"{n}/{self.benchmark_count}: {cmd.name}", end='\r', flush=True)
-                if self.drop_ram_cache:
+            if self.base_line_cmd:
+                if not self.cache:
                     DROP_RAM_CACHE()
-                res = cmd.run()
-                bm_result += res
-        log("done")
+                bm_result += self.base_line_cmd.run()
+            for cmd in self.commands:
+                log(f"  {n}/{self.benchmark_count}: {cmd.name}", end='\r', flush=True)
+                if not self.cache:
+                    DROP_RAM_CACHE()
+                bm_result += cmd.run()
         return bm_result
 
+    def _run_initial_command(self):
+        if self.initial_command:
+            for cmd in self.initial_command:
+                log(f"  running initial command {cmd.name}...", end=" ")
+                result = cmd.run()
+                log(f"done in {result.mean('wall'):.2f} seconds.")
+
     def run(self):
-        log(f"running {self.benchmark_count} benchmarks on {len(self.commands)} commands")
+        self._run_initial_command()
+        log(f"  running {self.benchmark_count} benchmarks on {len(self.commands)} commands")
         self._run_warmup()
         return self._run_benchmarks()
 
@@ -256,7 +277,7 @@ class Benchmark:
 
 
 class BenchmarkResult:
-    def __init__(self, benchmark: Benchmark):
+    def __init__(self, benchmark: ComparisonBenchmark):
         self.benchmark = benchmark
         self.results = {}  # keys: command names, values: Result
         self.setup = {
@@ -264,15 +285,14 @@ class BenchmarkResult:
             "description": benchmark.description,
             "pattern": benchmark.pattern,
             "iterations": benchmark.benchmark_count,
-            "from disk": benchmark.drop_ram_cache,
+            "cached": benchmark.cache,
             "hardware": {
                 "Computer": platform.node(),
                 "CPU": get_cpu_name(),
-                "disk": get_disk(os.path.abspath(self.benchmark.file))
             }
         }
 
-    def __iadd__(self, res: Result):
+    def __iadd__(self, res: ComparisonResult):
         if res.name in self.results.keys():
             self.results[res.name] += res
         else:
@@ -281,15 +301,22 @@ class BenchmarkResult:
 
     def get_df(self) -> pd.DataFrame:
         data = {
-            "name": [], "command": [],
+            "name": [], "command": [], "wall speedup": [],
             "min wall [s]": [], "max wall [s]": [], "mean wall [s]": [], "stdev wall [s]": [],
             "min usr [s]": [], "max usr [s]": [], "mean usr [s]": [], "stdev usr [s]": [],
             "min sys [s]": [], "max sys [s]": [], "mean sys [s]": [], "stdev sys [s]": [],
             "min cpu [s]": [], "max cpu [s]": [], "mean cpu [s]": [], "stdev cpu [s]": []
         }
+        baseline_wall = 0
+        if self.benchmark.base_line_cmd:
+            baseline_wall = self.results[self.benchmark.base_line_cmd.name].mean("wall")
         for name, res in self.results.items():
             data["name"].append(name)
             data["command"].append(res.command)
+            try:
+                data["wall speedup"].append(baseline_wall / res.mean("wall"))
+            except ZeroDivisionError:
+                data["wall speedup"].append(float("Nan"))
             data["min wall [s]"].append(res.min("wall"))
             data["max wall [s]"].append(res.max("wall"))
             data["mean wall [s]"].append(res.mean("wall"))
@@ -341,100 +368,191 @@ class BenchmarkResult:
         return f"Results for {self.benchmark}.\n"
 
 
-def benchmark_subtitles_en_literal_byte(pattern: str, iterations: int = 5,
-                                        drop_ram_cache: bool = True) -> Benchmark:
-    data_path = os.path.join(DATA_DIR, DATA_FILE_NAME)
-    meta_data_path = os.path.join(DATA_DIR, META_FILE_NAME)
+def benchmark_literal_byte_offset(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
-        Command("GNU grep", ["grep", pattern, data_path, "-b"]),
-        Command("xs grep", ["xsgrep", pattern, data_path, "-b"]),
-        Command("xs grep meta", ["xsgrep", pattern, data_path, meta_data_path, "-b"]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, data_path, "--no-mmap", "-b"]),
-        Command("xs grep -j", ["xsgrep", pattern, data_path, "-j", "-b"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, data_path, meta_data_path, "-j", "-b"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, data_path, "--no-mmap", "-j", "-b"]),
-        Command("ripgrep", ["rg", pattern, data_path, "-b"]),
-        Command("ripgrep --no-mmap", ["rg", pattern, data_path, "--no-mmap", "-b"]),
-        Command("ripgrep -j 1", ["rg", pattern, data_path, "-j", "1", "-b"]),
-        Command("ripgrep --no-mmap -j 1", ["rg", pattern, data_path, "-j", "1", "--no-mmap", "-b"]),
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-b"]),
+        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-b"]),
+        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-b"]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-b"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-b"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-b"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-b"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-b"]),
     ]
-    return Benchmark("literal", pattern, commands, data_path,
-                     description=f"Case sensitive search of byte offsets",
-                     benchmark_count=iterations,
-                     drop_ram_cache=drop_ram_cache)
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal byte offsets", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case sensitive search of byte offsets",
+                               benchmark_count=iterations,
+                               cache=cache)
 
 
-def benchmark_subtitles_en_literal_line_number(pattern: str, iterations: int = 5,
-                                               drop_ram_cache: bool = True) -> Benchmark:
-    data_path = os.path.join(DATA_DIR, DATA_FILE_NAME)
-    meta_data_path = os.path.join(DATA_DIR, META_FILE_NAME)
+def benchmark_literal_line_number(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
-        Command("GNU grep", ["grep", pattern, data_path, "-n"]),
-        Command("xs grep", ["xsgrep", pattern, data_path, "-n"]),
-        Command("xs grep meta", ["xsgrep", pattern, data_path, meta_data_path, "-n"]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, data_path, "--no-mmap", "-n"]),
-        Command("xs grep -j", ["xsgrep", pattern, data_path, "-j", "-n"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, data_path, meta_data_path, "-j", "-n"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, data_path, "--no-mmap", "-j", "-n"]),
-        Command("ripgrep", ["rg", pattern, data_path, "-b"]),
-        Command("ripgrep --no-mmap", ["rg", pattern, data_path, "--no-mmap", "-n"]),
-        Command("ripgrep -j 1", ["rg", pattern, data_path, "-j", "1", "-n"]),
-        Command("ripgrep --no-mmap -j 1", ["rg", pattern, data_path, "-j", "1", "--no-mmap", "-n"]),
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-n"]),
+        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-n"]),
+        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-n"]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-n"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-n"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-n"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-n"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-n"]),
     ]
-    return Benchmark("literal", pattern, commands, data_path,
-                     description=f"Case sensitive search of line numbers",
-                     benchmark_count=iterations,
-                     drop_ram_cache=drop_ram_cache)
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal line numbers", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case sensitive search of line numbers",
+                               benchmark_count=iterations,
+                               cache=cache)
 
 
-def benchmark_subtitles_en_literal(pattern: str, iterations: int = 5, drop_ram_cache: bool = True) -> Benchmark:
+def benchmark_literal(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     """
     Benchmark plain text search
     """
-    data_path = os.path.join(DATA_DIR, DATA_FILE_NAME)
-    meta_data_path = os.path.join(DATA_DIR, META_FILE_NAME)
     commands = [
-        Command("GNU grep", ["grep", pattern, data_path]),
-        Command("xs grep", ["xsgrep", pattern, data_path]),
-        Command("xs grep meta", ["xsgrep", pattern, data_path, meta_data_path]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, data_path, "--no-mmap"]),
-        Command("xs grep -j", ["xsgrep", pattern, data_path, "-j"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, data_path, meta_data_path, "-j"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, data_path, "--no-mmap", "-j"]),
-        Command("ripgrep", ["rg", pattern, data_path]),
-        Command("ripgrep --no-mmap", ["rg", pattern, data_path, "--no-mmap"]),
-        Command("ripgrep -j 1", ["rg", pattern, data_path, "-j", "1"]),
-        Command("ripgrep --no-mmap -j 1", ["rg", pattern, data_path, "-j", "1", "--no-mmap"]),
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH]),
+        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH]),
+        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap"]),
     ]
-    return Benchmark("literal", pattern, commands, data_path,
-                     description=f"Case sensitive search of matching lines",
-                     benchmark_count=iterations,
-                     drop_ram_cache=drop_ram_cache)
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case sensitive search of matching lines",
+                               benchmark_count=iterations,
+                               cache=cache)
 
 
-def benchmark_subtitles_en_literal_casi(pattern: str, iterations: int = 5, drop_ram_cache: bool = True) -> Benchmark:
+def benchmark_literal_case_insensitive(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     """
     Benchmark plain text search
     """
-    data_path = os.path.join(DATA_DIR, DATA_FILE_NAME)
-    meta_data_path = os.path.join(DATA_DIR, META_FILE_NAME)
     commands = [
-        Command("GNU grep", ["grep", pattern, data_path, "-i"]),
-        Command("xs grep", ["grep", pattern, data_path]),
-        Command("xs grep meta", ["grep", pattern, data_path, meta_data_path]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, data_path, "--no-mmap", "-i"]),
-        Command("xs grep -j", ["xsgrep", pattern, data_path, "-j"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, data_path, meta_data_path, "-j", "-i"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, data_path, "--no-mmap", "-j", "-i"]),
-        Command("ripgrep", ["rg", pattern, data_path, "-i"]),
-        Command("ripgrep --no-mmap", ["rg", pattern, data_path, "--no-mmap", "-i"]),
-        Command("ripgrep -j 1", ["rg", pattern, data_path, "-j", "1", "-i"]),
-        Command("ripgrep --no-mmap -j 1", ["rg", pattern, data_path, "-j", "1", "--no-mmap", "-i"]),
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-i"]),
+        Command("xs grep", ["grep", pattern, DATA_FILE_PATH]),
+        Command("xs grep meta", ["grep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-i"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-i"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-i"]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-i"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-i"]),
     ]
-    return Benchmark("literal", pattern, commands, data_path,
-                     description=f"Case insensitive search of matching lines.",
-                     benchmark_count=iterations,
-                     drop_ram_cache=drop_ram_cache)
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal case insensitive", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case insensitive search of matching lines.",
+                               benchmark_count=iterations,
+                               cache=cache)
+
+
+def benchmark_regex(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    commands = [
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH]),
+        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH]),
+        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap"]),
+    ]
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case sensitive search of matching lines",
+                               benchmark_count=iterations,
+                               cache=cache)
+
+
+def benchmark_regex_line_number(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    commands = [
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-n"]),
+        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-n"]),
+        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-n"]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-n"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-n"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-n"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-n"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-n"]),
+    ]
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal line numbers", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case sensitive search of line numbers",
+                               benchmark_count=iterations,
+                               cache=cache)
+
+
+def benchmark_regex_byte_offset(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    commands = [
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-b"]),
+        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-b"]),
+        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-b"]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-b"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-b"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-b"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-b"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-b"]),
+    ]
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal byte offsets", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case sensitive search of byte offsets",
+                               benchmark_count=iterations,
+                               cache=cache)
+
+
+def benchmark_regex_case_insensitive(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    commands = [
+        Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-i"]),
+        Command("xs grep", ["grep", pattern, DATA_FILE_PATH]),
+        Command("xs grep meta", ["grep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
+        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
+        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
+        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-i"]),
+        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-i"]),
+        Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-i"]),
+        Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
+        Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-i"]),
+        Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-i"]),
+    ]
+    baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
+    return ComparisonBenchmark("literal case insensitive", pattern, commands, DATA_FILE_PATH, [], baseline,
+                               description=f"Case insensitive search of matching lines.",
+                               benchmark_count=iterations,
+                               cache=cache)
+
+
+def benchmark_zstd_input(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    zstd = Command("zstd", ["zstd", DATA_FILE_PATH, "-o", DATA_FILE_PATH + ".zst"])
+    xs_zstd = Command("xs.zstd",
+                      ["xspp", DATA_FILE_PATH, "-o", DATA_FILE_PATH + "zst", "-m", DATA_FILE_PATH + "zst.meta", "-a",
+                       "zst"])
+
+    commands = []
+
+
+def benchmark_run(commands: List[Command], iterations: int, cache: bool) -> ComparisonBenchmark:
+    return ComparisonBenchmark("Custom benchmark", "", commands, "", benchmark_count=iterations, cache=cache)
 
 
 def log(*args, **kwargs):
@@ -443,29 +561,172 @@ def log(*args, **kwargs):
         print(*args, **kwargs)
 
 
-def set_up_data():
+def download():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
-    data_path = os.path.join(DATA_DIR, DATA_FILE_NAME)
-    data_meta_path = os.path.join(DATA_DIR, META_FILE_NAME)
-    if not os.path.exists(data_path):
+    if not os.path.exists(DATA_FILE_PATH):
         log("Downloading data...")
         data = requests.get(DATA_DOWNLOAD_URL, stream=True)
         num_bytes = 0
-        with open(data_path, "wb") as f:
+        with open(DATA_FILE_PATH + ".gz", "wb") as f:
             for chunk in data.iter_content(chunk_size=16384):
                 log(f"{num_bytes / 1000000:.2f} MiB written", end='\r', flush=True)
                 f.write(chunk)
                 num_bytes += len(chunk)
         log()
-    if not os.path.exists(data_meta_path):
+
+
+def decompress():
+    if os.path.exists(DATA_FILE_PATH + ".gz"):
+        log("Decompressing data...")
+        p = subprocess.Popen(["gunzip", DATA_FILE_PATH + ".gz"])
+        p.wait()
+        log("Done")
+
+
+def preprocess_file():
+    if not os.path.exists(META_FILE_PATH):
         log("Preprocessing data...")
-        subprocess.Popen(["xspp", data_path, "-m", data_meta_path])
+        subprocess.Popen(["xspp", DATA_FILE_PATH, "-m", META_FILE_PATH])
         log("Done.")
 
 
+def read_commands_from_file(path: str):
+    commands = []
+    with open(path, "r") as f:
+        for line in f.readlines():
+            cmd = line.split(" ")
+            commands.append(Command(cmd[0], cmd))
+    return commands
+
+
+def read_result_info_data(path: str):
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def write_result_info_data(meta_data: Dict, path: str):
+    with open(path, "w") as f:
+        json.dump(meta_data, f)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog="benchsuit",
+                                     description="Automated benchmarks of xs/grep")
+    parser.add_argument("--dir", metavar="PATH", default=os.path.join(os.getcwd(), "bench_data"),
+                        help="The directory data are downloaded to")
+    parser.add_argument("--download", action="store_true",
+                        help="Only download data without running benchmarks and exit")
+    parser.add_argument("--list-benchmarks", action="store_true", help="List available benchmarks by name and exit")
+    parser.add_argument("--cache", action="store_true", help="Do not drop RAM caches between benchmark runs")
+    parser.add_argument("--iterations", "-i", metavar="INTEGER", type=int, default=3,
+                        help="Number of iterations per benchmark")
+    parser.add_argument("--pattern", metavar="STRING", default="Sherlock",
+                        help="The pattern that is searched during benchmarks")
+    parser.add_argument("--commands", metavar="PATH",
+                        help="File containing commands separated by '\\n' that will be run")
+    parser.add_argument("--output", "-o", metavar="PATH", default="",
+                        help="The directory where results are written to (default is printing in terminal)")
+    parser.add_argument("--format", metavar="FORMAT", choices=OUTPUT_FORMAT, default="csv",
+                        help="The format of the output")
+    parser.add_argument("--filter", metavar="FILTER", default="", help="Filter benchmarks by name using regex")
+    parser.add_argument("--input-file", metavar="PATH", help="Run benchmarks on the provided file")
+    parser.add_argument("--silent", action="store_true", help="Do not output log messages")
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    set_up_data()
-    bm = benchmark_subtitles_en_literal("Sherlock", 3, False)
-    result = bm.run()
-    result.write_csv("benchmark.csv")
+    pd.set_option("display.max_rows", None)
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.width", None)
+    benchmarks = {
+        "comparison: literal": benchmark_literal,
+        "comparison: literal, line numbers": benchmark_literal_line_number,
+        "comparison: literal, byte offset": benchmark_literal_byte_offset,
+        "comparison: literal, case insensitive": benchmark_literal_case_insensitive,
+        "comparison: regex": benchmark_regex,
+        "comparison: regex, line numbers": benchmark_regex_line_number,
+        "comparison: regex, byte offset": benchmark_regex_byte_offset,
+        "comparison: regex, case insensitive": benchmark_regex_case_insensitive,
+        "comparison: zstd compressed input file": benchmark_zstd_input
+    }
+    args = parse_args()
+    SILENT = args.silent
+    if args.list_benchmarks:
+        print("The following benchmarks are available:")
+        for name in benchmarks.keys():
+            print(f" - {name}")
+        exit(0)
+    if args.commands:
+        if os.path.exists(args.commands):
+            benchmark_run(read_commands_from_file(args.commands), args.iterations, args.cache)
+        else:
+            print(f"{args.commands!r} is not a file or does not exist")
+    if args.dir:
+        if os.path.exists(args.dir) and os.path.isdir(args.dir):
+            DATA_DIR = args.dir
+        else:
+            print(f"{args.dir!r} is not a directory or does not exist")
+            exit(1)
+    DATA_FILE_PATH = os.path.join(DATA_DIR, DATA_FILE)
+    META_FILE_PATH = os.path.join(DATA_DIR, META_FILE)
+    if args.input_file:
+        if os.path.exists(args.input_file) and os.path.isfile(args.input_file):
+            DATA_FILE_NAME = args.input_file
+            META_FILE_PATH = DATA_FILE_NAME + ".meta"
+        else:
+            print(f"{args.input_file!r} is not a file or does not exist")
+            exit(1)
+    else:
+        download()
+        decompress()
+        if args.download:
+            sys.exit(0)
+    preprocess_file()
+
+    if args.output:
+        if not os.path.exists(args.output):
+            os.makedirs(args.output)
+        OUTPUT_DIR = args.output
+
+    RESULT_META_DATA = os.path.join(OUTPUT_DIR, "results.info.json")
+
+    for name, bm_func in benchmarks.items():
+        res = None
+        if re.search(args.filter, name):
+            log(f"Running {name}...")
+            if "regex" in name:
+                pattern = "She[r ]lock"
+            else:
+                pattern = args.pattern
+            res = bm_func(pattern, args.iterations, args.cache).run()
+        else:
+            log(f"Skipping {name}...")
+        if res:
+            if args.output:
+                result_info_data = read_result_info_data(RESULT_META_DATA)
+                file_name = str(uuid.uuid4())
+                while os.path.exists(os.path.join(OUTPUT_DIR, file_name)):
+                    file_name = str(uuid.uuid4())
+                output_file = os.path.join(OUTPUT_DIR, file_name)
+                if args.format == "json":
+                    output_file += ".json"
+                    res.write_json(output_file)
+                elif args.format == "csv":
+                    output_file += ".csv"
+                    res.write_csv(output_file)
+                elif args.format == "markdown":
+                    output_file += ".md"
+                    res.write_markdown(output_file)
+                result_info_data[file_name] = res.get_setup()
+                result_info_data[file_name]["format"] = args.format
+                write_result_info_data(result_info_data, RESULT_META_DATA)
+            else:
+                print(f"===== {res.get_setup()['name']} =====")
+                print(f" CPU: {res.get_setup()['hardware']['CPU']}")
+                print()
+                print(res.get_df())
+                print()

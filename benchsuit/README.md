@@ -7,4 +7,5 @@
 --comparison
 --xs
 --disk
+--format=[json|csv|md]
 ```

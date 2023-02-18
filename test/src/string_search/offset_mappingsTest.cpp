@@ -57,8 +57,6 @@ TEST(offset_mapping, to_line_indices) {
   }
 
   auto tmp = map::bytes::to_line_indices(&str, byte_offsets);
-
-  auto s = line_indices.size();
   for (size_t ind = 0; ind < line_indices.size(); ++ind) {
     ASSERT_EQ(tmp[ind], line_indices[ind]);
   }

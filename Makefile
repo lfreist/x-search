@@ -70,6 +70,8 @@ benchmark: build_benchmark init_test_runs
 install: build
 	sudo cp build/xsgrep/grep /usr/bin/xsgrep
 	sudo cp build/xsproc/XSPreprocessor /usr/bin/xspp
+	sudo cp benchsuit/timed /usr/bin/xstimed
+	sudo chmod +x /usr/bin/xstimed
 
 clean:
 	rm -rf build

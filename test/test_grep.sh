@@ -14,7 +14,10 @@ elif [ "$#" -eq 1 ]; then
   file="tmp/default.out"
   if [ ! -f "$file" ]; then
     echo "writing test file..."
-    python3 "$xs_binaries/scripts/createTestFile.py" --size 0.1 "$xs_binaries/files/words.txt" --output "$file"
+    if ! python3 "$xs_binaries/scripts/createTestFile.py" --size 0.1 "$xs_binaries/files/words.txt" --output "$file"; then
+      echo "ERROR: failed writing file"
+      exit 1
+    fi
   fi
 else
   echo "Usage:"
