@@ -56,15 +56,15 @@ int main(int argc, char** argv) {
   add_positional("METAFILE", 1);
   add("PATTERN", po::value<std::string>(&args.pattern)->required(),
       "search pattern");
-  add("FILE", po::value<std::string>(&args.file_path)->required(),
-      "input file");
+  add("FILE", po::value<std::string>(&args.file_path)->default_value(""),
+      "input file, stdin if '-' or empty");
   add("METAFILE",
       po::value<std::string>(&args.meta_file_path)->default_value(""),
       "metafile of the corresponding FILE");
   add("help,h", "prints this help message");
   add("version,V", "display version information and exit");
   add("threads,j",
-      po::value<int>(&args.num_threads)->default_value(1)->implicit_value(-1),
+      po::value<int>(&args.num_threads)->default_value(0)->implicit_value(0),
       "number of threads");
   add("max-readers", po::value<int>(&args.num_max_readers)->default_value(0),
       "number of concurrent reading tasks (default is number of threads");
@@ -119,10 +119,9 @@ int main(int argc, char** argv) {
   //  b) < 0 -> number of threads available
   //  c) > number of threads available -> number of threads available
   int max_threads = static_cast<int>(std::thread::hardware_concurrency()) / 2;
-  args.num_threads = args.num_threads < 0 ? max_threads : args.num_threads;
+  args.num_threads = args.num_threads <= 0 ? max_threads : args.num_threads;
   args.num_threads =
       args.num_threads > max_threads ? max_threads : args.num_threads;
-  args.num_threads = args.num_threads == 0 ? 1 : args.num_threads;
 
   // fix number of max readers -------------------------------------------------
   //  a) <= 0 -> num_threads
@@ -137,6 +136,8 @@ int main(int argc, char** argv) {
   // check for compression and add decompression task --------------------------
   if (args.meta_file_path.empty()) {
     if (args.line_number) {
+      // this task creates new line mapping data necessary for searching line
+      // numbers
       processors.push_back(std::make_unique<xs::tasks::NewLineSearcher>());
     }
   } else {
@@ -162,22 +163,32 @@ int main(int argc, char** argv) {
 
   // set reader ----------------------------------------------------------------
   std::unique_ptr<xs::tasks::BaseDataProvider<xs::DataChunk>> reader;
-  if (args.meta_file_path.empty()) {
-    if (args.no_mmap ||
-        args.chunk_size < static_cast<uint64_t>(sysconf(_SC_PAGE_SIZE))) {
-      reader = std::make_unique<xs::tasks::ExternBlockReader>(args.file_path,
-                                                              args.chunk_size);
-    } else {
-      reader = std::make_unique<xs::tasks::ExternBlockReaderMMAP>(
-          args.file_path, args.chunk_size);
-    }
+  if (args.file_path.empty() || args.file_path == "-") {
+    // read stdin
+    // for porting to windows, we need to open 'CON' instead of '/dev/stdin'...
+    reader = std::make_unique<xs::tasks::FileBlockReader>("/dev/stdin",
+                                                          args.chunk_size);
   } else {
-    if (args.no_mmap) {
-      reader = std::make_unique<xs::tasks::ExternBlockMetaReader>(
-          args.file_path, args.meta_file_path);
-    } else {
-      reader = std::make_unique<xs::tasks::ExternBlockMetaReaderMMAP>(
-          args.file_path, args.meta_file_path);
+    if (args.meta_file_path.empty()) {
+      // no meta file provided
+      if (args.no_mmap ||
+          args.chunk_size < static_cast<uint64_t>(sysconf(_SC_PAGE_SIZE))) {
+        // don't read using mmap
+        reader = std::make_unique<xs::tasks::FileBlockReader>(args.file_path,
+                                                              args.chunk_size);
+      } else {  // read using mmap
+        reader = std::make_unique<xs::tasks::FileBlockReaderMMAP>(
+            args.file_path, args.chunk_size);
+      }
+    } else {  // meta file provided
+      if (args.no_mmap) {
+        // don't read using mmap
+        reader = std::make_unique<xs::tasks::FileBlockMetaReader>(
+            args.file_path, args.meta_file_path);
+      } else {  // read using mmap
+        reader = std::make_unique<xs::tasks::FileBlockMetaReaderMMAP>(
+            args.file_path, args.meta_file_path);
+      }
     }
   }
 

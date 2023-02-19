@@ -60,7 +60,8 @@ int main(int argc, char** argv) {
   add("chunk-size,s",
       po::value<uint64_t>(&args.min_chunk_size)->default_value(16777216),
       "number of threads");
-  add("threads,j", po::value<int>(&args.num_threads)->default_value(1),
+  add("threads,j",
+      po::value<int>(&args.num_threads)->default_value(0)->implicit_value(0),
       "size of one chunk that is read");
   add("bytes-nl-distance,d",
       po::value<uint64_t>(&args.mapping_data_distance)->default_value(500),
@@ -98,16 +99,15 @@ int main(int argc, char** argv) {
   //  a) 0 -> 1
   //  b) < 0 -> number of threads available
   //  c) > number of threads available -> number of threads available
-  int max_threads = static_cast<int>(std::thread::hardware_concurrency());
-  args.num_threads = args.num_threads < 0 ? max_threads : args.num_threads;
+  int max_threads = static_cast<int>(std::thread::hardware_concurrency()) / 2;
+  args.num_threads = args.num_threads <= 0 ? max_threads : args.num_threads;
   args.num_threads =
       args.num_threads > max_threads ? max_threads : args.num_threads;
-  args.num_threads = args.num_threads == 0 ? 1 : args.num_threads;
 
   // ===== Setup xs::Executor for preprocessing ================================
 
   // set reader ----------------------------------------------------------------
-  auto reader = std::make_unique<xs::tasks::ExternBlockReader>(
+  auto reader = std::make_unique<xs::tasks::FileBlockReader>(
       args.source_file, args.min_chunk_size);
 
   // set inplace processors ----------------------------------------------------

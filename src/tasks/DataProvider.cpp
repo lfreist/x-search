@@ -3,25 +3,25 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <xsearch/tasks/DataProvider.h>
 #include <xsearch/utils/InlineBench.h>
 
+#include <cstdio>
 #include <cstdlib>
 
 namespace xs::tasks {
 
-// ----- ExternBlockMetaReader -------------------------------------------------
+// ----- FileBlockMetaReader -------------------------------------------------
 // _____________________________________________________________________________
-ExternBlockMetaReader::ExternBlockMetaReader(std::string file_path,
-                                             const std::string& meta_file_path)
+FileBlockMetaReader::FileBlockMetaReader(std::string file_path,
+                                         const std::string& meta_file_path)
     : _file_path(std::move(file_path)),
       _meta_file(meta_file_path, std::ios::in) {}
 
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, uint64_t>>
-ExternBlockMetaReader::getNextData() {
+FileBlockMetaReader::getNextData() {
   INLINE_BENCHMARK_WALL_START(read, "reading");
   INLINE_BENCHMARK_WALL_START_GLOBAL("construct stream");
   std::ifstream stream(_file_path);
@@ -41,16 +41,16 @@ ExternBlockMetaReader::getNextData() {
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
-// ----- ExternBlockMetaReaderMMAP ---------------------------------------------
+// ----- FileBlockMetaReaderMMAP ---------------------------------------------
 // _____________________________________________________________________________
-ExternBlockMetaReaderMMAP::ExternBlockMetaReaderMMAP(
+FileBlockMetaReaderMMAP::FileBlockMetaReaderMMAP(
     std::string file_path, const std::string& meta_file_path)
     : _file_path(std::move(file_path)),
       _meta_file(meta_file_path, std::ios::in) {}
 
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, uint64_t>>
-ExternBlockMetaReaderMMAP::getNextData() {
+FileBlockMetaReaderMMAP::getNextData() {
   INLINE_BENCHMARK_WALL_START(read, "reading");
   auto optCmd = _meta_file.nextChunkMetaData();
   if (!optCmd.has_value()) {
@@ -66,7 +66,7 @@ ExternBlockMetaReaderMMAP::getNextData() {
   size_t page_size = sysconf(_SC_PAGE_SIZE);
   size_t page_offset = cmd.actual_offset % page_size;
   if (page_size > cmd.actual_offset && page_offset != 0) {
-    return ExternBlockMetaReaderMMAP::getData(_file_path, std::move(cmd));
+    return FileBlockMetaReaderMMAP::getData(_file_path, std::move(cmd));
   }
 
   INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
@@ -82,9 +82,8 @@ ExternBlockMetaReaderMMAP::getNextData() {
 }
 
 // _____________________________________________________________________________
-std::optional<std::pair<DataChunk, uint64_t>>
-ExternBlockMetaReaderMMAP::getData(const std::string& file_path,
-                                   ChunkMetaData cmd) {
+std::optional<std::pair<DataChunk, uint64_t>> FileBlockMetaReaderMMAP::getData(
+    const std::string& file_path, ChunkMetaData cmd) {
   std::ifstream stream(file_path);
   INLINE_BENCHMARK_WALL_START_GLOBAL("seeking file position");
   stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
@@ -96,10 +95,10 @@ ExternBlockMetaReaderMMAP::getData(const std::string& file_path,
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
-// ----- ExternBlockReader -----------------------------------------------------
+// ----- FileBlockReader -----------------------------------------------------
 // _____________________________________________________________________________
-ExternBlockReader::ExternBlockReader(std::string file_path, size_t min_size,
-                                     size_t max_oversize)
+FileBlockReader::FileBlockReader(std::string file_path, size_t min_size,
+                                 size_t max_oversize)
     : _file_path(std::move(file_path)),
       _min_size(min_size),
       _max_oversize(max_oversize) {
@@ -111,7 +110,7 @@ ExternBlockReader::ExternBlockReader(std::string file_path, size_t min_size,
 }
 
 // _____________________________________________________________________________
-std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
+std::optional<std::pair<DataChunk, uint64_t>> FileBlockReader::getNextData() {
   std::unique_lock lock(*_stream_mutex);
   INLINE_BENCHMARK_WALL_START(read, "reading");
   ChunkMetaData cmd{_current_index,
@@ -157,8 +156,8 @@ std::optional<std::pair<DataChunk, uint64_t>> ExternBlockReader::getNextData() {
   return {};
 }
 
-ExternBlockReaderMMAP::ExternBlockReaderMMAP(std::string file_path,
-                                             size_t max_size)
+// _____________________________________________________________________________
+FileBlockReaderMMAP::FileBlockReaderMMAP(std::string file_path, size_t max_size)
     : _file_path(std::move(file_path)),
       _max_size(max_size),
       _mmap_read_size(max_size - max_size % sysconf(_SC_PAGE_SIZE) +
@@ -169,7 +168,7 @@ ExternBlockReaderMMAP::ExternBlockReaderMMAP(std::string file_path,
 }
 
 std::optional<std::pair<DataChunk, uint64_t>>
-ExternBlockReaderMMAP::getNextData() {
+FileBlockReaderMMAP::getNextData() {
   std::unique_lock lock(*_stream_mutex);
   if (_current_offset >= _file_size) {
     return {};

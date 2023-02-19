@@ -34,28 +34,27 @@ OUTPUT_FORMAT = ["json", "csv", "markdown"]
 
 
 def get_cpu_name():
-    command = ["cat", "/proc/cpuinfo"]
-    all_info = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0].decode().strip()
-    for line in all_info.split("\n"):
-        if "model name" in line:
-            return re.sub(".*model name.*:", "", line, 1).strip()
+    with open("/proc/cpuinfo", "r") as f:
+        for line in f.readlines():
+            if "model name" in line:
+                return re.sub(".*model name.*:", "", line, 1).strip()
 
 
 def DROP_RAM_CACHE():
     subprocess.run("sync")
     with open("/proc/sys/vm/drop_caches", "w") as f:
         f.write("3")
-    # give the system some time to get up...
+    # give the system some time to recover...
     time.sleep(1)
 
 
 class ComparisonResult:
-    def __init__(self, command, wall: float, usr: float, sys: float):
+    def __init__(self, command, wall: float, usr: float, _sys: float):
         self.name = command.name
         self.command = " ".join(command.cmd)
         self.wall_times = [wall]
         self.usr_times = [usr]
-        self.sys_times = [sys]
+        self.sys_times = [_sys]
 
     def __iadd__(self, other):
         assert self.name == other.name and self.command == other.command
@@ -168,13 +167,13 @@ class ComparisonResult:
 
 
 class Command:
-    def __init__(self, name: str, cmd: List[str], is_baseline: bool = False):
+    def __init__(self, name: str, cmd: List[str] | str, is_baseline: bool = False):
         self.name = name
         self.cmd = cmd
         self.is_baseline = is_baseline
 
     def exists(self) -> bool:
-        return shutil.which(self.get_binary_name()) is not None
+        return shutil.which(self.get_binary_name()) is not None or type(self.cmd) == str
 
     def get_binary_name(self) -> str:
         return self.cmd[0]
@@ -223,6 +222,8 @@ class ComparisonBenchmark:
         self.pattern = pattern
         self.commands = commands
         self.base_line_cmd = base_line_cmd
+        if self.base_line_cmd:
+            self.base_line_cmd.is_baseline = True
         self.description = description
         self.file = file
         self.benchmark_count = benchmark_count
@@ -240,7 +241,7 @@ class ComparisonBenchmark:
                 log(f"  {counter}/{len(self.commands)}", end='\r', flush=True)
                 cmd.run()
                 counter += 1
-            log("  Warmup done.")
+            log("  -> Warmup done.")
 
     def _run_benchmarks(self):
         bm_result = BenchmarkResult(self)
@@ -259,9 +260,9 @@ class ComparisonBenchmark:
     def _run_initial_command(self):
         if self.initial_command:
             for cmd in self.initial_command:
-                log(f"  running initial command {cmd.name}...", end=" ")
+                log(f"  running initial command {cmd.name}...")
                 result = cmd.run()
-                log(f"done in {result.mean('wall'):.2f} seconds.")
+                log(f"  -> done in {result.mean('wall'):.2f} seconds.")
 
     def run(self):
         self._run_initial_command()
@@ -368,15 +369,15 @@ class BenchmarkResult:
         return f"Results for {self.benchmark}.\n"
 
 
-def benchmark_literal_byte_offset(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_literal_byte_offset(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-b"]),
-        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-b"]),
-        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-b"]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-b"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-b"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-b"]),
+        Command("xs grep", ["xs", pattern, DATA_FILE_PATH, "-b"]),
+        Command("xs grep meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-b"]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-b"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1", "-b"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1", "-b"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-b"]),
@@ -389,15 +390,15 @@ def benchmark_literal_byte_offset(pattern: str, iterations: int, cache: bool) ->
                                cache=cache)
 
 
-def benchmark_literal_line_number(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_literal_line_number(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-n"]),
-        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-n"]),
-        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-n"]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-n"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-n"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-n"]),
+        Command("xs grep", ["xs", pattern, DATA_FILE_PATH, "-n"]),
+        Command("xs grep meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-n"]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-n"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1", "-n"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1", "-n"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-n"]),
@@ -410,18 +411,18 @@ def benchmark_literal_line_number(pattern: str, iterations: int, cache: bool) ->
                                cache=cache)
 
 
-def benchmark_literal(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_literal(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     """
     Benchmark plain text search
     """
     commands = [
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH]),
-        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH]),
-        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j"]),
+        Command("xs grep", ["xs", pattern, DATA_FILE_PATH]),
+        Command("xs grep meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"]),
@@ -434,7 +435,7 @@ def benchmark_literal(pattern: str, iterations: int, cache: bool) -> ComparisonB
                                cache=cache)
 
 
-def benchmark_literal_case_insensitive(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_literal_case_insensitive(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     """
     Benchmark plain text search
     """
@@ -442,10 +443,10 @@ def benchmark_literal_case_insensitive(pattern: str, iterations: int, cache: boo
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-i"]),
         Command("xs grep", ["grep", pattern, DATA_FILE_PATH]),
         Command("xs grep meta", ["grep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-i"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-i"]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1", "-i"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1", "-i"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-i"]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-i"]),
@@ -458,15 +459,15 @@ def benchmark_literal_case_insensitive(pattern: str, iterations: int, cache: boo
                                cache=cache)
 
 
-def benchmark_regex(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_regex(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH]),
-        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH]),
-        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j"]),
+        Command("xs grep", ["xs", pattern, DATA_FILE_PATH]),
+        Command("xs grep meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"]),
@@ -479,15 +480,15 @@ def benchmark_regex(pattern: str, iterations: int, cache: bool) -> ComparisonBen
                                cache=cache)
 
 
-def benchmark_regex_line_number(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_regex_line_number(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-n"]),
-        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-n"]),
-        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-n"]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-n"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-n"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-n"]),
+        Command("xs grep", ["xs", pattern, DATA_FILE_PATH, "-n"]),
+        Command("xs grep meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-n"]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-n"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1", "-n"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1", "-n"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-n"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-n"]),
@@ -500,15 +501,15 @@ def benchmark_regex_line_number(pattern: str, iterations: int, cache: bool) -> C
                                cache=cache)
 
 
-def benchmark_regex_byte_offset(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_regex_byte_offset(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-b"]),
-        Command("xs grep", ["xsgrep", pattern, DATA_FILE_PATH, "-b"]),
-        Command("xs grep meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-b"]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j", "-b"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-b"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-b"]),
+        Command("xs grep", ["xs", pattern, DATA_FILE_PATH, "-b"]),
+        Command("xs grep meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-b"]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-b"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1", "-b"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1", "-b"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-b"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-b"]),
@@ -521,15 +522,15 @@ def benchmark_regex_byte_offset(pattern: str, iterations: int, cache: bool) -> C
                                cache=cache)
 
 
-def benchmark_regex_case_insensitive(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_regex_case_insensitive(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = [
         Command("GNU grep", ["grep", pattern, DATA_FILE_PATH, "-i"]),
-        Command("xs grep", ["grep", pattern, DATA_FILE_PATH]),
-        Command("xs grep meta", ["grep", pattern, DATA_FILE_PATH, META_FILE_PATH]),
-        Command("xs grep --no-mmap", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
-        Command("xs grep -j", ["xsgrep", pattern, DATA_FILE_PATH, "-j"]),
-        Command("xs grep -j meta", ["xsgrep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "-i"]),
-        Command("xs grep --no-mmap -j", ["xsgrep", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "-i"]),
+        Command("xs grep", ["grep", pattern, DATA_FILE_PATH, "-i"]),
+        Command("xs grep meta", ["grep", pattern, DATA_FILE_PATH, META_FILE_PATH, "-i"]),
+        Command("xs grep --no-mmap", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
+        Command("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-i"]),
+        Command("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, META_FILE_PATH, "-j", "1", "-i"]),
+        Command("xs grep --no-mmap -j 1", ["xs", pattern, DATA_FILE_PATH, "--no-mmap", "-j", "1", "-i"]),
         Command("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-i"]),
         Command("ripgrep --no-mmap", ["rg", pattern, DATA_FILE_PATH, "--no-mmap", "-i"]),
         Command("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-i"]),
@@ -542,16 +543,59 @@ def benchmark_regex_case_insensitive(pattern: str, iterations: int, cache: bool)
                                cache=cache)
 
 
-def benchmark_zstd_input(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
-    zstd = Command("zstd", ["zstd", DATA_FILE_PATH, "-o", DATA_FILE_PATH + ".zst"])
-    xs_zstd = Command("xs.zstd",
-                      ["xspp", DATA_FILE_PATH, "-o", DATA_FILE_PATH + "zst", "-m", DATA_FILE_PATH + "zst.meta", "-a",
+def compare_zstd_input(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    zstd = Command("zstd", ["zstd", DATA_FILE_PATH, "-o", f"{DATA_FILE_PATH}.zst", "-f", "-q"])
+    xs_zstd = Command("xspp zstd",
+                      ["xspp", DATA_FILE_PATH, "-o", f"{DATA_FILE_PATH}.xszst", "-m", f"{DATA_FILE_PATH}.xszst.meta", "-a",
                        "zst"])
+    zstdcat = Command("zstdcat", ["zstdcat", f"{DATA_FILE_PATH}.zst"], True)
 
-    commands = []
+    commands = [
+        Command("zstdcat | grep", f"zstdcat {DATA_FILE_PATH}.zst | grep {pattern}"),
+        Command("zstdcat | rg", f"zstdcat {DATA_FILE_PATH}.zst | rg {pattern}"),
+        Command("zstdcat | xs", f"zstdcat {DATA_FILE_PATH}.zst | xs {pattern}"),
+        Command("xspp -a zstd -> xs", ["xs", pattern, f"{DATA_FILE_PATH}.xszst", f"{DATA_FILE_PATH}.xszst.meta"]),
+    ]
+
+    return ComparisonBenchmark(
+        "ZStandard compressed file input",
+        pattern,
+        commands,
+        DATA_FILE_PATH,
+        [zstd, xs_zstd],
+        zstdcat,
+        benchmark_count=iterations,
+        cache=cache
+    )
 
 
-def benchmark_run(commands: List[Command], iterations: int, cache: bool) -> ComparisonBenchmark:
+def compare_lz4_input(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    lz4 = Command("lz4 HC", ["lz4", DATA_FILE_PATH, f"{DATA_FILE_PATH}.lz4", "-9", "-f", "-q"])
+    xs_lz4 = Command("xspp lz4",
+                      ["xspp", DATA_FILE_PATH, f"{DATA_FILE_PATH}.xslz4", "-m", f"{DATA_FILE_PATH}.xslz4.meta", "-a",
+                       "lz4", "--hc"])
+    lz4cat = Command("lz4cat", ["zstdcat", f"{DATA_FILE_PATH}.lz4"], True)
+
+    commands = [
+        Command("lz4cat | grep", f"lz4cat {DATA_FILE_PATH}.lz4 | grep {pattern}"),
+        Command("lz4cat | rg", f"lz4cat {DATA_FILE_PATH}.lz4 | rg {pattern}"),
+        Command("lz4cat | xs", f"lz4cat {DATA_FILE_PATH}.lz4 | xs {pattern}"),
+        Command("xspp -a lz4 -> xs", ["xs", pattern, f"{DATA_FILE_PATH}.xslz4", f"{DATA_FILE_PATH}.xslz4.meta"]),
+    ]
+
+    return ComparisonBenchmark(
+        "ZStandard compressed file input",
+        pattern,
+        commands,
+        DATA_FILE_PATH,
+        [lz4, xs_lz4],
+        lz4cat,
+        benchmark_count=iterations,
+        cache=cache
+    )
+
+
+def compare_run(commands: List[Command], iterations: int, cache: bool) -> ComparisonBenchmark:
     return ComparisonBenchmark("Custom benchmark", "", commands, "", benchmark_count=iterations, cache=cache)
 
 
@@ -643,15 +687,16 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
     benchmarks = {
-        "comparison: literal": benchmark_literal,
-        "comparison: literal, line numbers": benchmark_literal_line_number,
-        "comparison: literal, byte offset": benchmark_literal_byte_offset,
-        "comparison: literal, case insensitive": benchmark_literal_case_insensitive,
-        "comparison: regex": benchmark_regex,
-        "comparison: regex, line numbers": benchmark_regex_line_number,
-        "comparison: regex, byte offset": benchmark_regex_byte_offset,
-        "comparison: regex, case insensitive": benchmark_regex_case_insensitive,
-        "comparison: zstd compressed input file": benchmark_zstd_input
+        "comparison: literal": compare_literal,
+        "comparison: literal, line numbers": compare_literal_line_number,
+        "comparison: literal, byte offset": compare_literal_byte_offset,
+        "comparison: literal, case insensitive": compare_literal_case_insensitive,
+        "comparison: regex": compare_regex,
+        "comparison: regex, line numbers": compare_regex_line_number,
+        "comparison: regex, byte offset": compare_regex_byte_offset,
+        "comparison: regex, case insensitive": compare_regex_case_insensitive,
+        "comparison: zstd compressed input file": compare_zstd_input,
+        "comparison: lz4 compressed input file": compare_lz4_input,
     }
     args = parse_args()
     SILENT = args.silent
@@ -662,7 +707,7 @@ if __name__ == "__main__":
         exit(0)
     if args.commands:
         if os.path.exists(args.commands):
-            benchmark_run(read_commands_from_file(args.commands), args.iterations, args.cache)
+            compare_run(read_commands_from_file(args.commands), args.iterations, args.cache)
         else:
             print(f"{args.commands!r} is not a file or does not exist")
     if args.dir:

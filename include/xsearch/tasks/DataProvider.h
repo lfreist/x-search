@@ -21,10 +21,9 @@ class BaseDataProvider {
 // -----------------------------------------------------------------------------
 
 // _____________________________________________________________________________
-class ExternBlockMetaReader : public BaseDataProvider<DataChunk> {
+class FileBlockMetaReader : public BaseDataProvider<DataChunk> {
  public:
-  ExternBlockMetaReader(std::string file_path,
-                        const std::string& meta_file_path);
+  FileBlockMetaReader(std::string file_path, const std::string& meta_file_path);
 
   std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
 
@@ -34,10 +33,10 @@ class ExternBlockMetaReader : public BaseDataProvider<DataChunk> {
 };
 
 // _____________________________________________________________________________
-class ExternBlockMetaReaderMMAP : public BaseDataProvider<DataChunk> {
+class FileBlockMetaReaderMMAP : public BaseDataProvider<DataChunk> {
  public:
-  ExternBlockMetaReaderMMAP(std::string file_path,
-                            const std::string& meta_file_path);
+  FileBlockMetaReaderMMAP(std::string file_path,
+                          const std::string& meta_file_path);
 
   std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
 
@@ -49,17 +48,17 @@ class ExternBlockMetaReaderMMAP : public BaseDataProvider<DataChunk> {
 };
 
 // _____________________________________________________________________________
-class ExternBlockReader : public BaseDataProvider<DataChunk> {
+class FileBlockReader : public BaseDataProvider<DataChunk> {
  public:
-  explicit ExternBlockReader(std::string file_path, size_t min_size = 16777216,
-                             size_t max_oversize = 16384);
+  explicit FileBlockReader(std::string file_path, size_t min_size = 16777216,
+                           size_t max_oversize = 16384);
 
   std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
 
  private:
   const std::string _file_path;
-  const size_t _min_size = 16777216;
-  const size_t _max_oversize = 16384;
+  const size_t _min_size;
+  const size_t _max_oversize;
   uint64_t _current_index = 0;
   uint64_t _current_offset = 0;
   std::ifstream _file_stream;
@@ -67,10 +66,10 @@ class ExternBlockReader : public BaseDataProvider<DataChunk> {
 };
 
 // _____________________________________________________________________________
-class ExternBlockReaderMMAP : public BaseDataProvider<DataChunk> {
+class FileBlockReaderMMAP : public BaseDataProvider<DataChunk> {
  public:
-  explicit ExternBlockReaderMMAP(std::string file_path,
-                                 size_t max_size = 16777216);
+  explicit FileBlockReaderMMAP(std::string file_path,
+                               size_t max_size = 16777216);
 
   std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
 
