@@ -230,7 +230,7 @@ int main(int argc, char** argv) {
     std::ofstream out_stream(benchmark_file);
     out_stream << INLINE_BENCHMARK_REPORT(benchmark_format);
   } else {
-    std::cout << INLINE_BENCHMARK_REPORT(benchmark_format) << std::endl;
+    std::cerr << INLINE_BENCHMARK_REPORT(benchmark_format) << std::endl;
   }
 #endif
   return 0;

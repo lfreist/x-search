@@ -574,8 +574,8 @@ def compare_zstd_input(pattern: str, iterations: int, cache: bool) -> Comparison
 def compare_lz4_input(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     lz4 = Command("lz4 HC", ["lz4", DATA_FILE_PATH, f"{DATA_FILE_PATH}.lz4", "-9", "-f", "-q"])
     xs_lz4 = Command("xspp lz4",
-                      ["xspp", DATA_FILE_PATH, f"{DATA_FILE_PATH}.xslz4", "-m", f"{DATA_FILE_PATH}.xslz4.meta", "-a",
-                       "lz4", "--hc"])
+                     ["xspp", DATA_FILE_PATH, f"{DATA_FILE_PATH}.xslz4", "-m", f"{DATA_FILE_PATH}.xslz4.meta", "-a",
+                      "lz4", "--hc"])
     lz4cat = Command("lz4cat", ["zstdcat", f"{DATA_FILE_PATH}.lz4"], True)
 
     commands = [
