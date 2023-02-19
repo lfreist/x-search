@@ -194,6 +194,8 @@ class Command:
             raise CommandFailedError(f"Error occurred while running {self.get_timed_cmd()}.")
 
     def __str__(self):
+        if type(self.cmd) == str:
+            return self.cmd
         return f"{self.name}: {' '.join(self.cmd)!r}"
 
 
