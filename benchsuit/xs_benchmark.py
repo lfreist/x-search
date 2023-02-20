@@ -356,7 +356,8 @@ def benchmark_chunk_size_xspp(pattern: str, iterations: int, cache: bool) -> Com
 
 def benchmark_chunk_size(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = []
-    for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
+    # for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
+    for size in ["2097152", "16777216", "134217728", "1073741824"]:
         commands.append(Command(f"xs -s {size}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-s", size]))
 
     return ComparisonBenchmark(

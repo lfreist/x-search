@@ -130,7 +130,6 @@ std::optional<std::pair<DataChunk, uint64_t>> FileBlockReader::getNextData() {
   if (num_bytes_read > 0 && chunk.data()[num_bytes_read - 1] != '\n' &&
       !_file_stream.eof()) {
     int64_t additional_bytes_read = 0;
-    INLINE_BENCHMARK_WALL_START_GLOBAL("read until next new line");
     while (true) {
       if (static_cast<size_t>(additional_bytes_read) > _max_oversize) {
         throw std::runtime_error(
@@ -145,7 +144,6 @@ std::optional<std::pair<DataChunk, uint64_t>> FileBlockReader::getNextData() {
         break;
       }
     }
-    INLINE_BENCHMARK_WALL_STOP("read until next new line");
     num_bytes_read += additional_bytes_read;
   }
   if (num_bytes_read > 0) {
