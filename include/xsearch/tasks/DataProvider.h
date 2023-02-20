@@ -41,8 +41,8 @@ class FileBlockMetaReaderMMAP : public BaseDataProvider<DataChunk> {
   std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
 
  private:
-  static std::optional<std::pair<DataChunk, uint64_t>> getData(
-      const std::string& file_path, ChunkMetaData meta_data);
+  static std::optional<std::pair<DataChunk, uint64_t>> _read_no_mmap(
+      const std::string& file_path, ChunkMetaData cmd);
   std::string _file_path;
   MetaFile _meta_file;
 };
@@ -69,13 +69,17 @@ class FileBlockReader : public BaseDataProvider<DataChunk> {
 class FileBlockReaderMMAP : public BaseDataProvider<DataChunk> {
  public:
   explicit FileBlockReaderMMAP(std::string file_path,
-                               size_t max_size = 16777216);
+                               size_t min_size = 16777216,
+                               size_t max_oversize = 65536);
 
   std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
 
  private:
+  std::optional<std::pair<DataChunk, uint64_t>> _read_no_mmap();
+
   const std::string _file_path;
-  const size_t _max_size;
+  const size_t _min_size;
+  const size_t _max_oversize;
   const size_t _mmap_read_size;
   size_t _file_size;
   uint64_t _current_index = 0;

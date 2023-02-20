@@ -5,7 +5,6 @@
 
 #include <xsearch/DataChunk.h>
 #include <xsearch/Executor.h>
-#include <xsearch/FilePreprocessing.h>
 #include <xsearch/MetaFile.h>
 #include <xsearch/ResultTypes.h>
 #include <xsearch/string_search/offset_mappings.h>

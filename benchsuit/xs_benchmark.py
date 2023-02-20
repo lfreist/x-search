@@ -225,11 +225,11 @@ class ComparisonBenchmark:
         if self.initial_command:
             for cmd in self.initial_command:
                 log(f"  running initial command {cmd.name}...")
-                result = cmd.run()
-                log(f"  -> done in {result.mean('wall'):.2f} seconds.")
+                cmd.run()
+                log("  -> done")
 
     def run(self):
-        self._run_initial_command()
+        # self._run_initial_command()
         log(f"  running {self.benchmark_count} benchmarks on {len(self.commands)} commands")
         self._run_warmup()
         return self._run_benchmarks()
@@ -291,7 +291,7 @@ class BenchmarkResult:
         elif columns > 3:
             rows = 2
         columns = math.ceil(columns/rows)
-        fig, axs = plt.subplots(rows, columns, sharey="all", figsize=(8, 10))
+        fig, axs = plt.subplots(rows, columns, figsize=(8, 10))
         y = 0
         x = 0
         for task in self.results[list(self.results.keys())[0]].data["Wall"].keys():
@@ -339,7 +339,7 @@ def benchmark_chunk_size_xspp(pattern: str, iterations: int, cache: bool) -> Com
     commands = []
     for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
         meta_file = f"{DATA_FILE_PATH}-{size}.meta"
-        preprocess_commands.append(Command(f"xspp -s {size}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", size]))
+        preprocess_commands.append(Command(f"xspp -s {size}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", size], False))
         commands.append(Command(f"xs -s {size} meta", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
 
     return ComparisonBenchmark(
@@ -376,7 +376,7 @@ def benchmark_chunk_nl_mapping_data_xspp(pattern: str, iterations: int, cache: b
     commands = []
     for dist in ["1", "500", "1000", "5000", "32000"]:
         meta_file = f"{DATA_FILE_PATH}-nl-{dist}.meta"
-        preprocess_commands.append(Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist]))
+        preprocess_commands.append(Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist], False))
         commands.append(Command(f"xs -s {dist}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
 
     return ComparisonBenchmark(
@@ -404,7 +404,7 @@ def benchmark_compressions_xspp(pattern: str, iterations: int, cache: bool) -> C
     for arg in compression_args:
         meta_file = f"{DATA_FILE_PATH}{''.join(arg)}.meta"
         preprocess_commands.append(Command(f"xspp {' '.join(arg)}", ["xspp", DATA_FILE_PATH, "-m", meta_file] + arg))
-        commands.append(Command(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
+        commands.append(Command(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file], False))
 
     return ComparisonBenchmark(
         "Comparison: new line mapping data distance (preprocessed)",
@@ -415,10 +415,6 @@ def benchmark_compressions_xspp(pattern: str, iterations: int, cache: bool) -> C
         benchmark_count=iterations,
         cache=cache
     )
-
-
-def compare_run(commands: List[Command], iterations: int, cache: bool) -> ComparisonBenchmark:
-    return ComparisonBenchmark("Custom benchmark", "", commands, "", benchmark_count=iterations, cache=cache)
 
 
 def log(*args, **kwargs):
