@@ -7,8 +7,10 @@
 #include <xsearch/tasks/DataProvider.h>
 #include <xsearch/utils/InlineBench.h>
 
+#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 namespace xs::tasks {
 
@@ -133,7 +135,7 @@ std::optional<std::pair<DataChunk, uint64_t>> FileBlockReader::getNextData() {
       if (static_cast<size_t>(additional_bytes_read) > _max_oversize) {
         throw std::runtime_error(
             "ERROR: maximum size exceeded while reading data: " +
-            std::to_string(additional_bytes_read));
+            std::to_string(additional_bytes_read + num_bytes_read));
       }
       _file_stream.read(chunk.data() + num_bytes_read + additional_bytes_read,
                         1);
@@ -160,8 +162,10 @@ std::optional<std::pair<DataChunk, uint64_t>> FileBlockReader::getNextData() {
 FileBlockReaderMMAP::FileBlockReaderMMAP(std::string file_path, size_t max_size)
     : _file_path(std::move(file_path)),
       _max_size(max_size),
-      _mmap_read_size(max_size - max_size % sysconf(_SC_PAGE_SIZE) +
-                      sysconf(_SC_PAGE_SIZE)) {
+      // rounding _max size to a factorial of page size
+      _mmap_read_size(sysconf(_SC_PAGE_SIZE) *
+                      ceil(static_cast<double>(max_size) /
+                           static_cast<double>(sysconf(_SC_PAGE_SIZE)))) {
   int fd = open(_file_path.c_str(), O_RDONLY);
   _file_size = lseek(fd, 0, SEEK_END);
   close(fd);
@@ -183,13 +187,20 @@ FileBlockReaderMMAP::getNextData() {
   size_t page_size = sysconf(_SC_PAGE_SIZE);
   size_t page_offset = _current_offset % page_size;
   INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
-  char* buffer = static_cast<char*>(
+  char* buffer;
+  void* mapped =
       mmap(nullptr, _mmap_read_size + page_size, PROT_READ, MAP_PRIVATE, fd,
-           static_cast<int64_t>(_current_offset - page_offset)));
+           static_cast<int64_t>(_current_offset - page_offset));
+  if (mapped == MAP_FAILED) {
+    std::cerr << "ERROR: mmap failed: " << std::strerror(errno) << std::endl;
+    close(fd);
+    exit(1);
+  }
+  buffer = static_cast<char*>(mapped);
   INLINE_BENCHMARK_WALL_STOP("actual read");
   // search new line char
   size_t size = std::min<size_t>(_file_size - _current_offset, _max_size);
-  INLINE_BENCHMARK_WALL_START(_, "searching previous new line");
+  // get last char of data
   size_t offset = page_offset + size;
   if (size == _max_size) {
     while (true) {
@@ -202,7 +213,6 @@ FileBlockReaderMMAP::getNextData() {
       }
     }
   }
-  INLINE_BENCHMARK_WALL_STOP("searching previous new line");
   size_t actual_size = offset - page_offset;
   xs::DataChunk chunk;
   chunk.assign_mmap_data(buffer, actual_size, page_offset);

@@ -13,8 +13,8 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
                                              const std::string& meta_file_path,
                                              bool ignore_case, int num_threads,
                                              int num_readers) {
-  auto reader =
-      std::make_unique<tasks::FileBlockMetaReader>(file_path, meta_file_path);
+  auto reader = std::make_unique<tasks::FileBlockMetaReaderMMAP>(
+      file_path, meta_file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataChunk>>>
       processors;
@@ -47,8 +47,8 @@ std::shared_ptr<count_lines> extern_search(const std::string& pattern,
                                            const std::string& meta_file_path,
                                            bool ignore_case, int num_threads,
                                            int num_readers) {
-  auto reader =
-      std::make_unique<tasks::FileBlockMetaReader>(file_path, meta_file_path);
+  auto reader = std::make_unique<tasks::FileBlockMetaReaderMMAP>(
+      file_path, meta_file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataChunk>>>
       processors;
@@ -80,8 +80,8 @@ std::shared_ptr<match_byte_offsets> extern_search(
     const std::string& pattern, const std::string& file_path,
     const std::string& meta_file_path, bool ignore_case, int num_threads,
     int num_readers) {
-  auto reader =
-      std::make_unique<tasks::FileBlockMetaReader>(file_path, meta_file_path);
+  auto reader = std::make_unique<tasks::FileBlockMetaReaderMMAP>(
+      file_path, meta_file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataChunk>>>
       processors;
@@ -113,8 +113,8 @@ std::shared_ptr<line_byte_offsets> extern_search(
     const std::string& pattern, const std::string& file_path,
     const std::string& meta_file_path, bool ignore_case, int num_threads,
     int num_readers) {
-  auto reader =
-      std::make_unique<tasks::FileBlockMetaReader>(file_path, meta_file_path);
+  auto reader = std::make_unique<tasks::FileBlockMetaReaderMMAP>(
+      file_path, meta_file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataChunk>>>
       processors;
@@ -147,8 +147,8 @@ std::shared_ptr<lines> extern_search(const std::string& pattern,
                                      const std::string& meta_file_path,
                                      bool ignore_case, int num_threads,
                                      int num_readers) {
-  auto reader =
-      std::make_unique<tasks::FileBlockMetaReader>(file_path, meta_file_path);
+  auto reader = std::make_unique<tasks::FileBlockMetaReaderMMAP>(
+      file_path, meta_file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataChunk>>>
       processors;
@@ -180,8 +180,8 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
                                             const std::string& meta_file_path,
                                             bool ignore_case, int num_threads,
                                             int num_readers) {
-  auto reader =
-      std::make_unique<tasks::FileBlockMetaReader>(file_path, meta_file_path);
+  auto reader = std::make_unique<tasks::FileBlockMetaReaderMMAP>(
+      file_path, meta_file_path);
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataChunk>>>
       processors;

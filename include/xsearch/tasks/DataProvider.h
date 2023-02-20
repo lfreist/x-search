@@ -51,7 +51,7 @@ class FileBlockMetaReaderMMAP : public BaseDataProvider<DataChunk> {
 class FileBlockReader : public BaseDataProvider<DataChunk> {
  public:
   explicit FileBlockReader(std::string file_path, size_t min_size = 16777216,
-                           size_t max_oversize = 16384);
+                           size_t max_oversize = 65536);
 
   std::optional<std::pair<DataChunk, uint64_t>> getNextData() override;
 

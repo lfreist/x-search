@@ -8,15 +8,16 @@ import os
 import shutil
 import sys
 import time
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import subprocess
 import statistics
-import pandas as pd
 import json
 import requests
 import re
 import platform
 import argparse
+import math
+import matplotlib.pyplot as plt
 import uuid
 
 DATA_DIR = "bench_data"
@@ -53,15 +54,15 @@ class XsResult:
     def __init__(self, command, data: Dict):
         self.name = command.name
         self.command = " ".join(command.cmd)
-        self.data = self.normalize_inline_bench_data(data)
+        self.data = self._normalize_inline_bench_data(data)
 
     @staticmethod
-    def normalize_inline_bench_data(data: Dict):
+    def _normalize_inline_bench_data(data: Dict):
         """
         Flattens the output of the json result of InlineBench into
         {
-        "CPU": {"task": {"time [ns]": [int...], "num threads": int}, ...},
-        "Wall": {"task": {"time [ns]": [int...], "num threads": int}, ...}
+        "CPU": {"task": {"time [ns]": [int], "num threads": int}, ...},
+        "Wall": {"task": {"time [ns]": [int], "num threads": int}, ...}
         }
         :param data:
         :return:
@@ -69,24 +70,38 @@ class XsResult:
         ret = {"CPU": {}, "Wall": {}}
         if data:
             for type_name, measurements in data.items():
-                for task, m in measurements.items():
-                    if task in ret[type_name].keys():
-                        ret[type_name][task]["time [ns]"] += [m["time"]]
-                        ret[type_name][task]["num threads"] += 1
-                    else:
-                        ret[type_name][task]["time [ns]"] = [m["time"]]
-                        ret[type_name][task]["num threads"] = 1
+                for task, threads in measurements.items():
+                    if task not in ret[type_name].keys():
+                        ret[type_name][task] = {}
+                    for thread_id, m in threads.items():
+                        if "time [ns]" in ret[type_name][task].keys():
+                            ret[type_name][task]["time [ns]"][0] += m["time"]
+                            ret[type_name][task]["num threads"] += 1
+                        else:
+                            ret[type_name][task]["time [ns]"] = [m["time"]]
+                            ret[type_name][task]["num threads"] = 1
         return ret
 
     def __iadd__(self, other):
+        """
+        {
+        "CPU": {"task": {"time [ns]": [int...], "num threads": int}, ...},
+        "Wall": {"task": {"time [ns]": [int...], "num threads": int}, ...}
+        }
+        :param other:
+        :return:
+        """
         assert self.name == other.name and self.command == other.command
         for type_name, measurements in other.data.items():
             for task, value in measurements.items():
                 if task in self.data[type_name].keys() and "time [ns]" in self.data[type_name][task].keys():
-                    self.data[type_name][task]["time [ns]"] += [value["time [ns]"]]
+                    self.data[type_name][task]["time [ns]"] += value["time [ns]"]
                 else:
                     self.data[type_name][task]["time [ns]"] = [value["time [ns]"]]
         return self
+
+    def __len__(self):
+        return self.data["Wall"]
 
     def get_data(self):
         return self.data
@@ -119,9 +134,10 @@ class XsResult:
 
 
 class Command:
-    def __init__(self, name: str, cmd: List[str] | str):
+    def __init__(self, name: str, cmd: List[str] | str, capture_out: bool = True):
         self.name = name
         self.cmd = cmd
+        self.capture_out = capture_out
 
     def exists(self) -> bool:
         return shutil.which(self.get_binary_name()) is not None or type(self.cmd) == str
@@ -129,9 +145,11 @@ class Command:
     def get_binary_name(self) -> str:
         return self.cmd[0]
 
-    def run(self) -> XsResult:
+    def run(self) -> XsResult | None:
         out = subprocess.Popen(self.cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL,
                                shell=(type(self.cmd) == str)).communicate()[1]
+        if not self.capture_out:
+            return
         out = out.decode()
         data = json.loads(out)
         try:
@@ -164,6 +182,7 @@ class CommandFailedError(Exception):
 class ComparisonBenchmark:
     def __init__(self, name: str, pattern: str, commands: List[Command], file: str,
                  initial_command: List[Command] = None,
+                 cache_cmd: Command = None,
                  description: str = "",
                  benchmark_count: int = 3, cache: bool = False):
         self.name = name
@@ -173,6 +192,7 @@ class ComparisonBenchmark:
         self.file = file
         self.benchmark_count = benchmark_count
         self.cache = cache
+        self.cache_cmd = cache_cmd
         self.initial_command = initial_command
         for cmd in self.commands:
             if not cmd.exists():
@@ -181,15 +201,18 @@ class ComparisonBenchmark:
     def _run_warmup(self):
         if self.cache:
             log("  Running warmup...")
-            counter = 0
-            for cmd in self.commands:
-                log(f"  {counter}/{len(self.commands)}", end='\r', flush=True)
-                cmd.run()
-                counter += 1
+            if self.cache_cmd:
+                self.cache_cmd.run()
+            else:
+                counter = 0
+                for cmd in self.commands:
+                    log(f"  {counter}/{len(self.commands)}", end='\r', flush=True)
+                    cmd.run()
+                    counter += 1
             log("  -> Warmup done.")
 
     def _run_benchmarks(self):
-        bm_result = XsResult(self)
+        bm_result = BenchmarkResult(self)
         for n in range(self.benchmark_count):
             for cmd in self.commands:
                 log(f"  {n}/{self.benchmark_count}: {cmd.name}", end='\r', flush=True)
@@ -259,6 +282,54 @@ class BenchmarkResult:
     def get_setup(self):
         return self.setup
 
+    def plot(self, path: str = ""):
+        num_tasks = len((self.results[list(self.results.keys())[0]].data["Wall"].keys()))
+        columns = num_tasks
+        rows = 1
+        if columns > 8:
+            rows = 3
+        elif columns > 3:
+            rows = 2
+        columns = math.ceil(columns/rows)
+        fig, axs = plt.subplots(rows, columns, sharey="all", figsize=(8, 10))
+        y = 0
+        x = 0
+        for task in self.results[list(self.results.keys())[0]].data["Wall"].keys():
+            if x + y > num_tasks:
+                break
+            self._add_subplot(axs[y, x], task, self._get_plot_data(task))
+            x += 1
+            if x >= columns:
+                x = 0
+                y += 1
+        plt.tight_layout()
+        if path:
+            plt.savefig(path, format="pdf")
+        else:
+            plt.show()
+
+    def _add_subplot(self, axs, title: str, data: List[Tuple[str, float, float]]) -> None:
+        data.sort()
+        x = []
+        y = []
+        y_err = []
+        for i in data:
+            x.append(i[0])
+            y.append(i[1] / 1000000)
+            y_err.append(i[2] / 1000000)
+        axs.bar(x, y)
+        # replace nan with 0
+        y_err = list(map(lambda x: x if x == x else 0, y_err))
+        if sum(y_err) != 0:
+            axs.errorbar(x, y, yerr=y_err, fmt='o', color='r')
+        axs.set_title(title)
+
+    def _get_plot_data(self, task: str) -> List[Tuple[str, float, float]]:
+        ret = []
+        for cmd, res in self.results.items():
+            ret.append((cmd, res.mean("wall")[task], res.stdev("wall")[task]))  # in milliseconds
+        return ret
+
     def __str__(self) -> str:
         return f"Results for {self.benchmark}.\n"
 
@@ -266,10 +337,10 @@ class BenchmarkResult:
 def benchmark_chunk_size_xspp(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     preprocess_commands = []
     commands = []
-    for size in [512, 4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
+    for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
         meta_file = f"{DATA_FILE_PATH}-{size}.meta"
         preprocess_commands.append(Command(f"xspp -s {size}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", size]))
-        commands.append(Command(f"xs -s {size} meta", [BENCHMARK_BUILD_XS, DATA_FILE_PATH, meta_file]))
+        commands.append(Command(f"xs -s {size} meta", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
 
     return ComparisonBenchmark(
         "Comparison: chunk size (preprocessed)",
@@ -277,6 +348,7 @@ def benchmark_chunk_size_xspp(pattern: str, iterations: int, cache: bool) -> Com
         commands,
         DATA_FILE_PATH,
         preprocess_commands,
+        cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
         benchmark_count=iterations,
         cache=cache
     )
@@ -284,14 +356,15 @@ def benchmark_chunk_size_xspp(pattern: str, iterations: int, cache: bool) -> Com
 
 def benchmark_chunk_size(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     commands = []
-    for size in [512, 4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
-        commands.append(Command(f"xs -s {size}", [BENCHMARK_BUILD_XS, DATA_FILE_PATH, "-s", size]))
+    for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
+        commands.append(Command(f"xs -s {size}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-s", size]))
 
     return ComparisonBenchmark(
         "Comparison: chunk size (plain)",
         pattern,
         commands,
         DATA_FILE_PATH,
+        cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
         benchmark_count=iterations,
         cache=cache
     )
@@ -300,16 +373,17 @@ def benchmark_chunk_size(pattern: str, iterations: int, cache: bool) -> Comparis
 def benchmark_chunk_nl_mapping_data_xspp(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     preprocess_commands = []
     commands = []
-    for dist in [1, 500, 1000, 5000, 32000]:
+    for dist in ["1", "500", "1000", "5000", "32000"]:
         meta_file = f"{DATA_FILE_PATH}-nl-{dist}.meta"
         preprocess_commands.append(Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist]))
-        commands.append(Command(f"xs -s {dist}", [BENCHMARK_BUILD_XS, DATA_FILE_PATH, meta_file]))
+        commands.append(Command(f"xs -s {dist}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
 
     return ComparisonBenchmark(
         "Comparison: new line mapping data distance (preprocessed)",
         pattern,
         commands,
         DATA_FILE_PATH,
+        cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
         benchmark_count=iterations,
         cache=cache
     )
@@ -329,13 +403,14 @@ def benchmark_compressions_xspp(pattern: str, iterations: int, cache: bool) -> C
     for arg in compression_args:
         meta_file = f"{DATA_FILE_PATH}{''.join(arg)}.meta"
         preprocess_commands.append(Command(f"xspp {' '.join(arg)}", ["xspp", DATA_FILE_PATH, "-m", meta_file] + arg))
-        commands.append(Command(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, DATA_FILE_PATH, meta_file]))
+        commands.append(Command(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
 
     return ComparisonBenchmark(
         "Comparison: new line mapping data distance (preprocessed)",
         pattern,
         commands,
         DATA_FILE_PATH,
+        cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
         benchmark_count=iterations,
         cache=cache
     )
@@ -403,8 +478,9 @@ def write_result_info_data(meta_data: Dict, path: str):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(prog="benchsuit",
-                                     description="Automated benchmarks of xs/grep")
+    parser = argparse.ArgumentParser(prog="xs_benchmark",
+                                     description="Automated benchmarks of xs grep")
+    parser.add_argument("xs_benchmark_build", metavar="XS_PATH", help="Path to xs executable built with -DBENCHMARK flag.")
     parser.add_argument("--dir", metavar="PATH", default=os.path.join(os.getcwd(), "bench_data"),
                         help="The directory data are downloaded to")
     parser.add_argument("--download", action="store_true",
@@ -414,9 +490,7 @@ def parse_args():
     parser.add_argument("--iterations", "-i", metavar="INTEGER", type=int, default=3,
                         help="Number of iterations per benchmark")
     parser.add_argument("--pattern", metavar="STRING", default="Sherlock",
-                        help="The pattern that is searched during benchmarks")
-    parser.add_argument("--commands", metavar="PATH",
-                        help="File containing commands separated by '\\n' that will be run")
+                        help="The pattern that is searched by xs")
     parser.add_argument("--output", "-o", metavar="PATH", default="",
                         help="The directory where results are written to (default is printing in terminal)")
     parser.add_argument("--format", metavar="FORMAT", choices=OUTPUT_FORMAT, default="csv",
@@ -424,29 +498,26 @@ def parse_args():
     parser.add_argument("--filter", metavar="FILTER", default="", help="Filter benchmarks by name using regex")
     parser.add_argument("--input-file", metavar="PATH", help="Run benchmarks on the provided file")
     parser.add_argument("--silent", action="store_true", help="Do not output log messages")
+    parser.add_argument("--plot", action="store_true", help="Plot results. If output is set, plots are stored as pdf")
 
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    pd.set_option("display.max_rows", None)
-    pd.set_option("display.max_columns", None)
-    pd.set_option("display.width", None)
     benchmarks = {
-
+        "xs grep: chunk size (plain)": benchmark_chunk_size,
+        "xs grep: chunk size (preprocessed)": benchmark_chunk_size_xspp,
+        "xs grep: new line mapping data distance (preprocessed)": benchmark_chunk_nl_mapping_data_xspp,
+        "xs grep: compressions (preprocessed)": benchmark_compressions_xspp
     }
     args = parse_args()
+    BENCHMARK_BUILD_XS = args.xs_benchmark_build
     SILENT = args.silent
     if args.list_benchmarks:
         print("The following benchmarks are available:")
         for name in benchmarks.keys():
             print(f" - {name}")
         exit(0)
-    if args.commands:
-        if os.path.exists(args.commands):
-            compare_run(read_commands_from_file(args.commands), args.iterations, args.cache)
-        else:
-            print(f"{args.commands!r} is not a file or does not exist")
     if args.dir:
         if os.path.exists(args.dir) and os.path.isdir(args.dir):
             DATA_DIR = args.dir
@@ -480,35 +551,20 @@ if __name__ == "__main__":
         res = None
         if re.search(args.filter, name):
             log(f"Running {name}...")
-            if "regex" in name:
-                pattern = "She[r ]lock"
-            else:
-                pattern = args.pattern
-            res = bm_func(pattern, args.iterations, args.cache).run()
+            res = bm_func(args.pattern, args.iterations, args.cache).run()
         else:
             log(f"Skipping {name}...")
         if res:
             if args.output:
                 result_info_data = read_result_info_data(RESULT_META_DATA)
                 file_name = str(uuid.uuid4())
-                while os.path.exists(os.path.join(OUTPUT_DIR, file_name)):
+                while os.path.exists(os.path.join(OUTPUT_DIR, file_name + ".json")):
                     file_name = str(uuid.uuid4())
                 output_file = os.path.join(OUTPUT_DIR, file_name)
-                if args.format == "json":
-                    output_file += ".json"
-                    res.write_json(output_file)
-                elif args.format == "csv":
-                    output_file += ".csv"
-                    res.write_csv(output_file)
-                elif args.format == "markdown":
-                    output_file += ".md"
-                    res.write_markdown(output_file)
-                result_info_data[file_name] = res.get_setup()
-                result_info_data[file_name]["format"] = args.format
+                result_info_data[file_name + ".json"] = res.get_setup()
+                result_info_data[file_name]["plot"] = file_name + ".pdf"
                 write_result_info_data(result_info_data, RESULT_META_DATA)
+                res.write_json(output_file + ".json")
+                res.plot(output_file + ".pdf")
             else:
-                print(f"===== {res.get_setup()['name']} =====")
-                print(f" CPU: {res.get_setup()['hardware']['CPU']}")
-                print()
-                print(res.get_df())
-                print()
+                res.plot()

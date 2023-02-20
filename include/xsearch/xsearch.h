@@ -73,12 +73,12 @@ template <typename T>
 std::shared_ptr<T> extern_search(const std::string& pattern,
                                  const std::string& file_path,
                                  const std::string& meta_file_path,
-                                 bool ignore_case, int num_threads,
+                                 bool ignore_case = false, int num_threads = 1,
                                  int num_readers = 1);
 
 template <typename T>
 std::shared_ptr<T> extern_search(const std::string& pattern,
-                                 const std::string& file_path, bool ignore_case,
-                                 int num_threads);
+                                 const std::string& file_path,
+                                 bool ignore_case = false, int num_threads = 1);
 
 }  // namespace xs

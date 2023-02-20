@@ -171,9 +171,10 @@ int main(int argc, char** argv) {
   } else {
     if (args.meta_file_path.empty()) {
       // no meta file provided
-      if (args.no_mmap ||
-          args.chunk_size < static_cast<uint64_t>(sysconf(_SC_PAGE_SIZE))) {
+      if (args.no_mmap || args.chunk_size < static_cast<uint64_t>(1 << 20)) {
         // don't read using mmap
+        //  Why do we use mmap only of chunk_size >= 1 MiB? It might be that
+        //  using mmap on smaller chunks causes memory fragmentation.
         reader = std::make_unique<xs::tasks::FileBlockReader>(args.file_path,
                                                               args.chunk_size);
       } else {  // read using mmap
