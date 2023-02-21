@@ -6,7 +6,7 @@
 // ----- MetaDataCreator -------------------------------------------------------
 // _____________________________________________________________________________
 preprocess_result MetaDataCreator::process(xs::DataChunk* data) const {
-  return {std::move(data->getMetaData()), data};
+  return {std::move(data->getMetaData()), std::move(*data)};
 }
 
 // ----- DataWriter ------------------------------------------------------------
@@ -44,8 +44,8 @@ void DataWriter::add(preprocess_result data, uint64_t id) {
 void DataWriter::add(preprocess_result data) {
   if (_output_stream != nullptr) {
     // write data to output file
-    _output_stream->write(data.second->data(),
-                          static_cast<int64_t>(data.second->size()));
+    _output_stream->write(data.second.data(),
+                          static_cast<int64_t>(data.second.size()));
   }
   _meta_file.writeChunkMetaData(data.first);
 }

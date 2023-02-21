@@ -5,7 +5,7 @@
 
 #include <xsearch/xsearch.h>
 
-typedef std::pair<xs::ChunkMetaData, xs::DataChunk*> preprocess_result;
+typedef std::pair<xs::ChunkMetaData, xs::DataChunk> preprocess_result;
 
 class MetaDataCreator
     : public xs::tasks::BaseReturnProcessor<xs::DataChunk, preprocess_result> {
