@@ -4,6 +4,7 @@
 Copyright 2023, Leon Freist
 Author: Leon Freist <freist@informatik.uni-freiburg.de>
 """
+import multiprocessing
 import os
 import shutil
 import sys
@@ -18,7 +19,7 @@ import platform
 import argparse
 import math
 import matplotlib.pyplot as plt
-import uuid
+import matplotlib as mpl
 
 DATA_DIR = "bench_data"
 DATA_FILE = "en.sample.txt"
@@ -182,6 +183,7 @@ class CommandFailedError(Exception):
 class ComparisonBenchmark:
     def __init__(self, name: str, pattern: str, commands: List[Command], file: str,
                  initial_command: List[Command] = None,
+                 cleanup_commands: List[Command] = None,
                  cache_cmd: Command = None,
                  description: str = "",
                  benchmark_count: int = 3, cache: bool = False):
@@ -194,13 +196,14 @@ class ComparisonBenchmark:
         self.cache = cache
         self.cache_cmd = cache_cmd
         self.initial_command = initial_command
+        self.cleanup_commands = cleanup_commands
         for cmd in self.commands:
             if not cmd.exists():
                 raise InvalidCommandError(f"{cmd} could not be found.")
 
     def _run_warmup(self):
         if self.cache:
-            log("  Running warmup...")
+            log("  ⏳ running warmup...")
             if self.cache_cmd:
                 self.cache_cmd.run()
             else:
@@ -209,30 +212,40 @@ class ComparisonBenchmark:
                     log(f"  {counter}/{len(self.commands)}", end='\r', flush=True)
                     cmd.run()
                     counter += 1
-            log("  -> Warmup done.")
+            log("  ✅  warmup done")
 
     def _run_benchmarks(self):
         bm_result = BenchmarkResult(self)
         for n in range(self.benchmark_count):
             for cmd in self.commands:
-                log(f"  {n}/{self.benchmark_count}: {cmd.name}", end='\r', flush=True)
+                log(f"  ⏳ {n}/{self.benchmark_count}: {cmd.name}", end='\r', flush=True)
                 if not self.cache:
                     DROP_RAM_CACHE()
                 bm_result += cmd.run()
+        log(f"  ✅  all benchmarks done")
         return bm_result
 
     def _run_initial_command(self):
         if self.initial_command:
             for cmd in self.initial_command:
-                log(f"  running initial command {cmd.name}...")
+                log(f"  ⏳ running initial command {cmd.name}", end="\r", flush=True)
                 cmd.run()
-                log("  -> done")
+            log("  ✅ done running initial commands")
+
+    def _run_cleanup_commands(self):
+        if self.cleanup_commands:
+            for cmd in self.cleanup_commands:
+                log(f"  ⏳ running cleanup command {cmd.name}", end="\r", flush=True)
+                cmd.run()
+            log("  ✅ done running cleanup commands")
 
     def run(self):
-        # self._run_initial_command()
+        self._run_initial_command()
         log(f"  running {self.benchmark_count} benchmarks on {len(self.commands)} commands")
         self._run_warmup()
-        return self._run_benchmarks()
+        res = self._run_benchmarks()
+        self._run_cleanup_commands()
+        return res
 
     def __str__(self):
         description = ""
@@ -283,6 +296,7 @@ class BenchmarkResult:
         return self.setup
 
     def plot(self, path: str = ""):
+        mpl.style.use("seaborn-v0_8")
         num_tasks = len((self.results[list(self.results.keys())[0]].data["Wall"].keys()))
         columns = num_tasks
         rows = 1
@@ -291,17 +305,19 @@ class BenchmarkResult:
         elif columns > 3:
             rows = 2
         columns = math.ceil(columns/rows)
-        fig, axs = plt.subplots(rows, columns, figsize=(8, 10))
-        y = 0
+        fig, axs = plt.subplots(rows, columns, figsize=(8, 10), sharex="all")
+        y = rows - 1
         x = 0
         for task in self.results[list(self.results.keys())[0]].data["Wall"].keys():
-            if x + y > num_tasks:
-                break
-            self._add_subplot(axs[y, x], task, self._get_plot_data(task))
+            if rows == 1:
+                _axs = axs[x]
+            else:
+                _axs = axs[y, x]
+            self._add_subplot(_axs, task, self._get_plot_data(task))
             x += 1
             if x >= columns:
                 x = 0
-                y += 1
+                y -= 1
         plt.tight_layout()
         if path:
             plt.savefig(path, format="pdf")
@@ -309,7 +325,7 @@ class BenchmarkResult:
             plt.show()
 
     def _add_subplot(self, axs, title: str, data: List[Tuple[str, float, float]]) -> None:
-        data.sort()
+        # data.sort(key=lambda v: v[0])  # sort by x label (cmd name) so that we get the same order in all subplots
         x = []
         y = []
         y_err = []
@@ -317,11 +333,17 @@ class BenchmarkResult:
             x.append(i[0])
             y.append(i[1] / 1000000)
             y_err.append(i[2] / 1000000)
-        axs.bar(x, y)
+        bar_list = axs.bar(x, y, color="gray")
+        for bar in bar_list:
+            if bar.get_height() == min(y):
+                bar.set_color("green")
+            if bar.get_height() == max(y):
+                bar.set_color("red")
         # replace nan with 0
         y_err = list(map(lambda x: x if x == x else 0, y_err))
         if sum(y_err) != 0:
             axs.errorbar(x, y, yerr=y_err, fmt='o', color='r')
+        axs.set_xticklabels(labels=x, rotation=90)
         axs.set_title(title)
 
     def _get_plot_data(self, task: str) -> List[Tuple[str, float, float]]:
@@ -337,17 +359,21 @@ class BenchmarkResult:
 def benchmark_chunk_size_xspp(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     preprocess_commands = []
     commands = []
-    for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
-        meta_file = f"{DATA_FILE_PATH}-{size}.meta"
+    cleanup_commands = []
+    # for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
+    for size in ["2097152", "16777216", "134217728", "1073741824"]:
+        meta_file = f"{DATA_FILE_PATH}-s-{size}.meta"
         preprocess_commands.append(Command(f"xspp -s {size}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", size], False))
         commands.append(Command(f"xs -s {size} meta", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
+        cleanup_commands.append(Command(f"rm {meta_file}", ["rm", meta_file], False))
 
     return ComparisonBenchmark(
         "Comparison: chunk size (preprocessed)",
-        pattern,
-        commands,
-        DATA_FILE_PATH,
-        preprocess_commands,
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
+        initial_command=preprocess_commands,
+        cleanup_commands=cleanup_commands,
         cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
         benchmark_count=iterations,
         cache=cache
@@ -362,9 +388,48 @@ def benchmark_chunk_size(pattern: str, iterations: int, cache: bool) -> Comparis
 
     return ComparisonBenchmark(
         "Comparison: chunk size (plain)",
-        pattern,
-        commands,
-        DATA_FILE_PATH,
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
+        cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
+        benchmark_count=iterations,
+        cache=cache
+    )
+
+
+def benchmark_num_threads(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    commands = [Command(f"xs", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH])]
+    for nt in [1] + list(range(2, multiprocessing.cpu_count() + 1, 2)):
+        # [1, 2, 4, 6, ...]
+        commands.append(Command(f"xs -j {nt}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-j", str(nt)]))
+
+    return ComparisonBenchmark(
+        "Comparison: number of worker threads",
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
+        cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
+        benchmark_count=iterations,
+        cache=cache
+    )
+
+
+def benchmark_options(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
+    commands = [
+        Command(f"xs", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH]),
+        Command(f"xs -i", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-i"]),
+        Command(f"xs -n", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-n"]),
+        Command(f"xs -n -i", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-i", "-n"]),
+    ]
+    # for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
+    for size in ["2097152", "16777216", "134217728", "1073741824"]:
+        commands.append(Command(f"xs -s {size}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-s", size]))
+
+    return ComparisonBenchmark(
+        "Comparison: xs options (-i, -n)",
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
         cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
         benchmark_count=iterations,
         cache=cache
@@ -374,16 +439,20 @@ def benchmark_chunk_size(pattern: str, iterations: int, cache: bool) -> Comparis
 def benchmark_chunk_nl_mapping_data_xspp(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     preprocess_commands = []
     commands = []
+    cleanup_commands = []
     for dist in ["1", "500", "1000", "5000", "32000"]:
         meta_file = f"{DATA_FILE_PATH}-nl-{dist}.meta"
         preprocess_commands.append(Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist], False))
-        commands.append(Command(f"xs -s {dist}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
+        commands.append(Command(f"xs -d {dist}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
+        cleanup_commands.append(Command(f"rm {meta_file}", ["rm", meta_file], False))
 
     return ComparisonBenchmark(
         "Comparison: new line mapping data distance (preprocessed)",
-        pattern,
-        commands,
-        DATA_FILE_PATH,
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
+        initial_command=preprocess_commands,
+        cleanup_commands=cleanup_commands,
         cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
         benchmark_count=iterations,
         cache=cache
@@ -393,7 +462,9 @@ def benchmark_chunk_nl_mapping_data_xspp(pattern: str, iterations: int, cache: b
 def benchmark_compressions_xspp(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     preprocess_commands = []
     commands = []
+    cleanup_commands = []
     compression_args = [
+        ["-a", "none"],
         ["-a", "zstd", "-l", "1"],
         ["-a", "zstd", "-l", "3"],
         ["-a", "zstd", "-l", "7"],
@@ -401,17 +472,22 @@ def benchmark_compressions_xspp(pattern: str, iterations: int, cache: bool) -> C
         ["-a", "lz4", "--hc"],
         ["-a", "lz4", "--hc", "-l", "9"]
     ]
+    compressed_file = f"{DATA_FILE_PATH}.compressed"
     for arg in compression_args:
         meta_file = f"{DATA_FILE_PATH}{''.join(arg)}.meta"
-        preprocess_commands.append(Command(f"xspp {' '.join(arg)}", ["xspp", DATA_FILE_PATH, "-m", meta_file] + arg))
-        commands.append(Command(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file], False))
+        preprocess_commands.append(Command(f"xspp {' '.join(arg)}", ["xspp", DATA_FILE_PATH, "-o", compressed_file, "-m", meta_file] + arg, False))
+        commands.append(Command(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, pattern, compressed_file, meta_file]))
+        cleanup_commands.append(Command(f"rm {compressed_file}", ["rm", compressed_file], False))
+        cleanup_commands.append(Command(f"rm {meta_file}", ["rm", meta_file], False))
 
     return ComparisonBenchmark(
         "Comparison: new line mapping data distance (preprocessed)",
-        pattern,
-        commands,
-        DATA_FILE_PATH,
-        cache_cmd=Command("cat", ["cat", DATA_FILE_PATH], False),
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
+        initial_command=preprocess_commands,
+        cleanup_commands=cleanup_commands,
+        cache_cmd=Command("cat", ["cat", compressed_file], False),
         benchmark_count=iterations,
         cache=cache
     )
@@ -427,7 +503,7 @@ def download():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     if not os.path.exists(DATA_FILE_PATH):
-        log("Downloading data...")
+        log("⏳ Downloading data")
         data = requests.get(DATA_DOWNLOAD_URL, stream=True)
         num_bytes = 0
         with open(DATA_FILE_PATH + ".gz", "wb") as f:
@@ -435,22 +511,15 @@ def download():
                 log(f"{num_bytes / 1000000:.2f} MiB written", end='\r', flush=True)
                 f.write(chunk)
                 num_bytes += len(chunk)
-        log()
+        log("✅ download done")
 
 
 def decompress():
     if os.path.exists(DATA_FILE_PATH + ".gz"):
-        log("Decompressing data...")
+        log("⏳ decompressing data")
         p = subprocess.Popen(["gunzip", DATA_FILE_PATH + ".gz"])
         p.wait()
-        log("Done")
-
-
-def preprocess_file():
-    if not os.path.exists(META_FILE_PATH):
-        log("Preprocessing data...")
-        subprocess.Popen(["xspp", DATA_FILE_PATH, "-m", META_FILE_PATH])
-        log("Done.")
+        log("✅ decompression done")
 
 
 def read_commands_from_file(path: str):
@@ -505,7 +574,9 @@ if __name__ == "__main__":
         "xs grep: chunk size (plain)": benchmark_chunk_size,
         "xs grep: chunk size (preprocessed)": benchmark_chunk_size_xspp,
         "xs grep: new line mapping data distance (preprocessed)": benchmark_chunk_nl_mapping_data_xspp,
-        "xs grep: compressions (preprocessed)": benchmark_compressions_xspp
+        "xs grep: compressions (preprocessed)": benchmark_compressions_xspp,
+        "xs grep: number of worker threads (plain)": benchmark_num_threads,
+        "xs grep: using available options (-n, -i)": benchmark_options
     }
     args = parse_args()
     BENCHMARK_BUILD_XS = args.xs_benchmark_build
@@ -535,7 +606,6 @@ if __name__ == "__main__":
         decompress()
         if args.download:
             sys.exit(0)
-    preprocess_file()
 
     if args.output:
         if not os.path.exists(args.output):
@@ -547,19 +617,23 @@ if __name__ == "__main__":
     for name, bm_func in benchmarks.items():
         res = None
         if re.search(args.filter, name):
-            log(f"Running {name}...")
+            log(f"🏃 running {name}...")
             res = bm_func(args.pattern, args.iterations, args.cache).run()
         else:
-            log(f"Skipping {name}...")
+            log(f"↦ skipping {name}...")
         if res:
             if args.output:
                 result_info_data = read_result_info_data(RESULT_META_DATA)
-                file_name = str(uuid.uuid4())
-                while os.path.exists(os.path.join(OUTPUT_DIR, file_name + ".json")):
-                    file_name = str(uuid.uuid4())
+                tmp_id = 0
+                file_name = name.replace(" ", "_") + str(tmp_id)
+                tmp_file_name = file_name + ".json"
+                while os.path.exists(os.path.join(OUTPUT_DIR, tmp_file_name)):
+                    tmp_id += 1
+                    file_name[-1] = str(tmp_id)
+                    tmp_file_name = file_name + "." + args.format
                 output_file = os.path.join(OUTPUT_DIR, file_name)
                 result_info_data[file_name + ".json"] = res.get_setup()
-                result_info_data[file_name]["plot"] = file_name + ".pdf"
+                result_info_data[file_name + ".json"]["plot"] = file_name + ".pdf"
                 write_result_info_data(result_info_data, RESULT_META_DATA)
                 res.write_json(output_file + ".json")
                 res.plot(output_file + ".pdf")

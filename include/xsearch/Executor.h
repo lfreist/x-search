@@ -100,9 +100,7 @@ class Executor {
     }
     _max_readers--;
     reader_lock.unlock();
-    INLINE_BENCHMARK_WALL_START_GLOBAL("reader task");
     auto chunk_index_pair = _reader->getNextData();
-    INLINE_BENCHMARK_WALL_STOP("reader task");
     reader_lock.lock();
     _max_readers++;
     _reader_cv.notify_one();
@@ -110,21 +108,18 @@ class Executor {
   }
 
   void inplace_processors_task(DataT* chunk) {
-    INLINE_BENCHMARK_WALL_START(_, "processor task");
     for (auto& processor : _inplace_processors) {
       processor->process(chunk);
     }
   }
 
   PartResT return_processor_task(DataT* chunk) {
-    INLINE_BENCHMARK_WALL_START(_, "searcher task");
     PartResT res;
     res = _return_processor->process(chunk);
     return res;
   }
 
   void results_join_task(PartResT partial_results, uint64_t index) {
-    INLINE_BENCHMARK_WALL_START(_, "results join task");
     _result->add(std::move(partial_results), index);
   }
 

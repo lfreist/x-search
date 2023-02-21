@@ -8,7 +8,7 @@ import os
 import shutil
 import sys
 import time
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import subprocess
 import statistics
 import pandas as pd
@@ -17,7 +17,8 @@ import requests
 import re
 import platform
 import argparse
-import uuid
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 DATA_DIR = "bench_data"
 DATA_FILE = "en.sample.txt"
@@ -184,8 +185,13 @@ class Command:
         return ["/usr/bin/time", "-f", "%e\t%U\t%S"] + self.cmd
 
     def run(self) -> ComparisonResult:
-        out = subprocess.Popen(self.get_timed_cmd(), stderr=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                               shell=(type(self.cmd) == str)).communicate()[1]
+        # We pipe stdout to a file instead of /dev/null because GNU grep stops after first match if output is written to
+        #  /dev/null
+        tmp_out_path = "/tmp/xs-benchmark.tmp"
+        with open(tmp_out_path, "w") as tmp_out_file:
+            out = subprocess.Popen(self.get_timed_cmd(), stderr=subprocess.PIPE, stdout=tmp_out_file,
+                                   shell=(type(self.cmd) == str)).communicate()[1]
+        os.remove("/tmp/xs-benchmark.tmp")
         out = out.decode()
         wall, usr, _sys = str(out).split('\t')
         try:
@@ -367,6 +373,45 @@ class BenchmarkResult:
     def get_setup(self):
         return self.setup
 
+    def plot(self, path: str = ""):
+        mpl.style.use("seaborn-v0_8")
+        fig, axs = plt.subplots(1, 2, figsize=(8, 10))
+        self._add_subplot(axs[0], "Wall Time [s]", self._get_plot_data("wall"))
+        self._add_subplot(axs[1], "CPU Time [s]", self._get_plot_data("cpu"))
+        plt.tight_layout()
+        if path:
+            plt.savefig(path, format="pdf")
+        else:
+            plt.show()
+
+    def _add_subplot(self, axs, title: str, data: List[Tuple[str, float, float]]) -> None:
+        data.sort(key=lambda v: v[0])  # sort by x label (cmd name) so that we get the same order in all subplots
+        x = []
+        y = []
+        y_err = []
+        for i in data:
+            x.append(i[0])
+            y.append(i[1])
+            y_err.append(i[2])
+        bar_list = axs.bar(x, y, color="gray")
+        for bar in bar_list:
+            if bar.get_height() == min(y):
+                bar.set_color("red")
+            if bar.get_height() == max(y):
+                bar.set_color("red")
+        # replace nan with 0
+        y_err = list(map(lambda _x: _x if _x == _x else 0, y_err))
+        if sum(y_err) != 0:
+            axs.errorbar(x, y, yerr=y_err, fmt='o', color='r')
+        axs.set_xticklabels(labels=x, rotation=90)
+        axs.set_title(title)
+
+    def _get_plot_data(self, measure_type: str) -> List[Tuple[str, float, float]]:
+        ret = []
+        for cmd, res in self.results.items():
+            ret.append((cmd, res.mean(measure_type), res.stdev(measure_type)))
+        return ret
+
     def __str__(self) -> str:
         return f"Results for {self.benchmark}.\n"
 
@@ -386,7 +431,8 @@ def compare_literal_byte_offset(pattern: str, iterations: int, cache: bool) -> C
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-b"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal byte offsets", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal byte offsets", pattern=pattern, commands=commands, file=DATA_FILE_PATH,
+                               initial_command=[], base_line_cmd=baseline,
                                description=f"Case sensitive search of byte offsets",
                                benchmark_count=iterations,
                                cache=cache)
@@ -407,7 +453,8 @@ def compare_literal_line_number(pattern: str, iterations: int, cache: bool) -> C
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-n"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal line numbers", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal line numbers", pattern=pattern, commands=commands, file=DATA_FILE_PATH,
+                               initial_command=[], base_line_cmd=baseline,
                                description=f"Case sensitive search of line numbers",
                                benchmark_count=iterations,
                                cache=cache)
@@ -431,7 +478,8 @@ def compare_literal(pattern: str, iterations: int, cache: bool) -> ComparisonBen
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal", pattern=pattern, commands=commands, file=DATA_FILE_PATH, initial_command=[],
+                               base_line_cmd=baseline,
                                description=f"Case sensitive search of matching lines",
                                benchmark_count=iterations,
                                cache=cache)
@@ -455,7 +503,8 @@ def compare_literal_case_insensitive(pattern: str, iterations: int, cache: bool)
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-i"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal case insensitive", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal case insensitive", pattern=pattern, commands=commands, file=DATA_FILE_PATH,
+                               initial_command=[], base_line_cmd=baseline,
                                description=f"Case insensitive search of matching lines.",
                                benchmark_count=iterations,
                                cache=cache)
@@ -476,7 +525,8 @@ def compare_regex(pattern: str, iterations: int, cache: bool) -> ComparisonBench
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal", pattern=pattern, commands=commands, file=DATA_FILE_PATH, initial_command=[],
+                               base_line_cmd=baseline,
                                description=f"Case sensitive search of matching lines",
                                benchmark_count=iterations,
                                cache=cache)
@@ -497,7 +547,8 @@ def compare_regex_line_number(pattern: str, iterations: int, cache: bool) -> Com
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-n"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal line numbers", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal line numbers", pattern=pattern, commands=commands, file=DATA_FILE_PATH,
+                               initial_command=[], base_line_cmd=baseline,
                                description=f"Case sensitive search of line numbers",
                                benchmark_count=iterations,
                                cache=cache)
@@ -518,7 +569,8 @@ def compare_regex_byte_offset(pattern: str, iterations: int, cache: bool) -> Com
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-b"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal byte offsets", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal byte offsets", pattern=pattern, commands=commands, file=DATA_FILE_PATH,
+                               initial_command=[], base_line_cmd=baseline,
                                description=f"Case sensitive search of byte offsets",
                                benchmark_count=iterations,
                                cache=cache)
@@ -539,7 +591,8 @@ def compare_regex_case_insensitive(pattern: str, iterations: int, cache: bool) -
         Command("ripgrep --no-mmap -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "--no-mmap", "-i"]),
     ]
     baseline = Command("cat", ["cat", DATA_FILE_PATH], True)
-    return ComparisonBenchmark("literal case insensitive", pattern, commands, DATA_FILE_PATH, [], baseline,
+    return ComparisonBenchmark("literal case insensitive", pattern=pattern, commands=commands, file=DATA_FILE_PATH,
+                               initial_command=[], base_line_cmd=baseline,
                                description=f"Case insensitive search of matching lines.",
                                benchmark_count=iterations,
                                cache=cache)
@@ -548,7 +601,8 @@ def compare_regex_case_insensitive(pattern: str, iterations: int, cache: bool) -
 def compare_zstd_input(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
     zstd = Command("zstd", ["zstd", DATA_FILE_PATH, "-o", f"{DATA_FILE_PATH}.zst", "-f", "-q"])
     xs_zstd = Command("xspp zstd",
-                      ["xspp", DATA_FILE_PATH, "-o", f"{DATA_FILE_PATH}.xszst", "-m", f"{DATA_FILE_PATH}.xszst.meta", "-a",
+                      ["xspp", DATA_FILE_PATH, "-o", f"{DATA_FILE_PATH}.xszst", "-m", f"{DATA_FILE_PATH}.xszst.meta",
+                       "-a",
                        "zst"])
     zstdcat = Command("zstdcat", ["zstdcat", f"{DATA_FILE_PATH}.zst"], True)
 
@@ -561,11 +615,11 @@ def compare_zstd_input(pattern: str, iterations: int, cache: bool) -> Comparison
 
     return ComparisonBenchmark(
         "ZStandard compressed file input",
-        pattern,
-        commands,
-        DATA_FILE_PATH,
-        [zstd, xs_zstd],
-        zstdcat,
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
+        initial_command=[zstd, xs_zstd],
+        base_line_cmd=zstdcat,
         benchmark_count=iterations,
         cache=cache
     )
@@ -587,18 +641,19 @@ def compare_lz4_input(pattern: str, iterations: int, cache: bool) -> ComparisonB
 
     return ComparisonBenchmark(
         "ZStandard compressed file input",
-        pattern,
-        commands,
-        DATA_FILE_PATH,
-        [lz4, xs_lz4],
-        lz4cat,
+        pattern=pattern,
+        commands=commands,
+        file=DATA_FILE_PATH,
+        initial_command=[lz4, xs_lz4],
+        base_line_cmd=lz4cat,
         benchmark_count=iterations,
         cache=cache
     )
 
 
 def compare_run(commands: List[Command], iterations: int, cache: bool) -> ComparisonBenchmark:
-    return ComparisonBenchmark("Custom benchmark", "", commands, "", benchmark_count=iterations, cache=cache)
+    return ComparisonBenchmark("Custom benchmark", pattern="", commands=commands, file="", benchmark_count=iterations,
+                               cache=cache)
 
 
 def log(*args, **kwargs):
@@ -689,7 +744,7 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
     benchmarks = {
-        "comparison: literal": compare_literal,
+        "comparison: literal, plane": compare_literal,
         "comparison: literal, line numbers": compare_literal_line_number,
         "comparison: literal, byte offset": compare_literal_byte_offset,
         "comparison: literal, case insensitive": compare_literal_case_insensitive,
@@ -741,6 +796,9 @@ if __name__ == "__main__":
 
     RESULT_META_DATA = os.path.join(OUTPUT_DIR, "results.info.json")
 
+    if not args.output:
+        print(f" CPU: {get_cpu_name()}")
+
     for name, bm_func in benchmarks.items():
         res = None
         if re.search(args.filter, name):
@@ -755,25 +813,28 @@ if __name__ == "__main__":
         if res:
             if args.output:
                 result_info_data = read_result_info_data(RESULT_META_DATA)
-                file_name = str(uuid.uuid4())
-                while os.path.exists(os.path.join(OUTPUT_DIR, file_name)):
-                    file_name = str(uuid.uuid4())
+                tmp_id = 0
+                file_name = name.replace(" ", "_") + str(tmp_id)
+                tmp_file_name = file_name + "." + args.format
+                while os.path.exists(os.path.join(OUTPUT_DIR, tmp_file_name)):
+                    tmp_id += 1
+                    file_name[-1] = str(tmp_id)
+                    tmp_file_name = file_name + "." + args.format
                 output_file = os.path.join(OUTPUT_DIR, file_name)
                 if args.format == "json":
-                    output_file += ".json"
-                    res.write_json(output_file)
+                    res.write_json(output_file + ".json")
                 elif args.format == "csv":
-                    output_file += ".csv"
-                    res.write_csv(output_file)
+                    res.write_csv(output_file + ".csv")
                 elif args.format == "markdown":
-                    output_file += ".md"
-                    res.write_markdown(output_file)
+                    res.write_markdown(output_file + ".md")
                 result_info_data[file_name] = res.get_setup()
                 result_info_data[file_name]["format"] = args.format
+                result_info_data[file_name]["plot"] = output_file + ".pdf"
                 write_result_info_data(result_info_data, RESULT_META_DATA)
+                res.plot(output_file + ".pdf")
             else:
+                res.plot()
                 print(f"===== {res.get_setup()['name']} =====")
-                print(f" CPU: {res.get_setup()['hardware']['CPU']}")
                 print()
                 print(res.get_df())
                 print()
