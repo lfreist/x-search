@@ -51,12 +51,12 @@ for nt in "${num_threads[@]}"; do
     for md in "${mapping_distances[@]}"; do
       for cs in "${chunk_sizes[@]}"; do
         # preprocessing
-        printf "XSPreprocessor %s:\n" "-a $c_alg -d $md -s $cs -j $nt"
-        "./$xs_binaries/xsproc/XSPreprocessor" "$file" -o "$out_file" -m "$meta_file" -a "$c_alg" -d "$md" -s "$cs" -j "$nt"
+        printf "xspp %s:\n" "-a $c_alg -d $md -s $cs -j $nt"
+        "./$xs_binaries/xsproc/xspp" "$file" -o "$out_file" -m "$meta_file" -a "$c_alg" -d "$md" -s "$cs" -j "$nt"
         for grep_arg in "${grep_args[@]}"; do
           printf "  grep %s:\t" "$grep_arg"
           # running xs/grep
-          "./$xs_binaries/xsgrep/grep" "$pattern" "$out_file" "$meta_file" --no-color $grep_arg >tmp/xsgrep.tmp
+          "./$xs_binaries/xsgrep/xs" "$pattern" "$out_file" "$meta_file" $grep_arg >tmp/xsgrep.tmp
           if diff tmp/xsgrep.tmp "tmp/grep$grep_arg.tmp" >/dev/null; then
             printf "\x1b[32mPASSED\x1b[m\n"
             success=$((success + 1))

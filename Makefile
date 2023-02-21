@@ -69,7 +69,7 @@ benchmark: build_benchmark init_test_runs
 
 install: build
 	sudo cp build/xsgrep/xs /usr/bin/xs
-	sudo cp build/xsproc/XSPreprocessor /usr/bin/xspp
+	sudo cp build/xsproc/xspp /usr/bin/xspp
 
 clean:
 	rm -rf build

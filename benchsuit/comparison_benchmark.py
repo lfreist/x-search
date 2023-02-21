@@ -396,7 +396,7 @@ class BenchmarkResult:
         bar_list = axs.bar(x, y, color="gray")
         for bar in bar_list:
             if bar.get_height() == min(y):
-                bar.set_color("red")
+                bar.set_color("green")
             if bar.get_height() == max(y):
                 bar.set_color("red")
         # replace nan with 0

@@ -16,6 +16,14 @@ External string searching library (x-search) written in C++ (C++20)
 
 ## Build
 
+### Dependencies
+
+- liblz4-dev
+- libzstd-dev
+- libboost-program-options1.74-dev
+- cmake
+- g++ or clang
+
 1. Download x-search and navigate into the directory
     ```bash
     git clone https://github.com/lfreist/x-search

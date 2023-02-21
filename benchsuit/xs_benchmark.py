@@ -303,7 +303,7 @@ class BenchmarkResult:
             rows = 3
         elif columns > 3:
             rows = 2
-        columns = math.ceil(columns/rows)
+        columns = math.ceil(columns / rows)
         fig, axs = plt.subplots(rows, columns, figsize=(8, 10), sharex="all")
         y = rows - 1
         x = 0
@@ -362,7 +362,8 @@ def benchmark_chunk_size_xspp(pattern: str, iterations: int, cache: bool) -> Com
     # for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
     for size in ["2097152", "16777216", "134217728", "1073741824"]:
         meta_file = f"{DATA_FILE_PATH}-s-{size}.meta"
-        preprocess_commands.append(Command(f"xspp -s {size}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", size], False))
+        preprocess_commands.append(
+            Command(f"xspp -s {size}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", size], False))
         commands.append(Command(f"xs -s {size} meta", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
         cleanup_commands.append(Command(f"rm {meta_file}", ["rm", meta_file], False))
 
@@ -439,7 +440,8 @@ def benchmark_chunk_nl_mapping_data_xspp(pattern: str, iterations: int, cache: b
     cleanup_commands = []
     for dist in ["1", "500", "1000", "5000", "32000"]:
         meta_file = f"{DATA_FILE_PATH}-nl-{dist}.meta"
-        preprocess_commands.append(Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist], False))
+        preprocess_commands.append(
+            Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist], False))
         commands.append(Command(f"xs -d {dist}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
         cleanup_commands.append(Command(f"rm {meta_file}", ["rm", meta_file], False))
 
@@ -469,13 +471,16 @@ def benchmark_compressions_xspp(pattern: str, iterations: int, cache: bool) -> C
         ["-a", "lz4", "--hc"],
         ["-a", "lz4", "--hc", "-l", "9"]
     ]
-    compressed_file = f"{DATA_FILE_PATH}.compressed"
     for arg in compression_args:
         meta_file = f"{DATA_FILE_PATH}{''.join(arg)}.meta"
-        preprocess_commands.append(Command(f"xspp {' '.join(arg)}", ["xspp", DATA_FILE_PATH, "-o", compressed_file, "-m", meta_file] + arg, False))
+        compressed_file = f"{DATA_FILE_PATH}{''.join(arg)}"
+        preprocess_commands.append(
+            Command(f"xspp {' '.join(arg)}", ["xspp", DATA_FILE_PATH, "-o", compressed_file, "-m", meta_file] + arg,
+                    False))
         commands.append(Command(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, pattern, compressed_file, meta_file]))
         cleanup_commands.append(Command(f"rm {compressed_file}", ["rm", compressed_file], False))
         cleanup_commands.append(Command(f"rm {meta_file}", ["rm", meta_file], False))
+        cleanup_commands.append(Command(f"rm {compressed_file}", ["rm", compressed_file], False))
 
     return ComparisonBenchmark(
         "Comparison: new line mapping data distance (preprocessed)",
@@ -543,7 +548,8 @@ def write_result_info_data(meta_data: Dict, path: str):
 def parse_args():
     parser = argparse.ArgumentParser(prog="xs_benchmark",
                                      description="Automated benchmarks of xs grep")
-    parser.add_argument("xs_benchmark_build", metavar="XS_PATH", help="Path to xs executable built with -DBENCHMARK flag.")
+    parser.add_argument("xs_benchmark_build", metavar="XS_PATH",
+                        help="Path to xs executable built with -DBENCHMARK flag.")
     parser.add_argument("--dir", metavar="PATH", default=os.path.join(os.getcwd(), "bench_data"),
                         help="The directory data are downloaded to")
     parser.add_argument("--download", action="store_true",
