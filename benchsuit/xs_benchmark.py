@@ -457,11 +457,10 @@ def benchmark_chunk_nl_mapping_data_xspp(pattern: str, iterations: int, cache: b
 
 
 def benchmark_compressions_xspp(pattern: str, iterations: int, cache: bool) -> ComparisonBenchmark:
-    preprocess_commands = []
-    commands = []
-    cleanup_commands = []
+    preprocess_commands = [Command("xspp -a none", ["xspp", DATA_FILE_PATH, "-m", f"{DATA_FILE_PATH}-a-none.meta"], False)]
+    commands = [Command("xs (plain)", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, f"{DATA_FILE_PATH}-a-none.meta"])]
+    cleanup_commands = [Command(f"rm {DATA_FILE_PATH}-a-none.meta", ["rm", f"{DATA_FILE_PATH}-a-none.meta"], False)]
     compression_args = [
-        ["-a", "none"],
         ["-a", "zstd", "-l", "1"],
         ["-a", "zstd", "-l", "3"],
         ["-a", "zstd", "-l", "7"],
