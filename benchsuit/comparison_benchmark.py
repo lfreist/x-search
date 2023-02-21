@@ -814,12 +814,12 @@ if __name__ == "__main__":
             if args.output:
                 result_info_data = read_result_info_data(RESULT_META_DATA)
                 tmp_id = 0
-                file_name = name.replace(" ", "_") + str(tmp_id)
-                tmp_file_name = file_name + "." + args.format
+                file_name = name.replace(" ", "_")
+                tmp_file_name = f"{file_name}_{tmp_id}"
                 while os.path.exists(os.path.join(OUTPUT_DIR, tmp_file_name)):
                     tmp_id += 1
-                    file_name[-1] = str(tmp_id)
-                    tmp_file_name = file_name + "." + args.format
+                    tmp_file_name = f"{file_name}_{tmp_id}"
+                file_name = tmp_file_name
                 output_file = os.path.join(OUTPUT_DIR, file_name)
                 if args.format == "json":
                     res.write_json(output_file + ".json")

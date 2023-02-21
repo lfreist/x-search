@@ -278,13 +278,12 @@ class BenchmarkResult:
         return self
 
     def get_dict(self) -> Dict:
-        results = sorted(self.results.values())
         return {
             "setup": self.setup,
             "results": {
-                res.name: {
+                name: {
                     "command": res.command, "data": res.get_data()}
-                for res in results
+                for name, res in self.results.items()
             }
         }
 
@@ -625,12 +624,12 @@ if __name__ == "__main__":
             if args.output:
                 result_info_data = read_result_info_data(RESULT_META_DATA)
                 tmp_id = 0
-                file_name = name.replace(" ", "_") + str(tmp_id)
-                tmp_file_name = file_name + ".json"
+                file_name = name.replace(" ", "_")
+                tmp_file_name = f"{file_name}_{tmp_id}.json"
                 while os.path.exists(os.path.join(OUTPUT_DIR, tmp_file_name)):
                     tmp_id += 1
-                    file_name[-1] = str(tmp_id)
-                    tmp_file_name = file_name + "." + args.format
+                    tmp_file_name = f"{file_name}_{tmp_id}.json"
+                file_name = f"{file_name}_{tmp_id}"
                 output_file = os.path.join(OUTPUT_DIR, file_name)
                 result_info_data[file_name + ".json"] = res.get_setup()
                 result_info_data[file_name + ".json"]["plot"] = file_name + ".pdf"
