@@ -1,0 +1,12 @@
+add_executable(re2_search re2_search.cpp)
+target_link_libraries(re2_search PUBLIC re2::re2 boost_program_options InlineBench)
+
+add_executable(simd_search simd_search.cpp)
+target_link_libraries(simd_search PUBLIC SearchUtils StringManipulation boost_program_options InlineBench)
+
+add_executable(std_strstr_search std_strstr_search.cpp)
+target_link_libraries(std_strstr_search PUBLIC boost_program_options InlineBench)
+add_executable(std_string_find_search std_string_find_search.cpp)
+target_link_libraries(std_string_find_search PUBLIC boost_program_options InlineBench)
+add_executable(std_regex_search std_regex_search.cpp)
+target_link_libraries(std_regex_search PUBLIC boost_program_options InlineBench)

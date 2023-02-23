@@ -35,7 +35,9 @@ class BaseSearcher : public BaseReturnProcessor<DataT, ResT> {
         _regex(regex),
         _case_insensitive(case_insensitive) {
     if (_regex) {
-      _re_pattern = std::make_unique<re2::RE2>('(' + _pattern + ')');
+      re2::RE2::Options options;
+      options.set_case_sensitive(!_case_insensitive);
+      _re_pattern = std::make_unique<re2::RE2>('(' + _pattern + ')', options);
     }
   };
   ResT process(DataT* data) const override = 0;

@@ -49,7 +49,6 @@ def benchmark_literal_byte_offset(pattern: str, iterations: int, drop_cache: boo
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-b"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1", "-b"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-b"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -76,7 +75,6 @@ def benchmark_literal_line_number(pattern: str, iterations: int, drop_cache: boo
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-n"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1", "-n"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-n"], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-n"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -106,7 +104,6 @@ def benchmark_literal(pattern: str, iterations: int, drop_cache: bool) -> GNUTim
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -136,7 +133,6 @@ def benchmark_literal_case_insensitive(pattern: str, iterations: int, drop_cache
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-i"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1", "-i"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-i"], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-i"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -163,7 +159,6 @@ def benchmark_regex(pattern: str, iterations: int, drop_cache: bool) -> GNUTimeB
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -190,7 +185,6 @@ def benchmark_regex_line_number(pattern: str, iterations: int, drop_cache: bool)
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-n"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1", "-n"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-n"], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-n"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -217,7 +211,6 @@ def benchmark_regex_byte_offset(pattern: str, iterations: int, drop_cache: bool)
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-b"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1", "-b"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-b"], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-b"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -244,7 +237,6 @@ def benchmark_regex_case_insensitive(pattern: str, iterations: int, drop_cache: 
         GNUTimeCommand("xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1", "-i"], pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, DATA_FILE_PATH, meta_file_path, "-j", "1", "-i"], pre_cmd),
         GNUTimeCommand("ripgrep", ["rg", pattern, DATA_FILE_PATH, "-i"], pre_cmd),
-        GNUTimeCommand("ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1", "-i"], pre_cmd),
         GNUTimeCommand("cat", ["cat", DATA_FILE_PATH], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -277,13 +269,12 @@ def benchmark_zstd_input(pattern: str, iterations: int, drop_cache: bool) -> GNU
         xs_pre_cmd.append(cb.Command("cat", ["cat", xs_zstd_meta]))
         xs_pre_cmd.append(cb.Command("cat", ["cat", xs_zstd_file]))
     commands = [
-        GNUTimeCommand("zstdcat | GNU grep", ["grep", pattern, DATA_FILE_PATH], pre_cmd),
-        GNUTimeCommand("zstdcat | xs grep", ["xs", pattern, DATA_FILE_PATH], pre_cmd),
+        GNUTimeCommand("zstdcat | GNU grep", f"zstdcat {zstd_file} | grep {pattern}", pre_cmd),
+        GNUTimeCommand("zstdcat | xs grep", f"zstdcat {zstd_file} | xs {pattern}", pre_cmd),
         GNUTimeCommand("xs grep meta", ["xs", pattern, xs_zstd_file, xs_zstd_meta], xs_pre_cmd),
-        GNUTimeCommand("zstdcat | xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
+        GNUTimeCommand("zstdcat | xs grep -j 1", f"zstdcat {zstd_file} | xs {pattern} -j 1", pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, xs_zstd_file, xs_zstd_meta, "-j", "1"], xs_pre_cmd),
-        GNUTimeCommand("zstdcat | ripgrep", ["rg", pattern, DATA_FILE_PATH], pre_cmd),
-        GNUTimeCommand("zstdcat | ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
+        GNUTimeCommand("zstdcat | ripgrep", f"zstdcat {zstd_file} | rg {pattern}", pre_cmd),
         GNUTimeCommand("zstdcat", ["zstdcat", zstd_file], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -303,8 +294,8 @@ def benchmark_lz4_input(pattern: str, iterations: int, drop_cache: bool) -> GNUT
     xs_lz4_file = DATA_FILE_PATH + ".xslz4"
     xs_lz4_meta = DATA_FILE_PATH + ".xslz4.meta"
     setup_cmd = [
-        cb.Command("lz4 HC", ["lz4", DATA_FILE_PATH, lz4_file, "-9"]),
-        cb.Command("xspp lz4 HC", ["xspp", DATA_FILE_PATH, "-o", xs_lz4_file, "-m", xs_lz4_meta, "-a" "lz4", "--hc"])
+        cb.Command("lz4 HC", ["lz4", DATA_FILE_PATH, lz4_file, "-9", "-f"]),
+        cb.Command("xspp lz4 HC", ["xspp", DATA_FILE_PATH, "-o", xs_lz4_file, "-m", xs_lz4_meta, "-a" "lz4", "--hc", "-f"])
     ]
     cleanup_cmd = [
         cb.Command("rm lz4", ["rm", lz4_file]),
@@ -316,13 +307,12 @@ def benchmark_lz4_input(pattern: str, iterations: int, drop_cache: bool) -> GNUT
         xs_pre_cmd.append(cb.Command("cat", ["cat", xs_lz4_meta]))
         xs_pre_cmd.append(cb.Command("cat", ["cat", xs_lz4_file]))
     commands = [
-        GNUTimeCommand("zstdcat | GNU grep", ["grep", pattern, DATA_FILE_PATH], pre_cmd),
-        GNUTimeCommand("zstdcat | xs grep", ["xs", pattern, DATA_FILE_PATH], pre_cmd),
+        GNUTimeCommand("zstdcat | GNU grep", f"lz4cat {lz4_file} | grep {pattern}", pre_cmd),
+        GNUTimeCommand("zstdcat | xs grep", f"lz4cat {lz4_file} | xs {pattern}", pre_cmd),
         GNUTimeCommand("xs grep meta", ["xs", pattern, xs_lz4_file, xs_lz4_meta], xs_pre_cmd),
-        GNUTimeCommand("zstdcat | xs grep -j 1", ["xs", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
+        GNUTimeCommand("zstdcat | xs grep -j 1", f"lz4cat {lz4_file} | xs {pattern} -j 1", pre_cmd),
         GNUTimeCommand("xs grep -j 1 meta", ["xs", pattern, xs_lz4_file, xs_lz4_meta, "-j", "1"], xs_pre_cmd),
-        GNUTimeCommand("zstdcat | ripgrep", ["rg", pattern, DATA_FILE_PATH], pre_cmd),
-        GNUTimeCommand("zstdcat | ripgrep -j 1", ["rg", pattern, DATA_FILE_PATH, "-j", "1"], pre_cmd),
+        GNUTimeCommand("zstdcat | ripgrep", f"lz4cat {lz4_file} | rg {pattern}", pre_cmd),
         GNUTimeCommand("zstdcat", ["zstdcat", lz4_file], pre_cmd),
     ]
     return GNUTimeBenchmark(
@@ -444,7 +434,7 @@ if __name__ == "__main__":
         res = None
         if re.search(args.filter, name):
             cb.log(f"Running {name}...")
-            if "regex" in name:
+            if "regex" in name and args.pattern == "Sherlock":
                 pattern = "She[r ]lock"
             else:
                 pattern = args.pattern
@@ -466,6 +456,8 @@ if __name__ == "__main__":
                 result_info_data[file_name] = res.get_setup()
                 result_info_data[file_name]["plot"] = output_file + ".pdf"
                 write_result_info_data(result_info_data, RESULT_META_DATA)
+                result_info_data[file_name + ".json"]["pattern"] = pattern
+                result_info_data[file_name + ".json"]["file"] = DATA_FILE_PATH
                 res.plot(output_file + ".pdf")
             else:
                 res.plot()

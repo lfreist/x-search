@@ -18,6 +18,7 @@
 #include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/compression/Lz4Wrapper.h>
 #include <xsearch/utils/compression/ZstdWrapper.h>
+#include <xsearch/utils/string_manipulation.h>
 #include <xsearch/utils/utils.h>
 
 #include <memory>

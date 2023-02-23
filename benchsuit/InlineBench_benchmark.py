@@ -88,7 +88,7 @@ class InlineBenchCommand(cmdbench.Command):
         cmdbench.Command.__init__(self, name, cmd)
         self.pre_commands = pre_commands if pre_commands is not None else []
 
-    def run(self, drop_cache: bool = False) -> InlineBenchResult:
+    def run(self, drop_cache: bool = False) -> InlineBenchResult | None:
         for cmd in self.pre_commands:
             cmd.run()
         if drop_cache:
@@ -100,7 +100,7 @@ class InlineBenchCommand(cmdbench.Command):
             data = json.loads(out)
             return InlineBenchResult(self, data)
         except ValueError:
-            raise cmdbench.CommandFailedError(f"Error occurred while running {self.name}.")
+            return None
 
 
 class InlineBenchBenchmarkResult(cmdbench.BenchmarkResult):
@@ -121,7 +121,9 @@ class InlineBenchBenchmarkResult(cmdbench.BenchmarkResult):
         y = rows - 1
         x = 0
         for task in self.results[list(self.results.keys())[0]].data["Wall"].keys():
-            if rows == 1:
+            if num_tasks == 1:
+                _axs = axs
+            elif rows == 1:
                 _axs = axs[x]
             else:
                 _axs = axs[y, x]
@@ -141,7 +143,6 @@ class InlineBenchBenchmarkResult(cmdbench.BenchmarkResult):
         x = []
         y = []
         y_err = []
-        print(data)
         for i in data:
             x.append(i[0])
             y.append(i[1] / 1000000)
@@ -155,7 +156,7 @@ class InlineBenchBenchmarkResult(cmdbench.BenchmarkResult):
         # replace nan with 0
         y_err = list(map(lambda x: x if x == x else 0, y_err))
         if sum(y_err) != 0:
-            axs.errorbar(x, y, yerr=y_err, fmt='o', color='r')
+            axs.errorbar(x, y, yerr=y_err, fmt='o', color='b')
         axs.set_xticklabels(labels=x, rotation=90)
         axs.set_title(title)
 
@@ -179,6 +180,8 @@ class InlineBenchBenchmark(cmdbench.Benchmark):
         for iteration in range(self.iterations):
             for cmd in self.commands:
                 cmdbench.log(f"  {iteration}/{self.iterations}: {cmd.name}", end='\r', flush=True)
-                result += cmd.run(self.drop_cache)
+                part_res = cmd.run(self.drop_cache)
+                if part_res is not None:
+                    result += part_res
         cmdbench.log()
         return result

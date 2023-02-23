@@ -73,7 +73,7 @@ class GNUTimeCommand(cmdbench.Command):
             return f"/usr/bin/time -f '%e\t%U\t%S' {self.cmd}"
         return ["/usr/bin/time", "-f", "%e\t%U\t%S"] + self.cmd
 
-    def run(self, drop_cache: bool = False) -> GNUTimeResult:
+    def run(self, drop_cache: bool = False) -> GNUTimeResult | None:
         for cmd in self.pre_commands:
             cmd.run()
         if drop_cache:
@@ -87,21 +87,12 @@ class GNUTimeCommand(cmdbench.Command):
         try:
             return GNUTimeResult(self, float(wall), float(usr_cpu), float(sys_cpu))
         except ValueError:
-            raise cmdbench.CommandFailedError(self)
+            return None
 
 
 class GNUTimeBenchmarkResult(cmdbench.BenchmarkResult):
     def __init__(self, benchmark_name: str):
         cmdbench.BenchmarkResult.__init__(self, benchmark_name)
-
-    def get_result(self) -> dict:
-        """
-        Provides information about the Benchmark including its name, the hardware (client name and cpu) and the results
-        collected on this benchmark.
-        Might be overridden to provide more information.
-        :return:
-        """
-        return {name: r.get_data() for name, r in self.results.items()}
 
     def plot(self, path: str = "") -> None:
         mpl.style.use("seaborn-v0_8")
@@ -133,7 +124,7 @@ class GNUTimeBenchmarkResult(cmdbench.BenchmarkResult):
         # replace nan with 0
         y_err = list(map(lambda _x: _x if _x == _x else 0, y_err))
         if sum(y_err) != 0:
-            axs.errorbar(x, y, yerr=y_err, fmt='o', color='r')
+            axs.errorbar(x, y, yerr=y_err, fmt='o', color='b')
         axs.set_xticklabels(labels=x, rotation=90)
         axs.set_title(title)
 
@@ -159,6 +150,8 @@ class GNUTimeBenchmark(cmdbench.Benchmark):
         for iteration in range(self.iterations):
             for cmd in self.commands:
                 cmdbench.log(f"  {iteration}/{self.iterations}: {cmd.name}", end='\r', flush=True)
-                result += cmd.run(self.drop_cache)
+                part_res = cmd.run(self.drop_cache)
+                if part_res:
+                    result += part_res
         cmdbench.log()
         return result

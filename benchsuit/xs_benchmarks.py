@@ -5,7 +5,7 @@ Author: Leon Freist <freist@informatik.uni-freiburg.de>
 Comparison of different usages of xs grep including:
  - ...
 
-We use for benchmarking the search tools.
+We use InlineBench for benchmarking the search tools.
 
 """
 
@@ -39,8 +39,16 @@ def benchmark_chunk_size(pattern: str, iterations: int, drop_cache: bool) -> Inl
     if not drop_cache:
         pre_cmd.append(cb.Command("cat", ["cat", DATA_FILE_PATH]))
     commands = []
-    for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
-        commands.append(InlineBenchCommand(f"xs -s {size}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-s", size]))
+    units = ["B", "KiB", "MiB", "GiB"]
+    for size_bytes in [1024, 4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
+        unit = units[0]
+        size = size_bytes
+        for unit_i in range(len(units) - 1):
+            if len(str(size)) > 3:
+                size = int(size / 1024)
+                unit = units[unit_i + 1]
+        commands.append(
+            InlineBenchCommand(f"{size} {unit}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-s", str(size_bytes), "-j", "1"]))
 
     return InlineBenchBenchmark(
         name="chunks sizes (plain)",
@@ -55,11 +63,20 @@ def benchmark_chunk_size_xspp(pattern: str, iterations: int, drop_cache: bool) -
     commands = []
     setup_commands = []
     cleanup_commands = []
-    for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
-        meta_file = f"{DATA_FILE_PATH}-s-{size}.meta"
-        setup_commands(cb.Command("xspp", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", size]))
-        cleanup_commands(cb.Command("rm", ["rm", meta_file]))
-        commands.append(InlineBenchCommand(f"xs -s {size}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
+    units = ["B", "KiB", "MiB", "GiB"]
+    for size_bytes in [1024, 4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
+        meta_file = f"{DATA_FILE_PATH}-s-{size_bytes}.meta"
+        setup_commands.append(cb.Command("xspp", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-s", str(size_bytes)]))
+        cleanup_commands.append(cb.Command("rm", ["rm", meta_file]))
+        size = size_bytes
+        unit = units[0]
+        for unit_i in range(len(units) - 1):
+            if len(str(size)) > 3:
+                size = int(size / 1024)
+                unit = units[unit_i + 1]
+
+        commands.append(
+            InlineBenchCommand(f"{size} {unit}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file, "-j", "1"]))
 
     if not drop_cache:
         setup_commands.append(cb.Command("cat", ["cat", DATA_FILE_PATH]))
@@ -79,8 +96,8 @@ def benchmark_num_threads(pattern: str, iterations: int, drop_cache: bool) -> In
     if not drop_cache:
         pre_cmd.append(cb.Command("cat", ["cat", DATA_FILE_PATH]))
     commands = [InlineBenchCommand(f"xs", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH])]
-    for nt in [1, 2, 4]:  # + list(range(2, multiprocessing.cpu_count() + 1, 2)):  # [1, 2, 4, 6, ...]
-        commands.append(InlineBenchCommand(f"xs -j {nt}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-j", str(nt)]))
+    for nt in [1] + list(range(2, multiprocessing.cpu_count() + 1, 2)):  # [1, 2, 4, 6, ...]
+        commands.append(InlineBenchCommand(f"{nt}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-j", str(nt)]))
 
     return InlineBenchBenchmark(
         name="number of threads (plain)",
@@ -101,8 +118,6 @@ def benchmark_options(pattern: str, iterations: int, drop_cache: bool) -> Inline
         InlineBenchCommand(f"xs -n", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-n"]),
         InlineBenchCommand(f"xs -n -i", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-i", "-n"]),
     ]
-    for size in ["512", "4096", "32768", "262144", "2097152", "16777216", "134217728", "1073741824"]:
-        commands.append(InlineBenchCommand(f"xs -s {size}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, "-s", size]))
 
     return InlineBenchBenchmark(
         name="xs options (-n, -i)",
@@ -119,10 +134,10 @@ def benchmark_chunk_nl_mapping_data_xspp(pattern: str, iterations: int, drop_cac
     cleanup_commands = []
     for dist in ["1", "500", "1000", "5000", "32000"]:
         meta_file = f"{DATA_FILE_PATH}-nl-{dist}.meta"
-        preprocess_commands.append(
-            cb.Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist]))
-        commands.append(InlineBenchCommand(f"xs -d {dist}", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file]))
+        preprocess_commands.append(cb.Command(f"xspp -d {dist}", ["xspp", DATA_FILE_PATH, "-m", meta_file, "-d", dist]))
         cleanup_commands.append(cb.Command(f"rm {meta_file}", ["rm", meta_file]))
+        commands.append(
+            InlineBenchCommand(f"{dist} Bytes", [BENCHMARK_BUILD_XS, pattern, DATA_FILE_PATH, meta_file, "-j", "1"]))
 
     if not drop_cache:
         preprocess_commands.append(cb.Command("cat", ["cat", DATA_FILE_PATH]))
@@ -157,7 +172,8 @@ def benchmark_compressions_xspp(pattern: str, iterations: int, drop_cache: bool)
         preprocess_commands.append(
             cb.Command(f"xspp {' '.join(arg)}", ["xspp", DATA_FILE_PATH, "-o", compressed_file, "-m", meta_file] + arg))
         commands.append(
-            InlineBenchCommand(f"xs {' '.join(arg)}", [BENCHMARK_BUILD_XS, pattern, compressed_file, meta_file],
+            InlineBenchCommand(f"xs {' '.join(arg)}",
+                               [BENCHMARK_BUILD_XS, pattern, compressed_file, meta_file, "-j", "1"],
                                pre_cmd))
         cleanup_commands.append(cb.Command(f"rm {compressed_file}", ["rm", compressed_file]))
         cleanup_commands.append(cb.Command(f"rm {meta_file}", ["rm", meta_file]))
@@ -297,6 +313,8 @@ if __name__ == "__main__":
                 output_file = os.path.join(OUTPUT_DIR, file_name)
                 result_info_data[file_name + ".json"] = res.get_setup()
                 result_info_data[file_name + ".json"]["plot"] = file_name + ".pdf"
+                result_info_data[file_name + ".json"]["pattern"] = args.pattern
+                result_info_data[file_name + ".json"]["file"] = DATA_FILE_PATH
                 write_result_info_data(result_info_data, RESULT_META_DATA)
                 res.write_json(output_file + ".json")
                 res.plot(output_file + ".pdf")

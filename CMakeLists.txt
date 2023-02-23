@@ -19,6 +19,9 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     set(MAIN_PROJECT ON)
 endif ()
 
+option(XS_EXE_TESTS "run exhaustive executable tests" OFF)
+option(TASK_BENCHMARKS "compile task benchmark executables" OFF)
+
 IF (${MAIN_PROJECT})
 
     add_executable(metafile_cat metafile_cat.cpp)
@@ -47,8 +50,6 @@ IF (${MAIN_PROJECT})
     # ___ InlineBench Library ______________________________________________________________________________________________________
     add_library(InlineBench INTERFACE include/xsearch/utils/InlineBench.h)
 endif ()
-
-option(EXE_TESTS "run exhaustive executable tests" OFF)
 
 IF (${MAIN_PROJECT})
     # ___ Executables __________________________________________________________________________________________________
@@ -83,33 +84,8 @@ IF (${MAIN_PROJECT})
         set_tests_properties(preprocessorTest PROPERTIES TIMEOUT 10000)
         set_tests_properties(preprocessorTest PROPERTIES LABELS "preprocessor_exe_test")
     endif ()
-
-    # benchmarks -------------------------------------------------------------------------------------------------------
-    IF (XS_BENCHMARKS)
-        configure_file(scripts/benchmark_chunk_size.sh scripts/benchmark_chunk_size.sh COPYONLY)
-        configure_file(scripts/benchmark_compression.sh scripts/benchmark_compression.sh COPYONLY)
-        configure_file(scripts/benchmark_grep.sh scripts/benchmark_grep.sh COPYONLY)
-        configure_file(scripts/benchmark_nl_mapping.sh scripts/benchmark_nl_mapping.sh COPYONLY)
-        configure_file(scripts/benchmark_pattern_density.sh scripts/benchmark_pattern_density.sh COPYONLY)
-
-        configure_file(files/words.txt files/words.txt COPYONLY)
-        configure_file(scripts/createTestFile.py scripts/createTestFile.py COPYONLY)
-
-        add_test(benchmark_chunk_size bash scripts/benchmark_chunk_size.sh ${CMAKE_BINARY_DIR})
-        add_test(benchmark_compression bash scripts/benchmark_compression.sh ${CMAKE_BINARY_DIR})
-        add_test(benchmark_grep bash scripts/benchmark_grep.sh ${CMAKE_BINARY_DIR})
-        add_test(benchmark_nl_mapping bash scripts/benchmark_nl_mapping.sh ${CMAKE_BINARY_DIR})
-        add_test(benchmark_pattern_density bash scripts/benchmark_pattern_density.sh ${CMAKE_BINARY_DIR})
-
-        set_tests_properties(benchmark_chunk_size PROPERTIES TIMEOUT 10000)
-        set_tests_properties(benchmark_chunk_size PROPERTIES LABELS "benchmark_chunk_size")
-        set_tests_properties(benchmark_compression PROPERTIES TIMEOUT 10000)
-        set_tests_properties(benchmark_compression PROPERTIES LABELS "benchmark_compression")
-        set_tests_properties(benchmark_grep PROPERTIES TIMEOUT 10000)
-        set_tests_properties(benchmark_grep PROPERTIES LABELS "benchmark_grep")
-        set_tests_properties(benchmark_nl_mapping PROPERTIES TIMEOUT 10000)
-        set_tests_properties(benchmark_nl_mapping PROPERTIES LABELS "benchmark_nl_mapping")
-        set_tests_properties(benchmark_pattern_density PROPERTIES TIMEOUT 10000)
-        set_tests_properties(benchmark_pattern_density PROPERTIES LABELS "benchmark_pattern_density")
-    endif()
 endif ()
+
+if (TASK_BENCHMARKS)
+    add_subdirectory(task_benchmarks)
+endif()

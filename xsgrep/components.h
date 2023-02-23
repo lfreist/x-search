@@ -104,8 +104,8 @@ class GrepResult : public xs::BaseResult<std::vector<GrepPartialResult>> {
  * GrepSearcher: The searcher used by the xs::Executor for searching results.
  */
 class GrepSearcher
-    : public xs::tasks::BaseSearcher<xs::DataChunk,
-                                     std::vector<GrepPartialResult>> {
+    : public xs::tasks::BaseReturnProcessor<xs::DataChunk,
+                                            std::vector<GrepPartialResult>> {
  public:
   /**
    * @param byte_offset: search byte offsets
@@ -114,7 +114,7 @@ class GrepSearcher
    *  lines)
    * @param color: colored output
    */
-  GrepSearcher(std::string pattern, bool regex, bool case_insensitive,
+  GrepSearcher(std::string pattern, bool case_insensitive, bool fixed_string,
                bool line_number, bool only_matching);
 
   /**
@@ -134,4 +134,5 @@ class GrepSearcher
   bool _line_number;
   /// search matches only (default is searching matching lines)
   bool _only_matching;
+  std::unique_ptr<re2::RE2> _pattern;
 };

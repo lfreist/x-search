@@ -155,12 +155,6 @@ int main(int argc, char** argv) {
     }
   }
 
-  // check if data should be transformed to lower case (--ignore-case) ---------
-  if (args.ignore_case) {
-    std::transform(args.pattern.begin(), args.pattern.end(),
-                   args.pattern.begin(), [](int c) { return ::tolower(c); });
-  }
-
   // set reader ----------------------------------------------------------------
   std::unique_ptr<xs::tasks::BaseDataProvider<xs::DataChunk>> reader;
   if (args.file_path.empty() || args.file_path == "-") {
@@ -210,9 +204,8 @@ int main(int argc, char** argv) {
   } else {
     // no count set -> run grep and output results
     auto searcher = std::make_unique<GrepSearcher>(
-        args.pattern,
-        xs::utils::use_str_as_regex(args.pattern) && !args.fixed_strings,
-        args.ignore_case, args.line_number, args.only_matching);
+        args.pattern, args.ignore_case, args.fixed_strings, args.line_number,
+        args.only_matching);
     auto extern_searcher =
         xs::Executor<xs::DataChunk, GrepResult, std::vector<GrepPartialResult>,
                      std::string, bool, bool, bool, bool, bool>(
