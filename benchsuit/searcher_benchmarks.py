@@ -139,7 +139,7 @@ def parse_args():
     parser.add_argument("--list-benchmarks", action="store_true", help="List available benchmarks by name and exit")
     parser.add_argument("--iterations", "-i", metavar="INTEGER", type=int, default=3,
                         help="Number of iterations per benchmark")
-    parser.add_argument("--pattern", metavar="STRING", default="Sherlock | She[r ]lock",
+    parser.add_argument("--pattern", metavar="STRING", default="Sherlock",
                         help="The pattern that is searched by xs")
     parser.add_argument("--output", "-o", metavar="PATH", default="",
                         help="The directory where results are written to (default is printing in terminal)")
