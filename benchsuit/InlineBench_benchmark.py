@@ -108,16 +108,21 @@ class InlineBenchBenchmarkResult(cmdbench.BenchmarkResult):
         cmdbench.BenchmarkResult.__init__(self, benchmark_name)
 
     def plot(self, path: str = "") -> None:
+        if not self.results:
+            cmdbench.log("No results were collected...")
+            return
         mpl.style.use("seaborn-v0_8")
         num_tasks = len((self.results[list(self.results.keys())[0]].data["Wall"].keys()))
         columns = num_tasks
         rows = 1
+        fig_size = (4, 5)
         if columns > 8:
+            fig_size = (8, 10)
             rows = 3
         elif columns > 3:
             rows = 2
         columns = math.ceil(columns / rows)
-        fig, axs = plt.subplots(rows, columns, figsize=(8, 10), sharex="all")
+        fig, axs = plt.subplots(rows, columns, figsize=fig_size, sharex="all")
         y = rows - 1
         x = 0
         for task in self.results[list(self.results.keys())[0]].data["Wall"].keys():
@@ -159,6 +164,7 @@ class InlineBenchBenchmarkResult(cmdbench.BenchmarkResult):
             axs.errorbar(x, y, yerr=y_err, fmt='o', color='b')
         axs.set_xticklabels(labels=x, rotation=90)
         axs.set_title(title)
+        axs.set_ylabel("time [ms]")
 
     def _get_plot_data(self, task: str) -> List[Tuple[str, float, float]]:
         ret = []

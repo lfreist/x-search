@@ -2,12 +2,11 @@
 Copyright 2023, Leon Freist
 Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
-Comparison of different search utilities:
- - re2
- - std::string::find
- - simd::strstr
- - std::strstr
- - std::regex
+Comparison of different file reading options:
+ - std::ifstream
+ - fread
+ - posix read
+ - mmap
 
 We use InlineBench for benchmarking the search tools.
 
@@ -22,7 +21,7 @@ import sys
 
 import requests
 
-from InlineBench_benchmark import InlineBenchCommand, InlineBenchBenchmark
+from cmdbench.gnu_time_benchmark import GNUTimeCommand, GNUTimeBenchmark
 import cmdbench as cb
 
 import os
@@ -37,19 +36,16 @@ RESULT_META_DATA = ""
 BUILD_PATH = ""
 
 
-def benchmark_regex(pattern: str, iterations: int) -> InlineBenchBenchmark:
-    pre_cmd = [cb.Command("cat", ["cat", DATA_FILE_PATH])]
-    commands = [
-        InlineBenchCommand("re2 regex", [os.path.join(BUILD_PATH, "re2_search"), pattern, DATA_FILE_PATH]),
-        InlineBenchCommand("std::regex", [os.path.join(BUILD_PATH, "std_regex_search"), pattern, DATA_FILE_PATH])
-    ]
+def benchmark_mmap(pattern: str, iterations: int) -> GNUTimeBenchmark:
+    commands = []
+    for size in [4096, 65536, 16777216, 268435456, 4294967296]:
+        commands.append(GNUTimeCommand())
 
-    return InlineBenchBenchmark(
+    return GNUTimeBenchmark(
         name="regex",
         commands=commands,
-        setup_commands=pre_cmd,
         iterations=iterations,
-        drop_cache=False
+        drop_cache=True
     )
 
 

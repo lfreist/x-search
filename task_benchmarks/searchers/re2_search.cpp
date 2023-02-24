@@ -23,6 +23,19 @@ uint64_t count(const char* data, size_t size, const re2::RE2& pattern) {
   return counter;
 }
 
+uint64_t count(const char* data, size_t size, const std::string& pattern) {
+  uint64_t counter = 0;
+  re2::StringPiece input(data, size);
+  re2::StringPiece match;
+  while (re2::RE2::PartialMatch(input, pattern, &match)) {
+    size_t shift = match.data() - input.data();
+    counter++;
+    shift += match.size();
+    input.remove_prefix(shift);
+  }
+  return counter;
+}
+
 int main(int argc, char** argv) {
   std::string file;
   std::string pattern;
@@ -76,14 +89,22 @@ int main(int argc, char** argv) {
   std::vector<char> content((std::istream_iterator<char>(stream)),
                             (std::istream_iterator<char>()));
 
-  re2::RE2::Options re2_options;
-  re2_options.set_literal(literal);
-  re2_options.set_case_sensitive(!case_insensitive);
-  re2::RE2 regex_pattern('(' + pattern + ')', re2_options);
+  pattern = std::string('(' + pattern + ')');
 
-  INLINE_BENCHMARK_WALL_START_GLOBAL("search");
-  auto c = count(content.data(), content.size(), regex_pattern);
-  INLINE_BENCHMARK_WALL_STOP("search");
+  re2::RE2::Options re2_options;
+  re2_options.set_case_sensitive(!case_insensitive);
+  re2::RE2 regex_pattern(pattern, re2_options);
+
+  uint64_t c;
+  if (literal) {
+    INLINE_BENCHMARK_WALL_START_GLOBAL("search");
+    c = count(content.data(), content.size(), pattern);
+    INLINE_BENCHMARK_WALL_STOP("search");
+  } else {
+    INLINE_BENCHMARK_WALL_START_GLOBAL("search");
+    c = count(content.data(), content.size(), regex_pattern);
+    INLINE_BENCHMARK_WALL_STOP("search");
+  }
   std::cout << c << std::endl;
   std::cerr << INLINE_BENCHMARK_REPORT("json") << std::endl;
   return 0;
