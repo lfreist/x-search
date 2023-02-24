@@ -69,17 +69,21 @@ int main(int argc, char** argv) {
     std::cerr << "Error reading file '" << file << "'\n";
     return 2;
   }
-  std::string content((std::istream_iterator<char>(stream)),
-                      (std::istream_iterator<char>()));
+
+  std::ostringstream ss;
+  ss << stream.rdbuf();
+  std::string content = ss.str();
 
   std::regex regex_pattern =
       case_insensitive ? std::regex(pattern, std::regex_constants::icase)
                        : std::regex(pattern);
 
-  INLINE_BENCHMARK_WALL_START_GLOBAL("search");
+  INLINE_BENCHMARK_WALL_START(_, "search");
   auto c = count(content, regex_pattern);
   INLINE_BENCHMARK_WALL_STOP("search");
+
   std::cout << c << std::endl;
+
   std::cerr << INLINE_BENCHMARK_REPORT("json") << std::endl;
   return 0;
 }

@@ -74,17 +74,21 @@ int main(int argc, char** argv) {
     std::cerr << "Error reading file '" << file << "'\n";
     return 2;
   }
-  std::vector<char> content((std::istream_iterator<char>(stream)),
-                            (std::istream_iterator<char>()));
 
-  INLINE_BENCHMARK_WALL_START_GLOBAL("search");
+  std::ostringstream ss;
+  ss << stream.rdbuf();
+  std::string content = ss.str();
+
+  INLINE_BENCHMARK_WALL_START(_, "search");
   if (case_insensitive) {
     std::transform(pattern.begin(), pattern.end(), pattern.begin(), ::tolower);
-    xs::utils::simd::toLower(content.data(), content.size());
+    xs::utils::str::simd::toLower(content.data(), content.size());
   }
   auto c = count(content.data(), content.size(), pattern);
   INLINE_BENCHMARK_WALL_STOP("search");
+
   std::cout << c << std::endl;
+
   std::cerr << INLINE_BENCHMARK_REPORT("json") << std::endl;
   return 0;
 }

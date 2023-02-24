@@ -3,7 +3,7 @@
 
 #include "./components.h"
 
-#include <xsearch/utils/string_manipulation.h>
+#include <xsearch/utils/string_utils.h>
 
 // ----- Helper function -------------------------------------------------------
 // _____________________________________________________________________________
@@ -141,24 +141,84 @@ void GrepResult::add(std::vector<GrepPartialResult> partial_result) {
 GrepSearcher::GrepSearcher(std::string pattern, bool case_insensitive,
                            bool fixed_string, bool line_number,
                            bool only_matching)
-    : _line_number(line_number), _only_matching(only_matching) {
-  re2::RE2::Options options;
-  options.set_case_sensitive(!case_insensitive);
-  options.set_literal(fixed_string);
-  _pattern = std::make_unique<re2::RE2>('(' + pattern + ')', options);
+    : _line_number(line_number), _only_matching(only_matching), _case_insensitive(case_insensitive), _pattern(std::move(pattern)) {
+  _regex = xs::utils::use_str_as_regex(_pattern) && !fixed_string;
+  _is_utf8 = !xs::utils::str::is_ascii(_pattern) && xs::utils::str::is_utf8(_pattern);
+  if (_regex) {
+    // run regex search using re2
+    re2::RE2::Options opt;
+    opt.set_case_sensitive(!case_insensitive);
+    opt.set_posix_syntax(true);
+    _re_pattern = std::make_unique<re2::RE2>('(' + _pattern + ')', opt);
+  } else if (_is_utf8) {
+    // no regex but utf8 -> use re2 for plain search
+    _pattern = std::string('(' + _pattern + ')');
+  }
 }
 
 // _____________________________________________________________________________
 std::vector<GrepPartialResult> GrepSearcher::process(
     xs::DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START(_, "searching");
-  return process_regex(data);
+  if (_regex) {
+    return process_regex(data);
+  }
+  if (_is_utf8) {
+    return process_utf8(data);
+  }
+  return process_ascii(data);
 }
 
 // _____________________________________________________________________________
-std::vector<GrepPartialResult> GrepSearcher::process_plain(
+std::vector<GrepPartialResult> GrepSearcher::process_ascii(
     xs::DataChunk* data) const {
-  return {};
+  xs::DataChunk tmp_chunk;
+  xs::DataChunk* op_chunk = data;
+  if (_case_insensitive) {
+    tmp_chunk = xs::DataChunk(*data);
+    xs::utils::str::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    op_chunk = &tmp_chunk;
+  }
+  std::vector<uint64_t> byte_offsets_match =
+      xs::search::global_byte_offsets_match(op_chunk, _pattern,
+                                            !_only_matching);
+  std::vector<uint64_t> byte_offsets_line;
+  std::vector<uint64_t> line_numbers;
+  if (_line_number) {
+    line_numbers =
+        xs::map::bytes::to_line_indices(op_chunk, byte_offsets_match);
+    std::transform(line_numbers.begin(), line_numbers.end(),
+                   line_numbers.begin(), [](uint64_t li) { return li + 1; });
+  }
+  std::vector<std::string> lines;
+  lines.reserve(byte_offsets_match.size());
+  if (_only_matching) {
+    for (auto bo : byte_offsets_match) {
+      lines.emplace_back(data->data() + bo - data->getMetaData().actual_offset,
+                         _pattern.size());
+    }
+  } else {
+    byte_offsets_line.resize(byte_offsets_match.size());
+    std::transform(
+        byte_offsets_match.begin(), byte_offsets_match.end(),
+        byte_offsets_line.begin(), [data](uint64_t index) {
+          return index - xs::search::previous_new_line_offset_relative_to_match(
+                             data, index - data->getMetaData().actual_offset);
+        });
+    lines.resize(byte_offsets_match.size());
+    std::transform(
+        byte_offsets_line.begin(), byte_offsets_line.end(), lines.begin(),
+        [data](uint64_t index) { return xs::map::byte::to_line(data, index); });
+  }
+
+  std::vector<GrepPartialResult> res(byte_offsets_match.size());
+  for (uint64_t i = 0; i < byte_offsets_match.size(); ++i) {
+    res[i].line_number = _line_number ? line_numbers[i] : 0;
+    res[i].byte_offset_line = _only_matching ? 0 : byte_offsets_line[i];
+    res[i].byte_offset_match = byte_offsets_match[i];
+    res[i].str = lines[i];
+  }
+  return res;
 }
 
 // _____________________________________________________________________________
@@ -166,8 +226,8 @@ std::vector<GrepPartialResult> GrepSearcher::process_regex(
     xs::DataChunk* data) const {
   std::vector<uint64_t> byte_offsets =
       _only_matching
-          ? xs::search::regex::global_byte_offsets_match(data, *_pattern, false)
-          : xs::search::regex::global_byte_offsets_line(data, *_pattern);
+          ? xs::search::regex::global_byte_offsets_match(data, *_re_pattern, false)
+          : xs::search::regex::global_byte_offsets_line(data, *_re_pattern);
   std::vector<uint64_t> line_numbers;
   if (_line_number) {
     line_numbers = xs::map::bytes::to_line_indices(data, byte_offsets);
@@ -183,7 +243,7 @@ std::vector<GrepPartialResult> GrepSearcher::process_regex(
                          index - data->getMetaData().original_offset;
                      return _get_regex_match_(data->data() + local_byte_offset,
                                               data->size() - local_byte_offset,
-                                              *_pattern);
+                                              *_re_pattern);
                    });
   } else {
     lines.resize(byte_offsets.size());
@@ -200,4 +260,9 @@ std::vector<GrepPartialResult> GrepSearcher::process_regex(
     res[i].str = lines[i];
   }
   return res;
+}
+
+// _____________________________________________________________________________
+std::vector<GrepPartialResult> GrepSearcher::process_utf8(xs::DataChunk* data) const {
+
 }

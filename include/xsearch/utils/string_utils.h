@@ -4,9 +4,12 @@
 #pragma once
 
 #include <immintrin.h>
+#include <string>
+#include <algorithm>
 
-namespace xs::utils::simd {
+namespace xs::utils::str {
 
+namespace simd {
 /**
  * Convert src into lower case
  * @param src
@@ -15,4 +18,10 @@ namespace xs::utils::simd {
  */
 void toLower(char* src, size_t size);
 
-}  // namespace xs::utils::simd
+}  // namespace simd
+
+bool is_ascii(const std::string& str);
+
+bool is_utf8(const std::string& str);
+
+}  // namespace xs::utils::str

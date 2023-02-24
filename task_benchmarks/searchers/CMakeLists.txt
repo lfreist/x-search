@@ -1,5 +1,5 @@
 add_executable(re2_search re2_search.cpp)
-target_link_libraries(re2_search PUBLIC re2::re2 boost_program_options InlineBench)
+target_link_libraries(re2_search PUBLIC re2::re2 boost_program_options InlineBench StringManipulation)
 
 add_executable(simd_search simd_search.cpp)
 target_link_libraries(simd_search PUBLIC SearchUtils StringManipulation boost_program_options InlineBench)

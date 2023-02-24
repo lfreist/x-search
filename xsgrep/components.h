@@ -128,11 +128,16 @@ class GrepSearcher
 
  private:
   std::vector<GrepPartialResult> process_regex(xs::DataChunk* data) const;
-  std::vector<GrepPartialResult> process_plain(xs::DataChunk* data) const;
+  std::vector<GrepPartialResult> process_ascii(xs::DataChunk* data) const;
+  std::vector<GrepPartialResult> process_utf8(xs::DataChunk* data) const;
 
   /// search for line numbers
   bool _line_number;
   /// search matches only (default is searching matching lines)
   bool _only_matching;
-  std::unique_ptr<re2::RE2> _pattern;
+  bool _case_insensitive;
+  bool _is_utf8 = false;
+  bool _regex = false;
+  std::string _pattern;
+  std::unique_ptr<re2::RE2> _re_pattern;
 };

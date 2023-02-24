@@ -86,6 +86,6 @@ IF (${MAIN_PROJECT})
     endif ()
 endif ()
 
-if (TASK_BENCHMARKS)
+#if (TASK_BENCHMARKS)
     add_subdirectory(task_benchmarks)
-endif()
+#endif()

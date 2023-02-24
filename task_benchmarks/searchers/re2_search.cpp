@@ -2,6 +2,7 @@
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
 #include <xsearch/string_search/search_wrappers.h>
+#include <xsearch/utils/string_utils.h>
 #include <xsearch/utils/InlineBench.h>
 
 #include <boost/program_options.hpp>
@@ -23,18 +24,6 @@ uint64_t count(const char* data, size_t size, const re2::RE2& pattern) {
   return counter;
 }
 
-uint64_t count(const char* data, size_t size, const std::string& pattern) {
-  uint64_t counter = 0;
-  re2::StringPiece input(data, size);
-  re2::StringPiece match;
-  while (re2::RE2::PartialMatch(input, pattern, &match)) {
-    size_t shift = match.data() - input.data();
-    counter++;
-    shift += match.size();
-    input.remove_prefix(shift);
-  }
-  return counter;
-}
 
 int main(int argc, char** argv) {
   std::string file;
@@ -86,25 +75,35 @@ int main(int argc, char** argv) {
     std::cerr << "Error reading file '" << file << "'\n";
     return 2;
   }
-  std::vector<char> content((std::istream_iterator<char>(stream)),
-                            (std::istream_iterator<char>()));
 
-  pattern = std::string('(' + pattern + ')');
+  std::ostringstream ss;
+  ss << stream.rdbuf();
+  std::string content = ss.str();
+
 
   re2::RE2::Options re2_options;
   re2_options.set_case_sensitive(!case_insensitive);
-  re2::RE2 regex_pattern(pattern, re2_options);
+  re2_options.set_posix_syntax(true);
 
-  uint64_t c;
+  std::unique_ptr<re2::RE2> regex_pattern;
   if (literal) {
-    INLINE_BENCHMARK_WALL_START_GLOBAL("search");
-    c = count(content.data(), content.size(), pattern);
-    INLINE_BENCHMARK_WALL_STOP("search");
+    std::string escaped_pattern("(");
+    for (char c : pattern) {
+      if (c == '\\' || c == '.' || c == '[' || c == ']' || c == '(' || c == ')' || c == '{' || c == '}' || c == '|' || c == '*' || c == '+' || c == '?' || c == '^' || c == '$') {
+        escaped_pattern += '\\';
+      }
+      escaped_pattern += c;
+    }
+    escaped_pattern.push_back(')');
+    regex_pattern = std::make_unique<re2::RE2>(escaped_pattern, re2_options);
   } else {
-    INLINE_BENCHMARK_WALL_START_GLOBAL("search");
-    c = count(content.data(), content.size(), regex_pattern);
-    INLINE_BENCHMARK_WALL_STOP("search");
+    regex_pattern = std::make_unique<re2::RE2>(std::string('(' + pattern + ')'), re2_options);
   }
+
+  INLINE_BENCHMARK_WALL_START(_, "search");
+  auto c = count(content.data(), content.size(), *regex_pattern);
+  INLINE_BENCHMARK_WALL_STOP("search");
+
   std::cout << c << std::endl;
   std::cerr << INLINE_BENCHMARK_REPORT("json") << std::endl;
   return 0;

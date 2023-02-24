@@ -1,0 +1,1 @@
+{"setup": {"name": "regex: case insensitive", "hardware": {"client": "go", "cpu": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz"}}, "results": {"re2 regex -i": {"CPU": {}, "Wall": {"search": {"time [ns]": [535754420, 515419506, 516694159], "num threads": 1}}}, "std::regex -i": {"CPU": {}, "Wall": {"search": {"time [ns]": [13578238238, 13195813467, 13074847325], "num threads": 1}}}}}

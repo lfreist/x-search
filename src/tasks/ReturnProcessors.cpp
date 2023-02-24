@@ -5,7 +5,7 @@
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/tasks/ReturnProcessors.h>
 #include <xsearch/utils/InlineBench.h>
-#include <xsearch/utils/string_manipulation.h>
+#include <xsearch/utils/string_utils.h>
 
 namespace xs::tasks {
 
@@ -21,7 +21,7 @@ uint64_t MatchCounter::process(DataChunk* data) const {
   if (_case_insensitive) {
     DataChunk tmp_chunk(*data);
     INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
-    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    utils::str::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
     INLINE_BENCHMARK_WALL_STOP("transform to lower case");
     INLINE_BENCHMARK_WALL_START(total, "searching count");
     return _regex ? search::regex::count(&tmp_chunk, *_re_pattern, false)
@@ -43,7 +43,7 @@ uint64_t LineCounter::process(DataChunk* data) const {
   if (_case_insensitive) {
     DataChunk tmp_chunk(*data);
     INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
-    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    utils::str::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
     INLINE_BENCHMARK_WALL_STOP("transform to lower case");
     INLINE_BENCHMARK_WALL_START(total, "searching count");
     return _regex ? search::regex::count(&tmp_chunk, *_re_pattern, true)
@@ -67,7 +67,7 @@ std::vector<uint64_t> MatchBytePositionSearcher::process(
   if (_case_insensitive) {
     DataChunk tmp_chunk(*data);
     INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
-    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    utils::str::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
     INLINE_BENCHMARK_WALL_STOP("transform to lower case");
     INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
     return _regex
@@ -94,7 +94,7 @@ std::vector<uint64_t> LineBytePositionSearcher::process(DataChunk* data) const {
   if (_case_insensitive) {
     DataChunk tmp_chunk(*data);
     INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
-    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    utils::str::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
     INLINE_BENCHMARK_WALL_STOP("transform to lower case");
     INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
     return _regex ? search::regex::global_byte_offsets_line(&tmp_chunk,
@@ -119,7 +119,7 @@ std::vector<uint64_t> LineIndexSearcher::process(DataChunk* data) const {
   if (_case_insensitive) {
     DataChunk tmp_chunk(*data);
     INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
-    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    utils::str::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
     INLINE_BENCHMARK_WALL_STOP("transform to lower case");
     INLINE_BENCHMARK_WALL_START(total, "searching line indices");
     mapping_data =
@@ -155,7 +155,7 @@ std::vector<std::string> LineSearcher::process(DataChunk* data) const {
   if (_case_insensitive) {
     DataChunk tmp_chunk(*data);
     INLINE_BENCHMARK_WALL_START(to_lower, "transform to lower case");
-    utils::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
+    utils::str::simd::toLower(tmp_chunk.data(), tmp_chunk.size());
     INLINE_BENCHMARK_WALL_STOP("transform to lower case");
     INLINE_BENCHMARK_WALL_START(total, "searching byte offsets");
     mapping_data =

@@ -6,7 +6,7 @@
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/compression/Lz4Wrapper.h>
 #include <xsearch/utils/compression/ZstdWrapper.h>
-#include <xsearch/utils/string_manipulation.h>
+#include <xsearch/utils/string_utils.h>
 
 namespace xs::tasks {
 
@@ -153,12 +153,12 @@ void ToLower::process(DataChunk* data) {
     DataChunk chunk(data->data(), data->size());
     INLINE_BENCHMARK_WALL_STOP("copying mmap data for transformation");
     INLINE_BENCHMARK_WALL_START(_, "transforming to lower case");
-    utils::simd::toLower(chunk.data(), chunk.size());
+    utils::str::simd::toLower(chunk.data(), chunk.size());
     *data = std::move(chunk);
     return;
   }
   INLINE_BENCHMARK_WALL_START(_, "transforming to lower case");
-  utils::simd::toLower(data->data(), data->size());
+  utils::str::simd::toLower(data->data(), data->size());
 }
 
 }  // namespace xs::tasks
