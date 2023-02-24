@@ -63,13 +63,16 @@ int main(int argc, char** argv) {
     if (stream.eof()) {
       break;
     }
-    INLINE_BENCHMARK_WALL_START_GLOBAL("read");
+    INLINE_BENCHMARK_WALL_START(read, "reading");
     stream.read(buffer, chunk_size);
-    INLINE_BENCHMARK_WALL_STOP("read");
-    auto bytes_read = stream.gcount();
-    if (buffer[file.size()] == '@') {
-      std::cout << bytes_read;
+    INLINE_BENCHMARK_WALL_STOP("reading");
+    INLINE_BENCHMARK_WALL_START(_, "iterating over content");
+    for (int64_t i = 0; i < chunk_size; ++i) {
+      if (buffer[i] == '\7') {
+        std::cout << "found '@'" << i << "-- " << buffer[i] << " --\n";
+      }
     }
+    INLINE_BENCHMARK_WALL_STOP("iterating over content");
   }
 
   delete[] buffer;

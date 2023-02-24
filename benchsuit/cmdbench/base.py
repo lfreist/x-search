@@ -70,7 +70,6 @@ def drop_ram_cache() -> None:
         subprocess.run("sync")
         with open("/proc/sys/vm/drop_caches", "w") as f:
             f.write("3")
-        log("RAM caches dropped!")
         # give the system some time to recover...
         time.sleep(1)
     else:

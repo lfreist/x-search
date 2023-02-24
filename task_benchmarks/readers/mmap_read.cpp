@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
   if (chunk_size % sysconf(_SC_PAGE_SIZE) != 0) {
     std::cerr << "chunk-size must be a multiple of '" +
                      std::to_string(sysconf(_SC_PAGE_SIZE)) + "'.\n";
+    std::cerr << chunk_size << std::endl;
     return 3;
   }
 
@@ -72,9 +73,9 @@ int main(int argc, char** argv) {
   }
 
   while (true) {
-    INLINE_BENCHMARK_WALL_START_GLOBAL("read");
+    INLINE_BENCHMARK_WALL_START(read, "reading");
     void* buffer = ::mmap(nullptr, chunk_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    INLINE_BENCHMARK_WALL_STOP("read");
+    INLINE_BENCHMARK_WALL_STOP("reading");
     if (buffer == MAP_FAILED) {
       std::cerr << "Mapping failed.\n";
       ::close(fd);
@@ -86,9 +87,13 @@ int main(int argc, char** argv) {
       munmap(buffer, chunk_size);
       break;
     }
-    if (str[file.size()] == '@') {
-      std::cout << file_size;
+    INLINE_BENCHMARK_WALL_START(_, "iterating over content");
+    for (int64_t i = 0; i < chunk_size; ++i) {
+      if (str[i] == '\7') {
+        std::cout << "found '@'" << i << "-- " << str[i] << " --\n";
+      }
     }
+    INLINE_BENCHMARK_WALL_STOP("iterating over content");
     munmap(buffer, chunk_size);
   }
 

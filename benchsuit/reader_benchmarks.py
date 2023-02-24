@@ -14,14 +14,13 @@ We use InlineBench for benchmarking the search tools.
 
 import argparse
 import json
-import multiprocessing
 import re
 import subprocess
 import sys
 
 import requests
 
-from cmdbench.gnu_time_benchmark import GNUTimeCommand, GNUTimeBenchmark
+from InlineBench_benchmark import InlineBenchCommand, InlineBenchBenchmark
 import cmdbench as cb
 
 import os
@@ -36,72 +35,110 @@ RESULT_META_DATA = ""
 BUILD_PATH = ""
 
 
-def benchmark_mmap(pattern: str, iterations: int) -> GNUTimeBenchmark:
+def benchmark_mmap_read(iterations: int) -> InlineBenchBenchmark:
     commands = []
-    for size in [4096, 65536, 16777216, 268435456, 4294967296]:
-        commands.append(GNUTimeCommand())
+    units = ["", "K", "M", "G"]
+    for size_bytes in [4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
+        unit = units[0]
+        size = size_bytes
+        for unit_i in range(len(units) - 1):
+            if len(str(size)) > 3:
+                size = int(size / 1024)
+                unit = units[unit_i + 1]
+        commands.append(
+            InlineBenchCommand(f"{size}{unit}",
+                               [os.path.join(BUILD_PATH, "mmap_read"), DATA_FILE_PATH, "-s", str(size_bytes)])
+        )
 
-    return GNUTimeBenchmark(
-        name="regex",
+    return InlineBenchBenchmark(
+        name="mmap read: chunk sizes",
         commands=commands,
         iterations=iterations,
         drop_cache=True
     )
 
 
-def benchmark_regex_case_insensitive(pattern: str, iterations: int) -> InlineBenchBenchmark:
-    pre_cmd = [cb.Command("cat", ["cat", DATA_FILE_PATH])]
-    commands = [
-        InlineBenchCommand("re2 regex -i", [os.path.join(BUILD_PATH, "re2_search"), pattern, DATA_FILE_PATH, "-i"]),
-        InlineBenchCommand("std::regex -i",
-                           [os.path.join(BUILD_PATH, "std_regex_search"), pattern, DATA_FILE_PATH, "-i"]),
-    ]
+def benchmark_posix_read(iterations: int) -> InlineBenchBenchmark:
+    commands = []
+    units = ["", "K", "M", "G"]
+    for size_bytes in [4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
+        unit = units[0]
+        size = size_bytes
+        for unit_i in range(len(units) - 1):
+            if len(str(size)) > 3:
+                size = int(size / 1024)
+                unit = units[unit_i + 1]
+        commands.append(
+            InlineBenchCommand(f"{size}{unit}",
+                               [os.path.join(BUILD_PATH, "posix_read"), DATA_FILE_PATH, "-s", str(size_bytes)])
+        )
 
     return InlineBenchBenchmark(
-        name="regex: case insensitive",
+        name="posix read: chunk sizes",
         commands=commands,
-        setup_commands=pre_cmd,
         iterations=iterations,
-        drop_cache=False
+        drop_cache=True
     )
 
 
-def benchmark_literal(pattern: str, iterations: int) -> InlineBenchBenchmark:
-    pre_cmd = [cb.Command("cat", ["cat", DATA_FILE_PATH])]
-    commands = [
-        InlineBenchCommand("re2 regex", [os.path.join(BUILD_PATH, "re2_search"), pattern, DATA_FILE_PATH, "-l"]),
-        InlineBenchCommand("std::strstr", [os.path.join(BUILD_PATH, "std_strstr_search"), pattern, DATA_FILE_PATH]),
-        InlineBenchCommand("std::string::find",
-                           [os.path.join(BUILD_PATH, "std_string_find_search"), pattern, DATA_FILE_PATH]),
-        InlineBenchCommand("simd::strstr", [os.path.join(BUILD_PATH, "simd_search"), pattern, DATA_FILE_PATH]),
-    ]
+def benchmark_fread_read(iterations: int) -> InlineBenchBenchmark:
+    commands = []
+    units = ["", "K", "M", "G"]
+    for size_bytes in [4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
+        unit = units[0]
+        size = size_bytes
+        for unit_i in range(len(units) - 1):
+            if len(str(size)) > 3:
+                size = int(size / 1024)
+                unit = units[unit_i + 1]
+        commands.append(
+            InlineBenchCommand(f"{size}{unit}",
+                               [os.path.join(BUILD_PATH, "fread_read"), DATA_FILE_PATH, "-s", str(size_bytes)])
+        )
 
     return InlineBenchBenchmark(
-        name="literal",
+        name="fread read: chunk sizes",
         commands=commands,
-        setup_commands=pre_cmd,
         iterations=iterations,
-        drop_cache=False
+        drop_cache=True
     )
 
 
-def benchmark_literal_case_insensitive(pattern: str, iterations: int) -> InlineBenchBenchmark:
-    pre_cmd = [cb.Command("cat", ["cat", DATA_FILE_PATH])]
+def benchmark_std_ifstream_read(iterations: int) -> InlineBenchBenchmark:
+    commands = []
+    units = ["", "K", "M", "G"]
+    for size_bytes in [4096, 32768, 262144, 2097152, 16777216, 134217728, 1073741824]:
+        unit = units[0]
+        size = size_bytes
+        for unit_i in range(len(units) - 1):
+            if len(str(size)) > 3:
+                size = int(size / 1024)
+                unit = units[unit_i + 1]
+        commands.append(
+            InlineBenchCommand(f"{size}{unit}",
+                               [os.path.join(BUILD_PATH, "std_ifstream_read"), DATA_FILE_PATH, "-s", str(size_bytes)])
+        )
+    return InlineBenchBenchmark(
+        name="std::ifstream read: chunk sizes",
+        commands=commands,
+        iterations=iterations,
+        drop_cache=True
+    )
+
+
+def benchmark_compare_readers(iterations: int) -> InlineBenchBenchmark:
     commands = [
-        InlineBenchCommand("re2 regex", [os.path.join(BUILD_PATH, "re2_search"), pattern, DATA_FILE_PATH, "-l", "-i"]),
-        InlineBenchCommand("std::strstr",
-                           [os.path.join(BUILD_PATH, "std_strstr_search"), pattern, DATA_FILE_PATH, "-i"]),
-        InlineBenchCommand("std::string::find",
-                           [os.path.join(BUILD_PATH, "std_string_find_search"), pattern, DATA_FILE_PATH, "-i"]),
-        InlineBenchCommand("simd::strstr", [os.path.join(BUILD_PATH, "simd_search"), pattern, DATA_FILE_PATH, "-i"]),
+        InlineBenchCommand(f"mmap read (16M)", [os.path.join(BUILD_PATH, "mmap_read"), DATA_FILE_PATH, "-s", "16777216"]),
+        InlineBenchCommand(f"posix read (256K)", [os.path.join(BUILD_PATH, "posix_read"), DATA_FILE_PATH, "-s", "262144"]),
+        InlineBenchCommand(f"fread read (256K)", [os.path.join(BUILD_PATH, "fread_read"), DATA_FILE_PATH, "-s", "262144"]),
+        InlineBenchCommand(f"std::ifstream read (256K)", [os.path.join(BUILD_PATH, "std_ifstream_read"), DATA_FILE_PATH, "-s", "262144"]),
     ]
 
     return InlineBenchBenchmark(
-        name="literal: case insensitive",
+        name="Compare readers",
         commands=commands,
-        setup_commands=pre_cmd,
         iterations=iterations,
-        drop_cache=False
+        drop_cache=True
     )
 
 
@@ -152,8 +189,6 @@ def parse_args():
     parser.add_argument("--list-benchmarks", action="store_true", help="List available benchmarks by name and exit")
     parser.add_argument("--iterations", "-i", metavar="INTEGER", type=int, default=3,
                         help="Number of iterations per benchmark")
-    parser.add_argument("--pattern", metavar="STRING", default="Sherlock",
-                        help="The pattern that is searched by xs")
     parser.add_argument("--output", "-o", metavar="PATH", default="",
                         help="The directory where results are written to (default is printing in terminal)")
     parser.add_argument("--filter", metavar="FILTER", default="", help="Filter benchmarks by name using regex")
@@ -165,10 +200,11 @@ def parse_args():
 
 if __name__ == "__main__":
     benchmarks = {
-        "regex": benchmark_regex,
-        "regex case insensitive": benchmark_regex_case_insensitive,
-        "literal": benchmark_literal,
-        "literal case insensitive": benchmark_literal_case_insensitive,
+        "chunk size: mmap read": benchmark_mmap_read,
+        "chunk size: posix read": benchmark_posix_read,
+        "chunk size: fread read": benchmark_fread_read,
+        "chunk size: std::ifstream read": benchmark_std_ifstream_read,
+        "compare readers": benchmark_compare_readers,
     }
     args = parse_args()
     BUILD_PATH = args.binary_path
@@ -210,11 +246,7 @@ if __name__ == "__main__":
         res = None
         if re.search(args.filter, name):
             cb.log(f"🏃 running {name}...")
-            if "regex" in name and args.pattern == "Sherlock":
-                pattern = "She[r ]lock"
-            else:
-                pattern = args.pattern
-            res = bm_func(pattern, args.iterations).run()
+            res = bm_func(args.iterations).run()
         else:
             cb.log(f"↦ skipping {name}...")
         if res:
@@ -230,7 +262,6 @@ if __name__ == "__main__":
                 output_file = os.path.join(OUTPUT_DIR, file_name)
                 result_info_data[file_name + ".json"] = res.get_setup()
                 result_info_data[file_name + ".json"]["plot"] = file_name + ".pdf"
-                result_info_data[file_name + ".json"]["pattern"] = pattern
                 result_info_data[file_name + ".json"]["file"] = DATA_FILE_PATH
                 write_result_info_data(result_info_data, RESULT_META_DATA)
                 res.write_json(output_file + ".json")

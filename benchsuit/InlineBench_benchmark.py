@@ -100,6 +100,7 @@ class InlineBenchCommand(cmdbench.Command):
             data = json.loads(out)
             return InlineBenchResult(self, data)
         except ValueError:
+            print(out)
             return None
 
 

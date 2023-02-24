@@ -57,15 +57,19 @@ int main(int argc, char** argv) {
   char* buffer = new char[chunk_size];
 
   while (true) {
-    INLINE_BENCHMARK_WALL_START_GLOBAL("read");
+    INLINE_BENCHMARK_WALL_START(read, "reading");
     auto bytes_read = fread(buffer, 1, chunk_size, f);
-    INLINE_BENCHMARK_WALL_STOP("read");
+    INLINE_BENCHMARK_WALL_STOP("reading");
     if (bytes_read <= 0) {
       break;
     }
-    if (buffer[file.size()] == '@') {
-      std::cout << bytes_read;
+    INLINE_BENCHMARK_WALL_START(_, "iterating over content");
+    for (uint64_t i = 0; i < chunk_size; ++i) {
+      if (buffer[i] == '\7') {
+        std::cout << "found '@'" << i << "-- " << buffer[i] << " --\n";
+      }
     }
+    INLINE_BENCHMARK_WALL_STOP("iterating over content");
   }
 
   fclose(f);
