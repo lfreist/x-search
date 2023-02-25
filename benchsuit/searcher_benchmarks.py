@@ -15,14 +15,13 @@ We use InlineBench for benchmarking the search tools.
 
 import argparse
 import json
-import multiprocessing
 import re
 import subprocess
 import sys
 
 import requests
 
-from InlineBench_benchmark import InlineBenchCommand, InlineBenchBenchmark
+from cmdbench.InlineBench_benchmark import InlineBenchCommand, InlineBenchBenchmark
 import cmdbench as cb
 
 import os

@@ -72,4 +72,15 @@ bool is_utf8(const std::string& str) {
   return num_bytes == 0;
 }
 
+std::string escaped(const std::string& str) {
+  std::string escaped;
+  for (char c : str) {
+    if (c == '\\' || c == '.' || c == '[' || c == ']' || c == '(' || c == ')' || c == '{' || c == '}' || c == '|' || c == '*' || c == '+' || c == '?' || c == '^' || c == '$') {
+      escaped.push_back('\\');
+    }
+    escaped.push_back(c);
+  }
+  return escaped;
+}
+
 }  // namespace xs::utils::str

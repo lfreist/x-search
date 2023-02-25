@@ -13,7 +13,6 @@
 #include <xsearch/tasks/DataProvider.h>
 #include <xsearch/tasks/InplaceProcessors.h>
 #include <xsearch/tasks/ReturnProcessors.h>
-#include <xsearch/utils/IOColor.h>
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/compression/Lz4Wrapper.h>

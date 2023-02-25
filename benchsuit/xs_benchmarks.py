@@ -18,7 +18,7 @@ import sys
 
 import requests
 
-from InlineBench_benchmark import InlineBenchCommand, InlineBenchBenchmark
+from cmdbench.InlineBench_benchmark import InlineBenchCommand, InlineBenchBenchmark
 import cmdbench as cb
 
 import os

@@ -29,7 +29,6 @@ DATA_DIR = "data"
 DATA_FILE = "en.sample.txt"
 META_FILE = "en.sample.meta"
 DATA_FILE_PATH = ""
-META_FILE_PATH = ""
 DATA_DOWNLOAD_URL = "https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2016/mono/en.txt.gz"
 OUTPUT_DIR = "bench_results"
 RESULT_META_DATA = ""
@@ -391,7 +390,7 @@ if __name__ == "__main__":
         "comparison: regex": benchmark_regex,
         "comparison: regex, line numbers": benchmark_regex_line_number,
         "comparison: regex, byte offset": benchmark_regex_byte_offset,
-        "comparison: regex, case insensitive": benchmark_regex_case_insensitive,
+        "comparison: regex, ignore case": benchmark_regex_case_insensitive,
         "comparison: zstd compressed input file": benchmark_zstd_input,
         "comparison: lz4 compressed input file": benchmark_lz4_input,
     }
@@ -409,11 +408,9 @@ if __name__ == "__main__":
             print(f"{args.dir!r} is not a directory or does not exist")
             exit(1)
     DATA_FILE_PATH = os.path.join(DATA_DIR, DATA_FILE)
-    META_FILE_PATH = os.path.join(DATA_DIR, META_FILE)
     if args.input_file:
         if os.path.exists(args.input_file) and os.path.isfile(args.input_file):
             DATA_FILE_NAME = args.input_file
-            META_FILE_PATH = DATA_FILE_NAME + ".meta"
         else:
             print(f"{args.input_file!r} is not a file or does not exist")
             exit(1)

@@ -5,7 +5,6 @@
 #include <xsearch/string_search/offset_mappings.h>
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
-#include <xsearch/utils/IOColor.h>
 
 namespace xs::search {
 

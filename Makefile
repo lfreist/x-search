@@ -1,6 +1,6 @@
 NAME=x-search
 
-.PHONY: all test lib_test grep_test check_style benchmark clean help install
+.PHONY: all test lib_test exe_test check_style benchmark clean help install
 
 help:
 	@echo "--------------------------------------------------------------------------------"
@@ -47,15 +47,13 @@ build_exe_test: init
 	cmake -B build-exe-test-address-sanitizer -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS="-fsanitize=address" -DCMAKE_CXX_COMPILER=/usr/bin/clang++-15 -DRE2_BUILD_TESTING=off -DXS_EXE_TESTS=ON
 	cmake --build build-exe-test-address-sanitizer -j $(nproc) 2>/dev/null
 
-test: grep_test preprocessor_test lib_test
+test: exe_test preprocessor_test lib_test
 
 lib_test: build_sanitizer init_test_runs
 	ctest -C Release --test-dir build-thread-sanitizer
 	ctest -C Release --test-dir build-address-sanitizer
 
-grep_test: build_exe_test init_test_runs
-	ctest --test-dir build-exe-test-thread-sanitizer --label-regex grep_exe_test
-	ctest --test-dir build-exe-test-address-sanitizer --label-regex grep_exe_test
+exe_test: build_exe_test init_test_runs
 
 preprocessor_test: build_exe_test init_test_runs
 	ctest --test-dir build-exe-test-thread-sanitizer --label-regex preprocessor_exe_test

@@ -26,10 +26,10 @@ IF (${MAIN_PROJECT})
 
     add_executable(metafile_cat metafile_cat.cpp)
     target_link_libraries(metafile_cat PUBLIC xsearch)
-    # --- BOOST ------------------------------------------------------------------------------------------------------------
+    # --- BOOST --------------------------------------------------------------------------------------------------------
     find_package(Boost 1.74 REQUIRED COMPONENTS program_options)
     include_directories(${Boost_INCLUDE_DIR})
-    # ----------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
     # --- GTEST --------------------------------------------------------------------------------------------------------
     add_subdirectory(third_party/googletest/)
     include_directories(third_party/googletest/googletest/include)
