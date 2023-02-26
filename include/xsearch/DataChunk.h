@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "gtest/gtest.h"
-
 namespace xs {
 
 // using strtype = std::vector<char, xs::utils::just_allocator<char>>;

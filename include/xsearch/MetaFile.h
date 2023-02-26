@@ -3,12 +3,11 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
 #include <fstream>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace xs {
 

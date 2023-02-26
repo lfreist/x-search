@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
 #include <condition_variable>
 #include <exception>
 #include <memory>
