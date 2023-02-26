@@ -6,7 +6,6 @@ Comparison of different usages of xs grep including:
  - ...
 
 We use InlineBench for benchmarking the search tools.
-
 """
 
 import argparse
