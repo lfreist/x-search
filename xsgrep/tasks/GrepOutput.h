@@ -4,11 +4,10 @@
 #pragma once
 
 #include <unistd.h>
+#include <xsearch/xsearch.h>
 
 #include <cstdio>
 #include <memory>
-
-#include "xsearch/xsearch.h"
 
 // ===== Output colors =========================================================
 #define COLOR_RESET "\033[0m"
@@ -80,7 +79,8 @@ struct GrepOptions {
  * GrepOutput: The actual result class that inherits xs::BaseResult.
  *  It collects vectors of GrepPartialResults.
  */
-class GrepOutput : public xs::BaseResult<std::vector<GrepPartialResult>> {
+class GrepOutput
+    : public xs::result::base::Result<std::vector<GrepPartialResult>> {
  public:
   explicit GrepOutput(GrepOptions options);
   GrepOutput(GrepOptions options, std::ostream& ostream);

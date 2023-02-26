@@ -1,52 +1,50 @@
 // Copyright 2023, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
-/**
- * MARK: We have considered implementing different searchers template specific
- *  (similar to the result types) but decided to use inheritance instead.
- *  The reason for this is, that we want developers to be able to add their
- *  own searchers and this is more intuitive by inheriting a BaseSearcher class
- *  rather than adding template specialized implementations of searcher methods.
- */
-
 #pragma once
 
 #include <re2/re2.h>
 #include <xsearch/DataChunk.h>
-#include <xsearch/ResultTypes.h>
-#include <xsearch/utils/TSQueue.h>
+#include <xsearch/tasks/base/ReturnProcessor.h>
+#include <xsearch/utils/string_utils.h>
 
-namespace xs::tasks {
+#include <memory>
+#include <string>
 
-template <class DataT, typename ResT>
-class BaseReturnProcessor {
+namespace xs::task::searcher {
+
+template <typename T, typename R>
+class BaseSearcher : public base::ReturnProcessor<T, R> {
  public:
-  BaseReturnProcessor() = default;
-  virtual ~BaseReturnProcessor() = default;
-
-  virtual ResT process(DataT* data) const = 0;
-};
-
-template <class DataT, typename ResT>
-class BaseSearcher : public BaseReturnProcessor<DataT, ResT> {
- public:
-  BaseSearcher(std::string pattern, bool regex, bool case_insensitive)
+  BaseSearcher(std::string pattern, bool regex, bool ignore_case)
       : _pattern(std::move(pattern)),
         _regex(regex),
-        _case_insensitive(case_insensitive) {
+        _ignore_case(ignore_case),
+        _no_ascii(!xs::utils::str::is_ascii(_pattern)) {
     if (_regex) {
       re2::RE2::Options options;
-      options.set_case_sensitive(!_case_insensitive);
+      options.set_posix_syntax(true);
+      options.set_case_sensitive(!_ignore_case);
       _re_pattern = std::make_unique<re2::RE2>('(' + _pattern + ')', options);
+    } else if (_no_ascii && _ignore_case) {
+      re2::RE2::Options options;
+      options.set_case_sensitive(false);
+      _re_pattern = std::make_unique<re2::RE2>(
+          '(' + xs::utils::str::escaped(_pattern) + ')', options);
     }
   };
-  ResT process(DataT* data) const override = 0;
+
+  R process(T* data) const override = 0;
 
  protected:
+  virtual R process_re2(T* data) const = 0;
+  virtual R process_ascii(T* data) const = 0;
+
   std::string _pattern;
-  std::unique_ptr<re2::RE2> _re_pattern;
+  std::unique_ptr<re2::RE2> _re_pattern = nullptr;
   bool _regex = false;
-  bool _case_insensitive = false;
+  bool _ignore_case = false;
+  bool _no_ascii = false;
 };
 
 class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
@@ -54,6 +52,10 @@ class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
   MatchCounter(std::string pattern, bool regex, bool case_insensitive);
 
   uint64_t process(DataChunk* data) const override;
+
+ private:
+  uint64_t process_re2(DataChunk* data) const override;
+  uint64_t process_ascii(DataChunk* data) const override;
 };
 
 class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
@@ -61,6 +63,10 @@ class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
   LineCounter(std::string pattern, bool regex, bool case_insensitive);
 
   uint64_t process(DataChunk* data) const override;
+
+ private:
+  uint64_t process_re2(DataChunk* data) const override;
+  uint64_t process_ascii(DataChunk* data) const override;
 };
 
 class MatchBytePositionSearcher
@@ -70,6 +76,10 @@ class MatchBytePositionSearcher
                             bool case_insensitive);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
+
+ private:
+  std::vector<uint64_t> process_re2(DataChunk* data) const override;
+  std::vector<uint64_t> process_ascii(DataChunk* data) const override;
 };
 
 class LineBytePositionSearcher
@@ -79,6 +89,10 @@ class LineBytePositionSearcher
                            bool case_insensitive);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
+
+ private:
+  std::vector<uint64_t> process_re2(DataChunk* data) const override;
+  std::vector<uint64_t> process_ascii(DataChunk* data) const override;
 };
 
 class LineIndexSearcher
@@ -89,8 +103,8 @@ class LineIndexSearcher
   std::vector<uint64_t> process(DataChunk* data) const override;
 
  private:
-  static std::vector<uint64_t> map(DataChunk* data,
-                                   const std::vector<uint64_t>& mapping_data);
+  std::vector<uint64_t> process_re2(DataChunk* data) const override;
+  std::vector<uint64_t> process_ascii(DataChunk* data) const override;
 };
 
 class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
@@ -100,8 +114,11 @@ class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
   std::vector<std::string> process(DataChunk* data) const override;
 
  private:
+  std::vector<std::string> process_re2(DataChunk* data) const override;
+  std::vector<std::string> process_ascii(DataChunk* data) const override;
+
   static std::vector<std::string> map(
       DataChunk* data, const std::vector<uint64_t>& mapping_data);
 };
 
-}  // namespace xs::tasks
+}  // namespace xs::task::searcher

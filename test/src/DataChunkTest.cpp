@@ -12,12 +12,14 @@ TEST(DataChunk, constructor) {
     DataChunk str;
 
     ASSERT_EQ(str.size(), 0);
-    ASSERT_EQ(str._meta_data.chunk_index, 0);
-    ASSERT_EQ(str._meta_data.original_offset, 0);
-    ASSERT_EQ(str._meta_data.actual_offset, 0);
-    ASSERT_EQ(str._meta_data.original_size, 0);
-    ASSERT_EQ(str._meta_data.actual_size, 0);
-    ASSERT_TRUE(str._meta_data.line_mapping_data.empty());
+  }
+  {
+    DataChunk str(tmp.data(), 5);
+
+    char content[5] = {'h', 'e', 'l', 'l', 'o'};
+
+    ASSERT_EQ(*str.data(), *content);
+    ASSERT_EQ(str.size(), 5);
   }
   {
     DataChunk str(tmp.data(), 5, {0, 7, 7, 10, 10, {{0, 1}}});
@@ -25,31 +27,9 @@ TEST(DataChunk, constructor) {
     char content[5] = {'h', 'e', 'l', 'l', 'o'};
     const ChunkMetaData cmd{0, 7, 7, 10, 10, {{0, 1}}};
 
-    ASSERT_EQ(*str._data, *content);
+    ASSERT_EQ(*str.data(), *content);
     ASSERT_EQ(str.size(), 5);
-    ASSERT_EQ(str._meta_data.chunk_index, 0);
-    ASSERT_EQ(str._meta_data.original_offset, 7);
-    ASSERT_EQ(str._meta_data.actual_offset, 7);
-    ASSERT_EQ(str._meta_data.original_size, 10);
-    ASSERT_EQ(str._meta_data.actual_size, 10);
-    ASSERT_EQ(str._meta_data.line_mapping_data.size(), 1);
-    ASSERT_EQ(str._meta_data.line_mapping_data[0].globalByteOffset, 0);
-    ASSERT_EQ(str._meta_data.line_mapping_data[0].globalLineIndex, 1);
-  }
-  {
-    DataChunk str(tmp.data(), 5);
-
-    char content[5] = {'h', 'e', 'l', 'l', 'o'};
-    const std::vector<ByteToNewLineMappingInfo> mapping_data{{0, 1}};
-
-    ASSERT_EQ(*str._data, *content);
-    ASSERT_EQ(str.size(), 5);
-    ASSERT_EQ(str._meta_data.chunk_index, 0);
-    ASSERT_EQ(str._meta_data.original_offset, 0);
-    ASSERT_EQ(str._meta_data.actual_offset, 0);
-    ASSERT_EQ(str._meta_data.original_size, 0);
-    ASSERT_EQ(str._meta_data.actual_size, 0);
-    ASSERT_TRUE(str._meta_data.line_mapping_data.empty());
+    ASSERT_EQ(str.getMetaData(), cmd);
   }
 }
 
@@ -63,16 +43,9 @@ TEST(DataChunk, MoveConstructor) {
     char content[5] = {'h', 'e', 'l', 'l', 'o'};
     const ChunkMetaData cmd{0, 7, 7, 10, 10, {{0, 1}}};
 
-    ASSERT_EQ(*snd._data, *content);
+    ASSERT_EQ(*snd.data(), *content);
     ASSERT_EQ(snd.size(), 5);
-    ASSERT_EQ(snd._meta_data.chunk_index, 0);
-    ASSERT_EQ(snd._meta_data.original_offset, 7);
-    ASSERT_EQ(snd._meta_data.actual_offset, 7);
-    ASSERT_EQ(snd._meta_data.original_size, 10);
-    ASSERT_EQ(snd._meta_data.actual_size, 10);
-    ASSERT_EQ(snd._meta_data.line_mapping_data.size(), 1);
-    ASSERT_EQ(snd._meta_data.line_mapping_data[0].globalByteOffset, 0);
-    ASSERT_EQ(snd._meta_data.line_mapping_data[0].globalLineIndex, 1);
+    ASSERT_EQ(snd.getMetaData(), cmd);
   }
   {
     DataChunk fst({0, 7, 7, 10, 10, {{0, 1}}});
@@ -83,16 +56,9 @@ TEST(DataChunk, MoveConstructor) {
     char content[5] = {'h', 'e', 'l', 'l', 'o'};
     const ChunkMetaData cmd{0, 7, 7, 10, 10, {{0, 1}}};
 
-    ASSERT_EQ(*snd._data, *content);
+    ASSERT_EQ(*snd.data(), *content);
     ASSERT_EQ(snd.size(), 5);
-    ASSERT_EQ(snd._meta_data.chunk_index, 0);
-    ASSERT_EQ(snd._meta_data.original_offset, 7);
-    ASSERT_EQ(snd._meta_data.actual_offset, 7);
-    ASSERT_EQ(snd._meta_data.original_size, 10);
-    ASSERT_EQ(snd._meta_data.actual_size, 10);
-    ASSERT_EQ(snd._meta_data.line_mapping_data.size(), 1);
-    ASSERT_EQ(snd._meta_data.line_mapping_data[0].globalByteOffset, 0);
-    ASSERT_EQ(snd._meta_data.line_mapping_data[0].globalLineIndex, 1);
+    ASSERT_EQ(snd.getMetaData(), cmd);
   }
 }
 
@@ -128,11 +94,11 @@ TEST(DataChunk, assign) {
   str.assign("hello");
   char content[5] = {'h', 'e', 'l', 'l', 'o'};
 
-  ASSERT_EQ(*str._data, *content);
+  ASSERT_EQ(*str.data(), *content);
 
   str.assign("hello!");
   char content2[6] = {'h', 'e', 'l', 'l', 'o', '!'};
-  ASSERT_EQ(*str._data, *content2);
+  ASSERT_EQ(*str.data(), *content2);
 }
 
 }  // namespace xs

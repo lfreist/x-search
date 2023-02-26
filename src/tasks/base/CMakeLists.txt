@@ -1,0 +1,1 @@
+add_library(BaseTasks DataProvider.cpp InplaceProcessor.cpp ReturnProcessor.cpp)

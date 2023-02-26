@@ -2,13 +2,13 @@ add_subdirectory(string_search)
 add_subdirectory(utils)
 
 add_executable(DataChunkTestMain DataChunkTest.cpp)
-target_link_libraries(DataChunkTestMain PUBLIC DataChunk gtest_main)
+target_link_libraries(DataChunkTestMain PUBLIC DataChunk gtest_main MetaFile)
 
 add_executable(MetaFileTestMain MetaFileTest.cpp)
 target_link_libraries(MetaFileTestMain PUBLIC MetaFile gtest_main)
 
 add_executable(ExternSearcherTestMain ExternSearcherTest.cpp)
-target_link_libraries(ExternSearcherTestMain PUBLIC Searcher gtest_main)
+target_link_libraries(ExternSearcherTestMain PUBLIC Executor gtest_main)
 
 add_executable(xsearchTestMain xsearchTest.cpp)
 target_link_libraries(xsearchTestMain PUBLIC xsearch gtest_main)

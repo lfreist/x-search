@@ -107,25 +107,28 @@ int main(int argc, char** argv) {
   // ===== Setup xs::Executor for preprocessing ================================
 
   // set reader ----------------------------------------------------------------
-  auto reader = std::make_unique<xs::tasks::FileBlockReader>(
+  auto reader = std::make_unique<xs::task::reader::FileBlockReader>(
       args.source_file, args.min_chunk_size);
 
   // set inplace processors ----------------------------------------------------
-  std::vector<std::unique_ptr<xs::tasks::BaseInplaceProcessor<xs::DataChunk>>>
+  std::vector<std::unique_ptr<xs::task::base::InplaceProcessor<xs::DataChunk>>>
       inplace_processors;
 
   inplace_processors.push_back(
-      std::make_unique<xs::tasks::NewLineSearcher>(args.mapping_data_distance));
+      std::make_unique<xs::task::processor::NewLineSearcher>(
+          args.mapping_data_distance));
 
   xs::CompressionType compression_type = xs::from_string(args.compression_alg);
   switch (compression_type) {
     case xs::CompressionType::LZ4:
-      inplace_processors.push_back(std::make_unique<xs::tasks::LZ4Compressor>(
-          args.hc, args.compression_level));
+      inplace_processors.push_back(
+          std::make_unique<xs::task::processor::LZ4Compressor>(
+              args.hc, args.compression_level));
       break;
     case xs::CompressionType::ZSTD:
       inplace_processors.emplace_back(
-          std::make_unique<xs::tasks::ZSTDCompressor>(args.compression_level));
+          std::make_unique<xs::task::processor::ZSTDCompressor>(
+              args.compression_level));
       break;
     default:
       break;

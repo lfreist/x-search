@@ -6,13 +6,17 @@
 #include <xsearch/DataChunk.h>
 #include <xsearch/Executor.h>
 #include <xsearch/MetaFile.h>
-#include <xsearch/ResultTypes.h>
+#include <xsearch/results/Result.h>
+#include <xsearch/results/base/Result.h>
 #include <xsearch/string_search/offset_mappings.h>
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
-#include <xsearch/tasks/DataProvider.h>
-#include <xsearch/tasks/InplaceProcessors.h>
-#include <xsearch/tasks/ReturnProcessors.h>
+#include <xsearch/tasks/base/DataProvider.h>
+#include <xsearch/tasks/base/InplaceProcessor.h>
+#include <xsearch/tasks/base/ReturnProcessor.h>
+#include <xsearch/tasks/defaults/processors.h>
+#include <xsearch/tasks/defaults/readers.h>
+#include <xsearch/tasks/defaults/searchers.h>
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/compression/Lz4Wrapper.h>
@@ -40,15 +44,20 @@ namespace xs {
  *  E.g.: extern_search<count>(...) will start and return an ExternSearch object
  *  initialized with everything needed for counting matches.
  */
-typedef Executor<xs::DataChunk, CountMatchesResult, uint64_t> count_matches;
-typedef Executor<xs::DataChunk, CountLinesResult, uint64_t> count_lines;
-typedef Executor<xs::DataChunk, MatchByteOffsetsResult, std::vector<uint64_t>>
+typedef Executor<xs::DataChunk, result::CountMatchesResult, uint64_t>
+    count_matches;
+typedef Executor<xs::DataChunk, result::CountLinesResult, uint64_t> count_lines;
+typedef Executor<xs::DataChunk, result::MatchByteOffsetsResult,
+                 std::vector<uint64_t>>
     match_byte_offsets;
-typedef Executor<xs::DataChunk, LineByteOffsetsResult, std::vector<uint64_t>>
+typedef Executor<xs::DataChunk, result::LineByteOffsetsResult,
+                 std::vector<uint64_t>>
     line_byte_offsets;
-typedef Executor<xs::DataChunk, LineIndicesResult, std::vector<uint64_t>>
+typedef Executor<xs::DataChunk, result::LineIndicesResult,
+                 std::vector<uint64_t>>
     line_indices;
-typedef Executor<xs::DataChunk, LinesResult, std::vector<std::string>> lines;
+typedef Executor<xs::DataChunk, result::LinesResult, std::vector<std::string>>
+    lines;
 
 /**
  * A simple one-function API call to ExternSearcher.

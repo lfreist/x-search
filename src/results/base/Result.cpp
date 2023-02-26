@@ -1,10 +1,10 @@
-#include <xsearch/ResultTypes.h>
+// Copyright 2023, Leon Freist
+// Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
-#include <numeric>
+#include <xsearch/results/base/Result.h>
 
-namespace xs {
+namespace xs::result::base {
 
-// ===== CountMatchesResult ====================================================
 // _____________________________________________________________________________
 void CountResult::add(uint64_t partial_result) {
   std::unique_lock lock(*_mutex);
@@ -23,4 +23,4 @@ size_t CountResult::size() const {
   return _sum_result;
 }
 
-}  // namespace xs
+}  // namespace xs::result::base

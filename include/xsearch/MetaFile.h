@@ -46,58 +46,61 @@ struct ChunkMetaData {
   std::vector<ByteToNewLineMappingInfo> line_mapping_data;
 
   void serialize(std::fstream* stream) const;
+  bool operator==(const ChunkMetaData& other) const;
+  bool operator<(const ChunkMetaData& other) const;
 };
 
-ChunkMetaData readChunkMetaData(std::fstream* stream);
+ChunkMetaData read_chunk_meta_data(std::fstream* stream);
 
 /**
  * Representing a meta file consisting of chunkMetaData of all chunks of a file.
  * MetaFile owns a filestream of the meta file.
  */
 class MetaFile {
-  FRIEND_TEST(MetaFileTest, constructor);
-  FRIEND_TEST(ESFMetaFileTest, writeAndRead);
-
  public:
   /**
    * Constructor
-   * @param filePath system file path to meta file
+   * @param file_path system file path to meta file
    * @param mode std::ios::openmode (::in for reading, ::out for writing)
    */
-  explicit MetaFile(const std::string& filePath, std::ios::openmode mode,
+  explicit MetaFile(std::string file_path, std::ios::openmode mode,
                     CompressionType compression_type = UNKNOWN);
   MetaFile(const MetaFile& sfMetaFile) = delete;
-  MetaFile(MetaFile&& sfMetaFile) noexcept;
+  MetaFile(MetaFile&& other) noexcept;
   ~MetaFile();
 
   /**
    * Returns next chunkMetaData
    */
-  std::optional<ChunkMetaData> nextChunkMetaData();
+  std::optional<ChunkMetaData> next_chunk_meta_data();
   /**
    * Returns a vector of the next <num> chunkMetaData
    * @param num number of chunkMetaData to be returned
    */
-  std::vector<ChunkMetaData> nextChunkMetaData(uint32_t num);
+  std::vector<ChunkMetaData> next_chunk_meta_data(uint32_t num);
 
   /**
    * Append chunkMetaData to the opened meta file
    * @param chunk chunkMetaData to be appended
    */
-  void writeChunkMetaData(const ChunkMetaData& chunk);
+  void write_chunk_meta_data(const ChunkMetaData& chunk);
 
-  CompressionType getCompressionType() const;
+  CompressionType get_compression_type() const;
 
-  static CompressionType getCompressionType(const std::string& metaFilePath);
+  bool is_writable() const;
+
+  const std::string& get_file_path() const;
+
+  static CompressionType getCompressionType(const std::string& meta_file_path);
 
  private:
-  CompressionType _compressionType;
-  std::string _filePath;
-  std::fstream _metaFileStream;
-  std::ios::openmode _openMode;
+  CompressionType _compression_type;
   size_t _chunk_index = 0;
-
   std::mutex _stream_mutex;
+
+  std::string _file_path;
+  std::ios::openmode _open_mode;
+  std::fstream _meta_file_stream;
 };
 
 }  // namespace xs

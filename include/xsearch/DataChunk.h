@@ -24,14 +24,6 @@ using strtype = char*;
  * that are owned by another process/object or whatever.
  */
 class DataChunk {
-  FRIEND_TEST(DataChunk, constructor);
-  FRIEND_TEST(DataChunk, MoveConstructor);
-  FRIEND_TEST(DataChunk, size);
-  FRIEND_TEST(DataChunk, resize);
-  FRIEND_TEST(DataChunk, push_back);
-  FRIEND_TEST(DataChunk, assign);
-  FRIEND_TEST(DataChunk, data);
-
  public:
   DataChunk() = default;
   DataChunk(char* data, size_t size, ChunkMetaData meta_data);

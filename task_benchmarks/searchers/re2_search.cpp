@@ -2,8 +2,8 @@
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
 #include <xsearch/string_search/search_wrappers.h>
-#include <xsearch/utils/string_utils.h>
 #include <xsearch/utils/InlineBench.h>
+#include <xsearch/utils/string_utils.h>
 
 #include <boost/program_options.hpp>
 #include <fstream>
@@ -23,7 +23,6 @@ uint64_t count(const char* data, size_t size, const re2::RE2& pattern) {
   }
   return counter;
 }
-
 
 int main(int argc, char** argv) {
   std::string file;
@@ -80,7 +79,6 @@ int main(int argc, char** argv) {
   ss << stream.rdbuf();
   std::string content = ss.str();
 
-
   re2::RE2::Options re2_options;
   re2_options.set_case_sensitive(!case_insensitive);
   re2_options.set_posix_syntax(true);
@@ -89,7 +87,9 @@ int main(int argc, char** argv) {
   if (literal) {
     std::string escaped_pattern("(");
     for (char c : pattern) {
-      if (c == '\\' || c == '.' || c == '[' || c == ']' || c == '(' || c == ')' || c == '{' || c == '}' || c == '|' || c == '*' || c == '+' || c == '?' || c == '^' || c == '$') {
+      if (c == '\\' || c == '.' || c == '[' || c == ']' || c == '(' ||
+          c == ')' || c == '{' || c == '}' || c == '|' || c == '*' ||
+          c == '+' || c == '?' || c == '^' || c == '$') {
         escaped_pattern += '\\';
       }
       escaped_pattern += c;
@@ -97,7 +97,8 @@ int main(int argc, char** argv) {
     escaped_pattern.push_back(')');
     regex_pattern = std::make_unique<re2::RE2>(escaped_pattern, re2_options);
   } else {
-    regex_pattern = std::make_unique<re2::RE2>(std::string('(' + pattern + ')'), re2_options);
+    regex_pattern = std::make_unique<re2::RE2>(std::string('(' + pattern + ')'),
+                                               re2_options);
   }
 
   INLINE_BENCHMARK_WALL_START(_, "search");

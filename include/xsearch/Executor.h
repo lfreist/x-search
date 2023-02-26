@@ -4,10 +4,10 @@
 #pragma once
 
 #include <xsearch/DataChunk.h>
-#include <xsearch/ResultTypes.h>
-#include <xsearch/tasks/DataProvider.h>
-#include <xsearch/tasks/InplaceProcessors.h>
-#include <xsearch/tasks/ReturnProcessors.h>
+#include <xsearch/results/base/Result.h>
+#include <xsearch/tasks/base/DataProvider.h>
+#include <xsearch/tasks/base/InplaceProcessor.h>
+#include <xsearch/tasks/base/ReturnProcessor.h>
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/utils.h>
 
@@ -24,10 +24,10 @@ class Executor {
  public:
   // ---------------------------------------------------------------------------
   Executor(int num_threads, int max_readers,
-           std::unique_ptr<tasks::BaseDataProvider<DataT>> reader,
-           std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataT>>>
+           std::unique_ptr<task::base::DataProvider<DataT>> reader,
+           std::vector<std::unique_ptr<task::base::InplaceProcessor<DataT>>>
                inplace_processors,
-           std::unique_ptr<tasks::BaseReturnProcessor<DataT, PartResT>>
+           std::unique_ptr<task::base::ReturnProcessor<DataT, PartResT>>
                return_processor,
            ResArgs&&... result_args)
       : _result(new ResT(std::forward<ResArgs>(result_args)...)),
@@ -125,10 +125,10 @@ class Executor {
 
   std::unique_ptr<ResT> _result;
 
-  std::unique_ptr<tasks::BaseDataProvider<DataT>> _reader;
-  std::vector<std::unique_ptr<tasks::BaseInplaceProcessor<DataT>>>
+  std::unique_ptr<task::base::DataProvider<DataT>> _reader;
+  std::vector<std::unique_ptr<task::base::InplaceProcessor<DataT>>>
       _inplace_processors;
-  std::unique_ptr<tasks::BaseReturnProcessor<DataT, PartResT>>
+  std::unique_ptr<task::base::ReturnProcessor<DataT, PartResT>>
       _return_processor;
 
   std::vector<std::thread> _threads;

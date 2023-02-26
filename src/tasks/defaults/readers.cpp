@@ -3,114 +3,127 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <unistd.h>
-#include <xsearch/tasks/DataProvider.h>
+#include <xsearch/tasks/defaults/readers.h>
 #include <xsearch/utils/InlineBench.h>
 
-#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 
-namespace xs::tasks {
+namespace xs::task::reader {
 
-// ----- FileBlockMetaReader -------------------------------------------------
+// _____________________________________________________________________________
+MetaReader::MetaReader(std::string meta_file_path, int max_readers)
+    : _meta_file(std::move(meta_file_path), std::ios::in),
+      _semaphore(max_readers) {}
+
 // _____________________________________________________________________________
 FileBlockMetaReader::FileBlockMetaReader(std::string file_path,
-                                         const std::string& meta_file_path)
-    : _file_path(std::move(file_path)),
-      _meta_file(meta_file_path, std::ios::in) {}
+                                         std::string meta_file_path,
+                                         int max_readers)
+    : FileReader<DataChunk>(std::move(file_path)),
+      MetaReader(std::move(meta_file_path), max_readers) {}
 
 // _____________________________________________________________________________
-std::optional<std::pair<DataChunk, uint64_t>>
+std::optional<std::pair<DataChunk, chunk_index>>
 FileBlockMetaReader::getNextData() {
   INLINE_BENCHMARK_WALL_START(read, "reading");
-
-  auto optCmd = _meta_file.nextChunkMetaData();
+  auto optCmd = _meta_file.next_chunk_meta_data();
   if (!optCmd.has_value()) {
     return {};
   }
-  std::ifstream stream(_file_path);
-  auto& cmd = optCmd.value();
-  stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
-  xs::DataChunk chunk(std::move(cmd));
-  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
-  stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
-  INLINE_BENCHMARK_WALL_STOP("actual read");
+
+  xs::DataChunk chunk(std::move(optCmd.value()));
+
+  // semaphore protected read: restricted to max_readers
+  _semaphore.access([&]() {
+    std::ifstream stream(_file_path);
+    stream.seekg(static_cast<int64_t>(chunk.getMetaData().actual_offset),
+                 std::ios::beg);
+    INLINE_BENCHMARK_WALL_START(_, "actual read");
+    stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
+    INLINE_BENCHMARK_WALL_STOP("actual read");
+  });
+
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
-// ----- FileBlockMetaReaderMMAP ---------------------------------------------
 // _____________________________________________________________________________
-FileBlockMetaReaderMMAP::FileBlockMetaReaderMMAP(
-    std::string file_path, const std::string& meta_file_path)
-    : _file_path(std::move(file_path)),
-      _meta_file(meta_file_path, std::ios::in) {}
+FileBlockMetaReaderMMAP::FileBlockMetaReaderMMAP(std::string file_path,
+                                                 std::string meta_file_path,
+                                                 int max_readers)
+    : FileReader<DataChunk>(std::move(file_path)),
+      MetaReader(std::move(meta_file_path), max_readers) {}
 
 // _____________________________________________________________________________
-std::optional<std::pair<DataChunk, uint64_t>>
+std::optional<std::pair<DataChunk, chunk_index>>
 FileBlockMetaReaderMMAP::getNextData() {
   INLINE_BENCHMARK_WALL_START(read, "reading");
-  auto optCmd = _meta_file.nextChunkMetaData();
+  auto optCmd = _meta_file.next_chunk_meta_data();
   if (!optCmd.has_value()) {
     return {};
   }
   auto cmd = std::move(optCmd.value());
+
+  // do not use mmap if data are too small
   if (cmd.actual_size < static_cast<uint64_t>(1 << 20)) {
-    return FileBlockMetaReaderMMAP::_read_no_mmap(_file_path, std::move(cmd));
+    return FileBlockMetaReaderMMAP::read_no_mmap(std::move(cmd));
   }
+
   size_t page_size = sysconf(_SC_PAGE_SIZE);
   size_t page_offset = cmd.actual_offset % page_size;
-  int fd = open(_file_path.c_str(), O_RDONLY);
-  if (fd < 0) {
-    exit(1);
-  }
-  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
-  void* mapped =
-      mmap(nullptr, cmd.actual_size + page_offset, PROT_READ, MAP_PRIVATE, fd,
-           static_cast<int64_t>(cmd.actual_offset - page_offset));
-  INLINE_BENCHMARK_WALL_STOP("actual read");
-  close(fd);
+
+  void* mapped;
+
+  // semaphore protected read: restricted to max_readers
+  _semaphore.access([&]() {
+    int fd = open(_file_path.c_str(), O_RDONLY);
+    if (fd < 0) {
+      exit(1);
+    }
+    INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
+    mapped =
+        mmap(nullptr, cmd.actual_size + page_offset, PROT_READ, MAP_PRIVATE, fd,
+             static_cast<int64_t>(cmd.actual_offset - page_offset));
+    INLINE_BENCHMARK_WALL_STOP("actual read");
+    close(fd);
+  });
+
   if (mapped == MAP_FAILED) {
-    // read data using std::ifstream...
-    return FileBlockMetaReaderMMAP::_read_no_mmap(_file_path, std::move(cmd));
+    // mmap failed -> read data using std::ifstream...
+    return FileBlockMetaReaderMMAP::read_no_mmap(std::move(cmd));
   }
-  xs::DataChunk chunk;
-  chunk.assign_mmap_data(static_cast<char*>(mapped), cmd.actual_size,
-                         page_offset);
-  chunk.getMetaData() = std::move(cmd);
+
+  xs::DataChunk chunk(std::move(cmd));
+  chunk.assign_mmap_data(static_cast<char*>(mapped),
+                         chunk.getMetaData().actual_size, page_offset);
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
 // _____________________________________________________________________________
-std::optional<std::pair<DataChunk, uint64_t>>
-FileBlockMetaReaderMMAP::_read_no_mmap(const std::string& file_path,
-                                       ChunkMetaData cmd) {
-  std::ifstream stream(file_path);
-  stream.seekg(static_cast<int64_t>(cmd.actual_offset), std::ios::beg);
+std::optional<std::pair<DataChunk, chunk_index>>
+FileBlockMetaReaderMMAP::read_no_mmap(ChunkMetaData cmd) {
   xs::DataChunk chunk(std::move(cmd));
-  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
-  stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
-  INLINE_BENCHMARK_WALL_STOP("actual read");
+  _semaphore.access([&]() {
+    std::ifstream stream(_file_path);
+    stream.seekg(static_cast<int64_t>(chunk.getMetaData().actual_offset),
+                 std::ios::beg);
+    INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
+    stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
+    INLINE_BENCHMARK_WALL_STOP("actual read");
+  });
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
-// ----- FileBlockReader -----------------------------------------------------
 // _____________________________________________________________________________
 FileBlockReader::FileBlockReader(std::string file_path, size_t min_size,
                                  size_t max_oversize)
-    : _file_path(std::move(file_path)),
+    : FileReader<DataChunk>(std::move(file_path)),
       _min_size(min_size),
-      _max_oversize(max_oversize) {
-  _file_stream.open(_file_path);
-  if (!_file_stream.is_open()) {
-    throw std::runtime_error("ERROR: Could not open file '" + _file_path +
-                             "'.");
-  }
-}
+      _max_oversize(max_oversize) {}
 
 // _____________________________________________________________________________
-std::optional<std::pair<DataChunk, uint64_t>> FileBlockReader::getNextData() {
+std::optional<std::pair<DataChunk, chunk_index>>
+FileBlockReader::getNextData() {
   std::unique_lock lock(*_stream_mutex);
   INLINE_BENCHMARK_WALL_START(read, "reading");
   ChunkMetaData cmd{_current_index,
@@ -157,41 +170,48 @@ std::optional<std::pair<DataChunk, uint64_t>> FileBlockReader::getNextData() {
 // _____________________________________________________________________________
 FileBlockReaderMMAP::FileBlockReaderMMAP(std::string file_path, size_t min_size,
                                          size_t max_oversize)
-    : _file_path(std::move(file_path)),
+    : FileReader<DataChunk>(std::move(file_path)),
       _min_size(min_size),
       _max_oversize(max_oversize),
       // rounding _max size to a factorial of page size
       _mmap_read_size(sysconf(_SC_PAGE_SIZE) *
-                      ceil(static_cast<double>(min_size + max_oversize) /
-                           static_cast<double>(sysconf(_SC_PAGE_SIZE)))) {
+                      static_cast<int64_t>(
+                          ceil(static_cast<double>(min_size + max_oversize) /
+                               static_cast<double>(sysconf(_SC_PAGE_SIZE))))) {
   int fd = open(_file_path.c_str(), O_RDONLY);
   _file_size = lseek(fd, 0, SEEK_END);
   close(fd);
 }
 
-std::optional<std::pair<DataChunk, uint64_t>>
+// _____________________________________________________________________________
+std::optional<std::pair<DataChunk, chunk_index>>
 FileBlockReaderMMAP::getNextData() {
   std::unique_lock lock(*_stream_mutex);
   INLINE_BENCHMARK_WALL_START(read, "reading");
   if (_current_offset >= _file_size) {
     return {};
   }
+
   int fd = open(_file_path.c_str(), O_RDONLY);
   if (fd < 0) {
     throw std::runtime_error("ERROR: Could not open file '" + _file_path + "'");
   }
+
   size_t page_size = sysconf(_SC_PAGE_SIZE);
   size_t page_offset = _current_offset % page_size;
   INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
   char* buffer;
+
   void* mapped =
       mmap(nullptr, _mmap_read_size + page_size, PROT_READ, MAP_PRIVATE, fd,
            static_cast<int64_t>(_current_offset - page_offset));
   close(fd);
+
   if (mapped == MAP_FAILED) {
     // read data using std::ifstream
-    return FileBlockReaderMMAP::_read_no_mmap();
+    return FileBlockReaderMMAP::read_no_mmap();
   }
+
   buffer = static_cast<char*>(mapped);
   INLINE_BENCHMARK_WALL_STOP("actual read");
   // search new line char
@@ -210,18 +230,21 @@ FileBlockReaderMMAP::getNextData() {
       }
     }
   }
+
   size_t actual_size = offset - page_offset;
   xs::DataChunk chunk;
   chunk.assign_mmap_data(buffer, actual_size, page_offset);
   chunk.getMetaData() = {_current_index, _current_offset, _current_offset,
                          actual_size,    actual_size,     {}};
+
   _current_offset += actual_size;
+
   return std::make_pair(std::move(chunk), _current_index++);
 }
 
 // _____________________________________________________________________________
-std::optional<std::pair<DataChunk, uint64_t>>
-FileBlockReaderMMAP::_read_no_mmap() {
+std::optional<std::pair<DataChunk, chunk_index>>
+FileBlockReaderMMAP::read_no_mmap() {
   ChunkMetaData cmd{_current_index,
                     _current_offset,
                     _current_offset,
@@ -264,4 +287,4 @@ FileBlockReaderMMAP::_read_no_mmap() {
   return {};
 }
 
-}  // namespace xs::tasks
+}  // namespace xs::task::reader

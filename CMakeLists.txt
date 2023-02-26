@@ -23,9 +23,6 @@ option(XS_EXE_TESTS "run exhaustive executable tests" OFF)
 option(TASK_BENCHMARKS "compile task benchmark executables" OFF)
 
 IF (${MAIN_PROJECT})
-
-    add_executable(metafile_cat metafile_cat.cpp)
-    target_link_libraries(metafile_cat PUBLIC xsearch)
     # --- BOOST --------------------------------------------------------------------------------------------------------
     find_package(Boost 1.74 REQUIRED COMPONENTS program_options)
     include_directories(${Boost_INCLUDE_DIR})
@@ -46,15 +43,15 @@ include_directories(${PROJECT_SOURCE_DIR}/include/)
 add_subdirectory(src)
 # ----------------------------------------------------------------------------------------------------------------------
 
-IF (${MAIN_PROJECT})
-    # ___ InlineBench Library ______________________________________________________________________________________________________
-    add_library(InlineBench INTERFACE include/xsearch/utils/InlineBench.h)
-endif ()
 
 IF (${MAIN_PROJECT})
     # ___ Executables __________________________________________________________________________________________________
+    add_subdirectory(task_benchmarks)
     add_subdirectory(xsgrep)
     add_subdirectory(xsproc)
+
+    add_executable(metafile_cat metafile_cat.cpp)
+    target_link_libraries(metafile_cat PUBLIC xsearch)
 
     # ___ Tests ________________________________________________________________________________________________________
     include(CTest)
@@ -68,24 +65,4 @@ IF (${MAIN_PROJECT})
     add_test(SearchWrappersTest test/src/string_search/SearchWrappersTestMain)
     add_test(SimdSearchTest test/src/string_search/SimdSearchTestMain)
     add_test(xsearchTest test/src/xsearchTestMain)
-
-    # executable exhaustive tests --------------------------------------------------------------------------------------
-    IF (XS_EXE_TESTS)
-        configure_file(test/test_grep.sh test/test_grep.sh COPYONLY)
-        configure_file(test/test_xspreprocessor.sh test/test_xspreprocessor.sh COPYONLY)
-
-        configure_file(files/words.txt files/words.txt COPYONLY)
-        configure_file(scripts/createTestFile.py scripts/createTestFile.py COPYONLY)
-        add_test(grepTest bash test/test_grep.sh ${CMAKE_BINARY_DIR})
-        add_test(preprocessorTest bash test/test_grep.sh ${CMAKE_BINARY_DIR})
-
-        set_tests_properties(grepTest PROPERTIES TIMEOUT 10000)
-        set_tests_properties(grepTest PROPERTIES LABELS "grep_exe_test")
-        set_tests_properties(preprocessorTest PROPERTIES TIMEOUT 10000)
-        set_tests_properties(preprocessorTest PROPERTIES LABELS "preprocessor_exe_test")
-    endif ()
 endif ()
-
-#if (TASK_BENCHMARKS)
-    add_subdirectory(task_benchmarks)
-#endif()

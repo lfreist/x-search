@@ -9,8 +9,8 @@
  * GrepSearcher: The searcher used by the xs::Executor for searching results.
  */
 class GrepSearcher
-    : public xs::tasks::BaseReturnProcessor<xs::DataChunk,
-                                            std::vector<GrepPartialResult>> {
+    : public xs::task::base::ReturnProcessor<xs::DataChunk,
+                                             std::vector<GrepPartialResult>> {
  public:
   /**
    * @param options: search/output options for grep like results

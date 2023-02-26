@@ -1,2 +1,2 @@
-add_library(Tasks DataProvider.cpp InplaceProcessors.cpp ReturnProcessors.cpp)
-target_link_libraries(Tasks PUBLIC DataChunk Result MetaFile SearchUtils StringManipulation)
+add_subdirectory(base)
+add_subdirectory(defaults)

@@ -8,13 +8,13 @@
 typedef std::pair<xs::ChunkMetaData, xs::DataChunk> preprocess_result;
 
 class MetaDataCreator
-    : public xs::tasks::BaseReturnProcessor<xs::DataChunk, preprocess_result> {
+    : public xs::task::base::ReturnProcessor<xs::DataChunk, preprocess_result> {
  public:
   MetaDataCreator() = default;
   preprocess_result process(xs::DataChunk* data) const override;
 };
 
-class DataWriter : public xs::BaseResult<preprocess_result> {
+class DataWriter : public xs::result::base::Result<preprocess_result> {
  public:
   explicit DataWriter(const std::string& meta_file_path,
                       xs::CompressionType compression_type,

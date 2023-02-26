@@ -2,13 +2,13 @@
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
 #include <xsearch/string_search/simd_search.h>
-#include <xsearch/tasks/InplaceProcessors.h>
+#include <xsearch/tasks/defaults/processors.h>
 #include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/compression/Lz4Wrapper.h>
 #include <xsearch/utils/compression/ZstdWrapper.h>
 #include <xsearch/utils/string_utils.h>
 
-namespace xs::tasks {
+namespace xs::task::processor {
 
 // _____________________________________________________________________________
 void LZ4Decompressor::process(DataChunk* data) {
@@ -161,4 +161,4 @@ void ToLower::process(DataChunk* data) {
   utils::str::simd::toLower(data->data(), data->size());
 }
 
-}  // namespace xs::tasks
+}  // namespace xs::task::processor

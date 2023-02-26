@@ -47,7 +47,7 @@ bool is_utf8(const std::string& str) {
     if (num_bytes == 0) {
       if ((c & 0x80) == 0) {
         // is ASCII char -> valid
-        continue ;
+        continue;
       } else if ((c & 0xE0) == 0xC0) {
         // two byte char
         num_bytes = 1;
@@ -75,7 +75,9 @@ bool is_utf8(const std::string& str) {
 std::string escaped(const std::string& str) {
   std::string escaped;
   for (char c : str) {
-    if (c == '\\' || c == '.' || c == '[' || c == ']' || c == '(' || c == ')' || c == '{' || c == '}' || c == '|' || c == '*' || c == '+' || c == '?' || c == '^' || c == '$') {
+    if (c == '\\' || c == '.' || c == '[' || c == ']' || c == '(' || c == ')' ||
+        c == '{' || c == '}' || c == '|' || c == '*' || c == '+' || c == '?' ||
+        c == '^' || c == '$') {
       escaped.push_back('\\');
     }
     escaped.push_back(c);

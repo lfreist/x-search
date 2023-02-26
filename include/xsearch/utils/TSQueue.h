@@ -20,8 +20,6 @@ namespace xs::utils {
  */
 template <class T>
 class TSQueue {
-  FRIEND_TEST(TSQueueTest, constructor);
-
  public:
   [[maybe_unused]] explicit TSQueue(unsigned maxSize = 100) {
     _maxSize = maxSize;

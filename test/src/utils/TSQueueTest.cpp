@@ -29,16 +29,14 @@ TEST(TSQueueTest, constructor) {
   {
     TSQueue<int> q;
 
-    ASSERT_EQ(q._maxSize, 100);
-    ASSERT_TRUE(q._queue.empty());
-    ASSERT_FALSE(q._closed);
+    ASSERT_TRUE(q.empty());
+    ASSERT_FALSE(q.isClosed());
   }
   {
     TSQueue<int> q(5);
 
-    ASSERT_EQ(q._maxSize, 5);
-    ASSERT_TRUE(q._queue.empty());
-    ASSERT_FALSE(q._closed);
+    ASSERT_TRUE(q.empty());
+    ASSERT_FALSE(q.isClosed());
   }
 }
 

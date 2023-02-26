@@ -16,13 +16,13 @@
 #include <utility>
 #include <vector>
 
-namespace xs {
+namespace xs::result::base {
 
 template <typename T>
-class BaseResult {
+class Result {
  public:
-  BaseResult() = default;
-  virtual ~BaseResult() = default;
+  Result() = default;
+  virtual ~Result() = default;
 
   virtual void add(T partial_result) = 0;
   virtual void add(T partial_result, uint64_t id) = 0;
@@ -43,7 +43,7 @@ class BaseResult {
 };
 
 template <typename T>
-class ContainerResult : public BaseResult<std::vector<T>> {
+class ContainerResult : public Result<std::vector<T>> {
  public:
   template <typename R>
   class iterator {
@@ -130,7 +130,7 @@ class ContainerResult : public BaseResult<std::vector<T>> {
 // ----- count results ---------------------------------------------------------
 // For the CountResult, we also override the methods to sum up the values
 //  instead of collecting them in a std::vector.
-class CountResult : public BaseResult<uint64_t> {
+class CountResult : public Result<uint64_t> {
  public:
   class iterator {
    public:
@@ -177,24 +177,4 @@ class CountResult : public BaseResult<uint64_t> {
   uint64_t _sum_result = 0;
 };
 
-// ----- count results ---------------------------------------------------------
-class CountMatchesResult : public CountResult {};
-
-// ----- count matching lines --------------------------------------------------
-// we straight up inherit CountMatchesResult because all we need is a different
-//  type, while functionalities and methods remain the same...
-class CountLinesResult : public CountResult {};
-
-// ----- search match byte offsets ---------------------------------------------
-class MatchByteOffsetsResult : public ContainerResult<uint64_t> {};
-
-// ----- search line byte offsets ----------------------------------------------
-class LineByteOffsetsResult : public ContainerResult<uint64_t> {};
-
-// ----- search indices of matching lines --------------------------------------
-class LineIndicesResult : public ContainerResult<uint64_t> {};
-
-// ----- search matching lines -------------------------------------------------
-class LinesResult : public ContainerResult<std::string> {};
-
-}  // namespace xs
+}  // namespace xs::result::base

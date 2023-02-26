@@ -4,8 +4,9 @@
 #pragma once
 
 #include <immintrin.h>
-#include <string>
+
 #include <algorithm>
+#include <string>
 
 namespace xs::utils::str {
 

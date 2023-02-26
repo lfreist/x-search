@@ -47,5 +47,5 @@ void DataWriter::add(preprocess_result data) {
     _output_stream->write(data.second.data(),
                           static_cast<int64_t>(data.second.size()));
   }
-  _meta_file.writeChunkMetaData(data.first);
+  _meta_file.write_chunk_meta_data(data.first);
 }

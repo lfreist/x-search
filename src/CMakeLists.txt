@@ -1,14 +1,13 @@
 add_subdirectory(utils)
 add_subdirectory(string_search)
 add_subdirectory(tasks)
-
-add_library(Result ResultTypes.cpp)
+add_subdirectory(results)
 
 add_library(DataChunk DataChunk.cpp)
 add_library(MetaFile MetaFile.cpp)
 
-add_library(Searcher Executor.cpp)
-target_link_libraries(Searcher PUBLIC DataChunk MetaFile Tasks)
+add_library(Executor Executor.cpp)
+target_link_libraries(Executor PUBLIC DataChunk MetaFile DefaultTasks BaseTasks)
 
 add_library(xsearch xsearch.cpp)
-target_link_libraries(xsearch PUBLIC DataChunk MetaFile Searcher SearchUtils lz4 zstd)
+target_link_libraries(xsearch PUBLIC DataChunk StringUtils MetaFile Executor SearchUtils BaseTasks Results DefaultTasks lz4 zstd)

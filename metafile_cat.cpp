@@ -22,13 +22,13 @@ int main(int argc, char** argv) {
 
   xs::MetaFile meta_file(path, std::ios::in);
 
-  auto compression_type = meta_file.getCompressionType();
+  auto compression_type = meta_file.get_compression_type();
   std::cout << "Compression Type: "
             << xs::to_string(compression_type) << " (" << sizeof(compression_type) << ")" << std::endl;
 
   uint64_t counter = 0;
   while (true) {
-    auto md = meta_file.nextChunkMetaData();
+    auto md = meta_file.next_chunk_meta_data();
     if (!md.has_value()) {
       break;
     }

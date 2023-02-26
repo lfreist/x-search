@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace xs {
 
@@ -61,8 +62,23 @@ void ChunkMetaData::serialize(std::fstream* stream) const {
 }
 
 // _____________________________________________________________________________
-ChunkMetaData readChunkMetaData(std::fstream* stream) {
-  ChunkMetaData cmd{0, 0, 0, 0, 0, {}};
+bool ChunkMetaData::operator==(const ChunkMetaData& other) const {
+  return (chunk_index == other.chunk_index &&
+          actual_size == other.actual_size &&
+          original_size == other.original_size &&
+          actual_offset == other.actual_offset &&
+          original_offset == other.original_offset &&
+          line_mapping_data == other.line_mapping_data);
+}
+
+// _____________________________________________________________________________
+bool ChunkMetaData::operator<(const ChunkMetaData& other) const {
+  return chunk_index < other.chunk_index;
+}
+
+// _____________________________________________________________________________
+ChunkMetaData read_chunk_meta_data(std::fstream* stream) {
+  ChunkMetaData cmd;
   stream->read(reinterpret_cast<char*>(&cmd.original_offset),
                sizeof(cmd.original_offset));
   if (stream->eof()) {
@@ -87,43 +103,44 @@ ChunkMetaData readChunkMetaData(std::fstream* stream) {
 }
 
 // _____________________________________________________________________________
-MetaFile::MetaFile(const std::string& filePath, std::ios::openmode mode,
-                   CompressionType compression_type) {
-  _filePath = filePath;
-  _openMode = mode | std::ios::binary;
-  _metaFileStream.open(_filePath, _openMode);
-  if (!_metaFileStream.is_open()) {
-    throw std::runtime_error("Cannot open file '" + _filePath + "'");
+MetaFile::MetaFile(std::string file_path, std::ios::openmode mode,
+                   CompressionType compression_type)
+    : _compression_type(compression_type),
+      _file_path(std::move(file_path)),
+      _open_mode(mode | std::ios::binary),
+      _meta_file_stream(_file_path, _open_mode) {
+  if (!_meta_file_stream.is_open()) {
+    throw std::runtime_error("Cannot open file '" + _file_path + "'");
   }
-  _compressionType = compression_type;
-  if (mode == std::ios::out) {
-    _compressionType = _compressionType == UNKNOWN ? NONE : _compressionType;
-    _metaFileStream.write(reinterpret_cast<char*>(&_compressionType),
-                          sizeof(_compressionType));
+  if (_open_mode == (std::ios::out | std::ios::binary)) {
+    _compression_type = _compression_type == UNKNOWN ? NONE : _compression_type;
+    _meta_file_stream.write(reinterpret_cast<char*>(&_compression_type),
+                            sizeof(_compression_type));
   }
-  if (mode == std::ios::in && _compressionType == UNKNOWN) {
-    _metaFileStream.read(reinterpret_cast<char*>(&_compressionType),
-                         sizeof(_compressionType));
+  if (_open_mode == (std::ios::in | std::ios::binary) &&
+      _compression_type == UNKNOWN) {
+    _meta_file_stream.read(reinterpret_cast<char*>(&_compression_type),
+                           sizeof(_compression_type));
   }
 }
 
 // _____________________________________________________________________________
-MetaFile::MetaFile(MetaFile&& XSMetaFile) noexcept
-    : _metaFileStream(std::move(XSMetaFile._metaFileStream)) {
+MetaFile::MetaFile(MetaFile&& other) noexcept {
   std::unique_lock lock(_stream_mutex);
-  _filePath = std::move(XSMetaFile._filePath);
-  _openMode = XSMetaFile._openMode;
-  _compressionType = XSMetaFile._compressionType;
+  _meta_file_stream = std::move(other._meta_file_stream);
+  _file_path = std::move(other._file_path);
+  _open_mode = other._open_mode;
+  _compression_type = other._compression_type;
 }
 
 // _____________________________________________________________________________
-MetaFile::~MetaFile() { _metaFileStream.close(); }
+MetaFile::~MetaFile() { _meta_file_stream.close(); }
 
 // _____________________________________________________________________________
-std::optional<ChunkMetaData> MetaFile::nextChunkMetaData() {
+std::optional<ChunkMetaData> MetaFile::next_chunk_meta_data() {
   std::unique_lock lock(_stream_mutex);
-  ChunkMetaData cs = readChunkMetaData(&_metaFileStream);
-  if (_metaFileStream.eof()) {
+  ChunkMetaData cs = read_chunk_meta_data(&_meta_file_stream);
+  if (_meta_file_stream.eof()) {
     return {};
   }
   cs.chunk_index = _chunk_index++;
@@ -131,14 +148,13 @@ std::optional<ChunkMetaData> MetaFile::nextChunkMetaData() {
 }
 
 // _____________________________________________________________________________
-std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
-  INLINE_BENCHMARK_WALL_START(_, "read meta data");
+std::vector<ChunkMetaData> MetaFile::next_chunk_meta_data(uint32_t num) {
   std::unique_lock lock(_stream_mutex);
   std::vector<ChunkMetaData> cs;
   cs.reserve(num);
   for (uint32_t i = 0; i < num; ++i) {
-    auto cmd = readChunkMetaData(&_metaFileStream);
-    if (_metaFileStream.eof()) {
+    auto cmd = read_chunk_meta_data(&_meta_file_stream);
+    if (_meta_file_stream.eof()) {
       break;
     }
     cmd.chunk_index = _chunk_index++;
@@ -148,30 +164,39 @@ std::vector<ChunkMetaData> MetaFile::nextChunkMetaData(uint32_t num) {
 }
 
 // _____________________________________________________________________________
-void MetaFile::writeChunkMetaData(const ChunkMetaData& chunk) {
+void MetaFile::write_chunk_meta_data(const ChunkMetaData& chunk) {
   std::unique_lock lock(_stream_mutex);
-  assert(_openMode == (std::ios::out | std::ios::binary));
-  assert(_compressionType != UNKNOWN);
-  chunk.serialize(&_metaFileStream);
+  assert(_open_mode == (std::ios::out | std::ios::binary));
+  assert(_compression_type != UNKNOWN);
+  chunk.serialize(&_meta_file_stream);
 }
 
 // _____________________________________________________________________________
-CompressionType MetaFile::getCompressionType() const {
-  return _compressionType;
+CompressionType MetaFile::get_compression_type() const {
+  return _compression_type;
 }
+
+// _____________________________________________________________________________
+bool MetaFile::is_writable() const {
+  return _open_mode == (std::ios::out | std::ios::binary);
+}
+
+// _____________________________________________________________________________
+const std::string& MetaFile::get_file_path() const { return _file_path; }
 
 // ----- static ----------------------------------------------------------------
 // _____________________________________________________________________________
-CompressionType MetaFile::getCompressionType(const std::string& metaFilePath) {
-  std::ifstream metaFileStream(metaFilePath);
+CompressionType MetaFile::getCompressionType(
+    const std::string& meta_file_path) {
+  std::ifstream metaFileStream(meta_file_path);
   if (!metaFileStream.is_open()) {
-    throw std::runtime_error("Cannot open file '" + metaFilePath + "'.");
+    throw std::runtime_error("Cannot open file '" + meta_file_path + "'.");
   }
-  CompressionType compressionType(UNKNOWN);
-  metaFileStream.read(reinterpret_cast<char*>(&compressionType),
-                      sizeof(_compressionType));
+  CompressionType compression_type(UNKNOWN);
+  metaFileStream.read(reinterpret_cast<char*>(&compression_type),
+                      sizeof(_compression_type));
   metaFileStream.close();
-  return compressionType;
+  return compression_type;
 }
 
 }  // namespace xs

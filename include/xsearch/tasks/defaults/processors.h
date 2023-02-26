@@ -4,28 +4,14 @@
 #pragma once
 
 #include <xsearch/DataChunk.h>
+#include <xsearch/tasks/base/InplaceProcessor.h>
 
-namespace xs::tasks {
-
-/**
- * BaseInplaceProcessor: The base processor class that must be inherited by all
- * classes used as processors within the xs::Executor.
- *
- * @tparam DataT
- */
-template <class DataT>
-class BaseInplaceProcessor {
- public:
-  BaseInplaceProcessor() = default;
-  virtual ~BaseInplaceProcessor() = default;
-
-  virtual void process(DataT* data) = 0;
-};
+namespace xs::task::processor {
 
 /**
  * LZ4Decompressor: Predefined processor that decompresses LZ4 compressed data
  */
-class LZ4Decompressor : public BaseInplaceProcessor<DataChunk> {
+class LZ4Decompressor : public base::InplaceProcessor<DataChunk> {
  public:
   LZ4Decompressor() = default;
 
@@ -36,7 +22,7 @@ class LZ4Decompressor : public BaseInplaceProcessor<DataChunk> {
  * ZSTDDecompressor: A predefined processor that decompresses ZStandard
  *  compressed data
  */
-class ZSTDDecompressor : public BaseInplaceProcessor<DataChunk> {
+class ZSTDDecompressor : public base::InplaceProcessor<DataChunk> {
  public:
   ZSTDDecompressor() = default;
 
@@ -46,7 +32,7 @@ class ZSTDDecompressor : public BaseInplaceProcessor<DataChunk> {
 /**
  * LZ4Compressor: Predefined processor that decompresses LZ4 compressed data
  */
-class LZ4Compressor : public BaseInplaceProcessor<DataChunk> {
+class LZ4Compressor : public base::InplaceProcessor<DataChunk> {
  public:
   explicit LZ4Compressor(bool hc = false, int lvl = 1);
 
@@ -67,7 +53,7 @@ class LZ4Compressor : public BaseInplaceProcessor<DataChunk> {
  * ZSTDDecompressor: A predefined processor that decompresses ZStandard
  *  compressed data
  */
-class ZSTDCompressor : public BaseInplaceProcessor<DataChunk> {
+class ZSTDCompressor : public base::InplaceProcessor<DataChunk> {
  public:
   explicit ZSTDCompressor(int lvl = 3);
 
@@ -87,7 +73,7 @@ class ZSTDCompressor : public BaseInplaceProcessor<DataChunk> {
  * NewLineSearcher: A predefined processor searching new line indices and adds
  *  them to the mapping data of a xs::DataChunk.
  */
-class NewLineSearcher : public BaseInplaceProcessor<DataChunk> {
+class NewLineSearcher : public base::InplaceProcessor<DataChunk> {
  public:
   NewLineSearcher() = default;
   explicit NewLineSearcher(uint64_t distance);
@@ -110,11 +96,11 @@ class NewLineSearcher : public BaseInplaceProcessor<DataChunk> {
 /**
  * ToLower; A predefined processor that inplace transforms data to lower case.
  */
-class ToLower : public BaseInplaceProcessor<DataChunk> {
+class ToLower : public base::InplaceProcessor<DataChunk> {
  public:
   ToLower() = default;
 
   void process(DataChunk* data) override;
 };
 
-}  // namespace xs::tasks
+}  // namespace xs::task::processor

@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
 
   // ===== Setup xs::Executor for searching ====================================
 
-  std::vector<std::unique_ptr<xs::tasks::BaseInplaceProcessor<xs::DataChunk>>>
+  std::vector<std::unique_ptr<xs::task::base::InplaceProcessor<xs::DataChunk>>>
       processors;
 
   // check for compression and add decompression task --------------------------
@@ -127,17 +127,19 @@ int main(int argc, char** argv) {
     if (grep_options.line_number) {
       // this task creates new line mapping data necessary for searching line
       // numbers
-      processors.push_back(std::make_unique<xs::tasks::NewLineSearcher>());
+      processors.push_back(
+          std::make_unique<xs::task::processor::NewLineSearcher>());
     }
   } else {
     xs::MetaFile metaFile(meta_file_path, std::ios::in);
-    switch (metaFile.getCompressionType()) {
+    switch (metaFile.get_compression_type()) {
       case xs::CompressionType::LZ4:
-        processors.push_back(std::make_unique<xs::tasks::LZ4Decompressor>());
+        processors.push_back(
+            std::make_unique<xs::task::processor::LZ4Decompressor>());
         break;
       case xs::CompressionType::ZSTD:
         processors.emplace_back(
-            std::make_unique<xs::tasks::ZSTDDecompressor>());
+            std::make_unique<xs::task::processor::ZSTDDecompressor>());
         break;
       default:
         break;
@@ -145,12 +147,12 @@ int main(int argc, char** argv) {
   }
 
   // set reader ----------------------------------------------------------------
-  std::unique_ptr<xs::tasks::BaseDataProvider<xs::DataChunk>> reader;
+  std::unique_ptr<xs::task::base::DataProvider<xs::DataChunk>> reader;
   if (file_path.empty() || file_path == "-") {
     // read stdin
     // for porting to windows, we need to open 'CON' instead of '/dev/stdin'...
-    reader =
-        std::make_unique<xs::tasks::FileBlockReader>("/dev/stdin", chunk_size);
+    reader = std::make_unique<xs::task::reader::FileBlockReader>("/dev/stdin",
+                                                                 chunk_size);
   } else {
     if (meta_file_path.empty()) {
       // no meta file provided
@@ -158,19 +160,19 @@ int main(int argc, char** argv) {
         // don't read using mmap
         //  Why do we use mmap only of chunk_size >= 1 MiB? It might be that
         //  using mmap on smaller chunks causes memory fragmentation.
-        reader = std::make_unique<xs::tasks::FileBlockReader>(file_path,
-                                                              chunk_size);
+        reader = std::make_unique<xs::task::reader::FileBlockReader>(
+            file_path, chunk_size);
       } else {  // read using mmap
-        reader = std::make_unique<xs::tasks::FileBlockReaderMMAP>(
+        reader = std::make_unique<xs::task::reader::FileBlockReaderMMAP>(
             file_path, chunk_size);
       }
     } else {  // meta file provided
       if (no_mmap) {
         // don't read using mmap
-        reader = std::make_unique<xs::tasks::FileBlockMetaReader>(
+        reader = std::make_unique<xs::task::reader::FileBlockMetaReader>(
             file_path, meta_file_path);
       } else {  // read using mmap
-        reader = std::make_unique<xs::tasks::FileBlockMetaReaderMMAP>(
+        reader = std::make_unique<xs::task::reader::FileBlockMetaReaderMMAP>(
             file_path, meta_file_path);
       }
     }
@@ -179,12 +181,10 @@ int main(int argc, char** argv) {
   // set searchers -------------------------------------------------------------
   if (count) {
     // count set -> count results and output number in the end -----------------
-    auto searcher = std::make_unique<xs::tasks::LineCounter>(
-        grep_options.pattern,
-        grep_options.regex,
-        grep_options.ignore_case);
+    auto searcher = std::make_unique<xs::task::searcher::LineCounter>(
+        grep_options.pattern, grep_options.regex, grep_options.ignore_case);
     auto extern_searcher =
-        xs::Executor<xs::DataChunk, xs::CountResult, uint64_t>(
+        xs::Executor<xs::DataChunk, xs::result::base::CountResult, uint64_t>(
             num_threads, num_max_readers, std::move(reader),
             std::move(processors), std::move(searcher));
     extern_searcher.join();
@@ -192,13 +192,12 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
   } else {
     // no count set -> run grep and output results
-    auto searcher = std::make_unique<GrepSearcher>(
-        grep_options);
+    auto searcher = std::make_unique<GrepSearcher>(grep_options);
     auto extern_searcher =
-        xs::Executor<xs::DataChunk, GrepOutput, std::vector<GrepPartialResult>, GrepOptions>(
-            num_threads, num_max_readers, std::move(reader),
-            std::move(processors), std::move(searcher),
-            std::move(grep_options));
+        xs::Executor<xs::DataChunk, GrepOutput, std::vector<GrepPartialResult>,
+                     GrepOptions>(num_threads, num_max_readers,
+                                  std::move(reader), std::move(processors),
+                                  std::move(searcher), std::move(grep_options));
     extern_searcher.join();
   }
 
