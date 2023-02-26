@@ -6,6 +6,8 @@
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
 
+#include <functional>
+
 namespace xs::search {
 
 // ===== helpers ===============================================================

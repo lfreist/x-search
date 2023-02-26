@@ -10,6 +10,7 @@
 
 #include <mutex>
 #include <string>
+#include <functional>
 
 namespace xs::task::reader {
 

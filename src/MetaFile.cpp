@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <algorithm>
+#include <cassert>
 
 namespace xs {
 

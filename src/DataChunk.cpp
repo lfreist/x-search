@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <xsearch/DataChunk.h>
 
+#include <cstring>
 #include <utility>
 
 namespace xs {

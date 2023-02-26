@@ -4,6 +4,8 @@
 #include <xsearch/string_search/offset_mappings.h>
 #include <xsearch/string_search/simd_search.h>
 
+#include <algorithm>
+
 namespace xs::map::bytes {
 
 // _____________________________________________________________________________

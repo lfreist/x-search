@@ -6,6 +6,9 @@
 #include <xsearch/DataChunk.h>
 #include <xsearch/tasks/base/InplaceProcessor.h>
 
+#include <memory>
+#include <condition_variable>
+
 namespace xs::task::processor {
 
 /**

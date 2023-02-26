@@ -8,6 +8,8 @@
 #include <xsearch/utils/compression/ZstdWrapper.h>
 #include <xsearch/utils/string_utils.h>
 
+#include <cassert>
+
 namespace xs::task::processor {
 
 // _____________________________________________________________________________
