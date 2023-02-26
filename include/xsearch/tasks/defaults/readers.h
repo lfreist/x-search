@@ -132,7 +132,6 @@ class FileBlockReaderMMAP : public FileReader<DataChunk> {
  private:
   std::optional<std::pair<DataChunk, chunk_index>> read_no_mmap();
 
-  const std::string _file_path;
   const size_t _min_size;
   const size_t _max_oversize;
   const size_t _mmap_read_size;
