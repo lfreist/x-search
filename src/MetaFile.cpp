@@ -4,12 +4,12 @@
 #include <xsearch/MetaFile.h>
 #include <xsearch/utils/InlineBench.h>
 
+#include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <algorithm>
-#include <cassert>
 
 namespace xs {
 

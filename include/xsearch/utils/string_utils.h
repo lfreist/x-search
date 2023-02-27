@@ -25,6 +25,8 @@ bool is_ascii(const std::string& str);
 
 bool is_utf8(const std::string& str);
 
+bool is_utf8(const char* data, size_t size);
+
 std::string escaped(const std::string& str);
 
 }  // namespace xs::utils::str

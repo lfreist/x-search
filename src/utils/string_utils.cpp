@@ -72,6 +72,37 @@ bool is_utf8(const std::string& str) {
   return num_bytes == 0;
 }
 
+bool is_utf8(const char* data, size_t size) {
+  int num_bytes = 0;
+  for (size_t i = 0; i < size; ++i) {
+    if (num_bytes == 0) {
+      if ((data[i] & 0x80) == 0) {
+        // is ASCII char -> valid
+        continue;
+      } else if ((data[i] & 0xE0) == 0xC0) {
+        // two byte char
+        num_bytes = 1;
+      } else if ((data[i] & 0xf0) == 0xE0) {
+        // three byte char
+        num_bytes = 2;
+      } else if ((data[i] & 0xF8) == 0xF0) {
+        // four byte char
+        num_bytes = 3;
+      } else {
+        // invalid start byte
+        return false;
+      }
+    } else {
+      if ((data[i] & 0xC0) != 0x80) {
+        // invalid continuation byte for UTF-8
+        return false;
+      }
+      num_bytes--;
+    }
+  }
+  return num_bytes == 0;
+}
+
 std::string escaped(const std::string& str) {
   std::string escaped;
   for (char c : str) {

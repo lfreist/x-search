@@ -8,9 +8,9 @@
 #include <xsearch/tasks/base/DataProvider.h>
 #include <xsearch/utils/Semaphore.h>
 
+#include <functional>
 #include <mutex>
 #include <string>
-#include <functional>
 
 namespace xs::task::reader {
 
@@ -21,11 +21,12 @@ namespace xs::task::reader {
 template <typename T>
 class FileReader : public base::DataProvider<T> {
  public:
-  explicit FileReader(std::string file_path)
-      : _file_path(std::move(file_path)) {}
+  explicit FileReader(std::string file_path, bool read_binary = false)
+      : _file_path(std::move(file_path)), _read_binary(read_binary) {}
 
  protected:
   const std::string _file_path;
+  bool _read_binary;
 };
 
 /**
@@ -97,7 +98,8 @@ class FileBlockMetaReaderMMAP : public FileReader<DataChunk>, MetaReader {
 class FileBlockReader : public FileReader<DataChunk> {
  public:
   explicit FileBlockReader(std::string file_path, size_t min_size = 16777216,
-                           size_t max_oversize = 65536);
+                           size_t max_oversize = 65536,
+                           bool read_binary = false);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 
@@ -125,7 +127,8 @@ class FileBlockReaderMMAP : public FileReader<DataChunk> {
  public:
   explicit FileBlockReaderMMAP(std::string file_path,
                                size_t min_size = 16777216,
-                               size_t max_oversize = 65536);
+                               size_t max_oversize = 65536,
+                               bool read_binary = false);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 
