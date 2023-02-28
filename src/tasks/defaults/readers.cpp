@@ -120,7 +120,13 @@ FileBlockReader::FileBlockReader(std::string file_path, size_t min_size,
                                  size_t max_oversize, bool read_binary)
     : FileReader<DataChunk>(std::move(file_path), read_binary),
       _min_size(min_size),
-      _max_oversize(max_oversize) {}
+      _max_oversize(max_oversize),
+      _file_stream(_file_path) {
+  if (!_file_stream.is_open()) {
+    std::cerr << "Could not open file '" << _file_path << "'." << std::endl;
+    exit(3);
+  }
+}
 
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, chunk_index>>
