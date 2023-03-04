@@ -1,24 +1,21 @@
 // Copyright 2023, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
-#include <re2/re2.h>
 #include <xsearch/utils/InlineBench.h>
 
 #include <boost/program_options.hpp>
+#include <boost/regex.hpp>
 #include <fstream>
 #include <iostream>
 
 namespace po = boost::program_options;
 
-uint64_t count(const char* data, size_t size, const re2::RE2& pattern) {
+uint64_t count(const std::string& data, const boost::regex& pattern) {
   uint64_t counter = 0;
-  re2::StringPiece input(data, size);
-  re2::StringPiece match;
-  while (re2::RE2::PartialMatch(input, pattern, &match)) {
-    size_t shift = match.data() - input.data();
-    counter++;
-    shift += match.size();
-    input.remove_prefix(shift);
+  boost::sregex_token_iterator it(data.begin(), data.end(), pattern, 0);
+  boost::sregex_token_iterator end;
+  for (; it != end; ++it) {
+    ++counter;
   }
   return counter;
 }
@@ -78,19 +75,13 @@ int main(int argc, char** argv) {
   size_t file_size = stream.tellg();
   stream.seekg(0, std::ios::beg);
 
-  std::vector<char> content(file_size);
+  std::string content;
+  content.resize(file_size);
   stream.read(content.data(), content.size());
 
-  // std::cout << content.size() << std::endl;
-  // return 0;
-
-  re2::RE2::Options re2_options;
-  re2_options.set_case_sensitive(!case_insensitive);
-  re2_options.set_posix_syntax(true);
-
-  std::unique_ptr<re2::RE2> regex_pattern;
+  std::unique_ptr<boost::regex> regex_pattern;
   if (literal) {
-    std::string escaped_pattern("(");
+    std::string escaped_pattern;
     for (char c : pattern) {
       if (c == '\\' || c == '.' || c == '[' || c == ']' || c == '(' ||
           c == ')' || c == '{' || c == '}' || c == '|' || c == '*' ||
@@ -99,15 +90,13 @@ int main(int argc, char** argv) {
       }
       escaped_pattern += c;
     }
-    escaped_pattern.push_back(')');
-    regex_pattern = std::make_unique<re2::RE2>(escaped_pattern, re2_options);
+    regex_pattern = std::make_unique<boost::regex>(escaped_pattern);
   } else {
-    regex_pattern = std::make_unique<re2::RE2>(std::string('(' + pattern + ')'),
-                                               re2_options);
+    regex_pattern = std::make_unique<boost::regex>(std::string(pattern));
   }
 
   INLINE_BENCHMARK_WALL_START(_, "search");
-  auto c = count(content.data(), content.size(), *regex_pattern);
+  auto c = count(content, *regex_pattern);
   INLINE_BENCHMARK_WALL_STOP("search");
 
   std::cout << c << std::endl;

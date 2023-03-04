@@ -1,0 +1,17 @@
+{
+  "timer": "InlineBench time",
+  "name": "comparing reader functions",
+  "description": "",
+  "commands": {
+    "mmap": [
+    ],
+    "posix read": [
+    ],
+    "fread": [
+    ],
+    "std::ifstream::read": [
+    ]
+  },
+  "setup_cmd": [],
+  "cleanup_cmd": []
+}

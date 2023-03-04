@@ -1,0 +1,16 @@
+{
+  "timer": "InlineBench",
+  "name": "comparing regex searchers",
+  "description": "",
+  "commands": {
+    "RE2": [
+    ],
+    "boost::regex": [
+    ],
+    "std::strstr": [],
+    "std::string::find": [],
+    "simd::strstr": []
+  },
+  "setup_cmd": [],
+  "cleanup_cmd": []
+}

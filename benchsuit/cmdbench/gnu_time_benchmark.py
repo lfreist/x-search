@@ -8,16 +8,18 @@ import platform
 import statistics
 import subprocess
 
-import cmdbench
+from base import (Command, CommandResult, CommandFailedError, InvalidCommandError, BenchmarkResult, Benchmark,
+                  get_cpu_name, log)
+
 from typing import List, Tuple
 import tempfile
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-class GNUTimeResult(cmdbench.CommandResult):
+class GNUTimeResult(CommandResult):
     def __init__(self, command, wall_s: float, usr_cpu_s: float, sys_cpu_s: float):
-        cmdbench.CommandResult.__init__(self, command)
+        CommandResult.__init__(self, command)
         self.wall_s = [wall_s]
         self.usr_cpu_s = [usr_cpu_s]
         self.sys_cpu_s = [sys_cpu_s]
@@ -63,24 +65,19 @@ class GNUTimeResult(cmdbench.CommandResult):
             self["cpu"]) == statistics.mean(other["cpu"])
 
 
-class GNUTimeCommand(cmdbench.Command):
-    def __init__(self, name: str, cmd: List[str] | str, pre_commands: List[cmdbench.Command] = None):
-        cmdbench.Command.__init__(self, name, cmd)
-        self.pre_commands = pre_commands if pre_commands is not None else []
+class GNUTimeCommand(Command):
+    def __init__(self, name: str, cmd: List[str] | str, cwd: str | None = None):
+        Command.__init__(self, name, cmd, cwd)
 
     def _timed_command(self) -> List[str] | str:
         if type(self.cmd) == str:
             return f"/usr/bin/time -f '%e\t%U\t%S' {self.cmd}"
         return ["/usr/bin/time", "-f", "%e\t%U\t%S"] + self.cmd
 
-    def run(self, drop_cache: bool = False) -> GNUTimeResult | None:
-        for cmd in self.pre_commands:
-            cmd.run()
-        if drop_cache:
-            cmdbench.drop_ram_cache()
+    def run(self) -> GNUTimeResult | None:
         tmp_file = tempfile.TemporaryFile()
-        out = subprocess.Popen(self._timed_command(), stdout=tmp_file, stderr=subprocess.PIPE,
-                               shell=(type(self.cmd) == str)).communicate()[1]
+        out = subprocess.Popen(self._timed_command(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               shell=(type(self.cmd) == str), cwd=self.cwd).communicate()[1]
         tmp_file.close()
         out = out.decode()
         wall, usr_cpu, sys_cpu = out.split('\t')
@@ -90,15 +87,17 @@ class GNUTimeCommand(cmdbench.Command):
             return None
 
 
-class GNUTimeBenchmarkResult(cmdbench.BenchmarkResult):
+class GNUTimeBenchmarkResult(BenchmarkResult):
     def __init__(self, benchmark_name: str):
-        cmdbench.BenchmarkResult.__init__(self, benchmark_name)
+        BenchmarkResult.__init__(self, benchmark_name)
 
     def plot(self, path: str = "") -> None:
         mpl.style.use("seaborn-v0_8")
         fig, axs = plt.subplots(1, 2, figsize=(8, 10))
-        self._add_subplot(axs[0], "Wall Time [s]", self._get_plot_data("wall"))
-        self._add_subplot(axs[1], "CPU Time [s]", self._get_plot_data("cpu"))
+        fig.suptitle(self.benchmark_name, fontsize=16)
+        self._add_subplot(axs[0], "Wall Time", self._get_plot_data("wall"))
+        self._add_subplot(axs[1], "CPU Time", self._get_plot_data("cpu"))
+        axs[0].set_ylabel("Time [s]")
         plt.tight_layout()
         if path:
             plt.savefig(path, format="pdf")
@@ -107,7 +106,6 @@ class GNUTimeBenchmarkResult(cmdbench.BenchmarkResult):
 
     @staticmethod
     def _add_subplot(axs, title: str, data: List[Tuple[str, float, float]]) -> None:
-        data.sort(key=lambda v: v[0])  # sort by x label (cmd name) so that we get the same order in all subplots
         x = []
         y = []
         y_err = []
@@ -140,18 +138,23 @@ class GNUTimeBenchmarkResult(cmdbench.BenchmarkResult):
         return ret
 
 
-class GNUTimeBenchmark(cmdbench.Benchmark):
-    def __init__(self, name: str, commands: List[GNUTimeCommand], setup_commands: List[cmdbench.Command] = None,
-                 cleanup_commands: List[cmdbench.Command] = None, iterations: int = 3, drop_cache: bool = False):
-        cmdbench.Benchmark.__init__(self, name, commands, setup_commands, cleanup_commands, iterations, drop_cache)
+class GNUTimeBenchmark(Benchmark):
+    def __init__(self, name: str, commands: List[GNUTimeCommand], setup_commands: List[Command] = None,
+                 cleanup_commands: List[Command] = None, iterations: int = 3,
+                 drop_cache: Command | None = None):
+        Benchmark.__init__(self, name, commands, setup_commands, cleanup_commands, iterations, drop_cache)
 
     def _run_benchmarks(self) -> GNUTimeBenchmarkResult:
         result = GNUTimeBenchmarkResult(self.name)
         for iteration in range(self.iterations):
             for cmd in self.commands:
-                cmdbench.log(f"  {iteration}/{self.iterations}: {cmd.name}", end='\r', flush=True)
-                part_res = cmd.run(self.drop_cache)
+                if self.drop_cache is None:
+                    cmd.run()
+                else:
+                    self.drop_cache.run()
+                log(f"  {iteration}/{self.iterations}: {cmd}", end='\r', flush=True)
+                part_res = cmd.run()
                 if part_res:
                     result += part_res
-        cmdbench.log()
+        log()
         return result

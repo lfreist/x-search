@@ -2,7 +2,7 @@
 <project version="4">
   <component name="CMakeSharedSettings">
     <configurations>
-      <configuration PROFILE_NAME="Benchmark" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-DBENCHMARK&quot; -DRE2_BUILD_TESTING=off -DTASK_BENCHMARKS=ON" />
+      <configuration PROFILE_NAME="Benchmark" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-DBENCHMARK&quot; -DRE2_BUILD_TESTING=off" />
       <configuration PROFILE_NAME="Debug-gcc" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
       <configuration PROFILE_NAME="Release-gcc" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
       <configuration PROFILE_NAME="Release-clang" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
