@@ -35,6 +35,8 @@ char* strchr(char* str, size_t str_len, char c);
 char* strstr(char* str, size_t str_len, const char* pattern,
              size_t pattern_len);
 
+char* strcasestr(char* str, size_t str_len, const char* pat, size_t pat_len);
+
 /**
  * simd::strstr wrapper for getting offset of the next match of pattern in
  * respect to the start of str.

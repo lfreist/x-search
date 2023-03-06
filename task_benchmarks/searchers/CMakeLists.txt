@@ -1,3 +1,8 @@
+add_subdirectory(case)
+add_subdirectory(icase)
+add_subdirectory(regex)
+add_subdirectory(regex_icase)
+
 add_executable(re2_search re2_search.cpp)
 target_link_libraries(re2_search PUBLIC re2::re2 boost_program_options)
 

@@ -135,6 +135,7 @@ char* strstr(char* str, size_t str_len, const char* pattern,
       const unsigned bitpos =
           __builtin_ctz(mask);  // get index of first true value
       // compare all bytes if a match was found
+      // TODO: this could be pattern_len -2 right?
       if (memcmp(str + bitpos + 1, pattern + 1, pattern_len - 1) == 0) {
         // return position of found match
         return str + bitpos;
@@ -150,13 +151,15 @@ char* strstr(char* str, size_t str_len, const char* pattern,
 }
 
 /// helper function for strstr
-uint32_t get_mask(const __m256i first, const __m256i last, const __m256i block_first, const __m256i block_last) {
+uint32_t get_mask(const __m256i first, const __m256i last,
+                  const __m256i block_first, const __m256i block_last) {
   const __m256i eq_first = _mm256_cmpeq_epi8(first, block_first);
   const __m256i eq_last = _mm256_cmpeq_epi8(last, block_last);
   return _mm256_movemask_epi8(_mm256_and_si256(eq_first, eq_last));
 }
 
-bool compare_case_insensitive(const char* str, const char* pattern, size_t len) {
+bool compare_case_insensitive(const char* str, const char* pattern,
+                              size_t len) {
   for (size_t i = 0; i < len; ++i) {
     if (std::tolower(str[i]) != std::tolower(pattern[i])) {
       return false;
@@ -165,12 +168,14 @@ bool compare_case_insensitive(const char* str, const char* pattern, size_t len) 
   return true;
 }
 
-char* make_compare(uint32_t mask, char* str, const char* pattern, size_t pattern_len) {
+char* make_compare(uint32_t mask, char* str, const char* pattern,
+                   size_t pattern_len) {
   while (mask != 0) {
     // get index of first true value
     const unsigned bitpos = __builtin_ctz(mask);
     // compare all bytes if a match was found
-    if (compare_case_insensitive(str + bitpos + 1, pattern + 1, pattern_len - 1)) {
+    if (compare_case_insensitive(str + bitpos + 1, pattern + 1,
+                                 pattern_len - 2)) {
       // return position of found match
       return str + bitpos;
     }
@@ -186,42 +191,63 @@ char* strcasestr(char* str, size_t str_len, const char* pat, size_t pat_len) {
     return rest_strcasestr(str, str_len, pat, pat_len);
   }
   // load first char of pattern in lower and upper case
-  const __m256i first_lower = _mm256_set1_epi8(static_cast<char>(std::tolower(pat[0])));
-  const __m256i first_upper = _mm256_set1_epi8(static_cast<char>(std::toupper(pat[0])));
+  const __m256i first_lower =
+      _mm256_set1_epi8(static_cast<char>(std::tolower(pat[0])));
+  const __m256i first_upper =
+      _mm256_set1_epi8(static_cast<char>(std::toupper(pat[0])));
   // load last char of pattern in lower and upper case
-  const __m256i last_lower = _mm256_set1_epi8(static_cast<char>(std::tolower(pat[pat_len - 1])));
-  const __m256i last_upper = _mm256_set1_epi8(static_cast<char>(std::toupper(pat[pat_len - 1])));
+  const __m256i last_lower =
+      _mm256_set1_epi8(static_cast<char>(std::tolower(pat[pat_len - 1])));
+  const __m256i last_upper =
+      _mm256_set1_epi8(static_cast<char>(std::toupper(pat[pat_len - 1])));
 
   // we are using 256 bits (32 bytes) vectors. If remaining str is smaller than
   // 32, we stop and perform std::strstr on the remaining str
+
+  char** results = new char*[4];
+
   while (str_len >= 32 + pat_len) {
     // load next 32 bytes
     const __m256i block_first =
         _mm256_loadu_si256(reinterpret_cast<const __m256i*>(str));
     // load 32 bytes stating at offset (pattern_len -1)
-    const __m256i block_last = _mm256_loadu_si256(
-        reinterpret_cast<const __m256i*>(str + pat_len - 1));
+    const __m256i block_last =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(str + pat_len - 1));
 
     // create mask and compare for all 4 possible case combinations
+    // get result fo a...a
     uint32_t mask = get_mask(first_lower, last_lower, block_first, block_last);
     char* res = make_compare(mask, str, pat, pat_len);
-    if (res != nullptr) {
-      return res;
-    }
+    results[0] = res;
+    // A...a
     mask = get_mask(first_upper, last_lower, block_first, block_last);
     res = make_compare(mask, str, pat, pat_len);
-    if (res != nullptr) {
-      return res;
-    }
+    results[1] = res;
+    // A...A
     mask = get_mask(first_upper, last_upper, block_first, block_last);
     res = make_compare(mask, str, pat, pat_len);
-    if (res != nullptr) {
-      return res;
-    }
+    results[2] = res;
+    // a...A
     mask = get_mask(first_lower, last_upper, block_first, block_last);
     res = make_compare(mask, str, pat, pat_len);
-    if (res != nullptr) {
-      return res;
+    results[3] = res;
+
+    char* first = nullptr;
+    for (int i = 0; i < 4; ++i) {
+      if (results[i] == nullptr) {
+        continue;
+      }
+      if (first == nullptr) {
+        first = results[i];
+        continue;
+      }
+      if (first > results[i]) {
+        first = results[i];
+      }
+    }
+    if (first != nullptr) {
+      delete[] results;
+      return first;
     }
 
     // decrease str_len by number of read bytes
@@ -229,6 +255,7 @@ char* strcasestr(char* str, size_t str_len, const char* pat, size_t pat_len) {
     // shift str pointer to new start
     str += 32;
   }
+  delete[] results;
   return rest_strstr(str, str_len, pat, pat_len);
 }
 

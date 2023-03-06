@@ -6,7 +6,7 @@
 
 #include <cstring>
 
-using namespace xs::search::simd;
+using namespace xs::search;
 
 static char dummy_text[1241] =
     "Liane reindorsing two-time zippering chromolithography rainbowweed "
@@ -33,62 +33,108 @@ static char dummy_text[1241] =
     "well-centered by-job crop-tailed vagrantism condescensively\1";
 
 TEST(simd_searchTest, strchr) {
-  ASSERT_EQ(strchr(dummy_text, 1240, 'L'), strchr(dummy_text, 'L'));
-  ASSERT_EQ(strchr(dummy_text, 1240, '\n'), strchr(dummy_text, '\n'));
-  ASSERT_EQ(strchr(dummy_text, 1240, '\1'), strchr(dummy_text, '\1'));
-  ASSERT_EQ(strchr(dummy_text, 1240, '\2'), strchr(dummy_text, '\2'));
+  ASSERT_EQ(simd::strchr(dummy_text, 1240, 'L'), strchr(dummy_text, 'L'));
+  ASSERT_EQ(simd::strchr(dummy_text, 1240, '\n'), strchr(dummy_text, '\n'));
+  ASSERT_EQ(simd::strchr(dummy_text, 1240, '\1'), strchr(dummy_text, '\1'));
+  ASSERT_EQ(simd::strchr(dummy_text, 1240, '\2'), strchr(dummy_text, '\2'));
 }
 
 TEST(simd_searchTest, strstr) {
-  ASSERT_EQ(strstr(dummy_text, 1240, "Liane", 5), strstr(dummy_text, "Liane"));
-  ASSERT_EQ(strstr(dummy_text, 1240,
+  ASSERT_EQ(simd::strstr(dummy_text, 1240, "Liane", 5),
+            strstr(dummy_text, "Liane"));
+  ASSERT_EQ(
+      simd::strstr(dummy_text, 1240,
                    "smooth-bellied chirognostic inkos BVM antigraphy pagne "
                    "bicorne complementizer commorant ever-endingly sheikhly",
                    110),
-            strstr(dummy_text,
-                   "smooth-bellied chirognostic inkos BVM antigraphy pagne "
-                   "bicorne complementizer commorant ever-endingly sheikhly"));
-  ASSERT_EQ(strstr(dummy_text, 1240, "Helladic", 8),
+      strstr(dummy_text,
+             "smooth-bellied chirognostic inkos BVM antigraphy pagne "
+             "bicorne complementizer commorant ever-endingly sheikhly"));
+  ASSERT_EQ(simd::strstr(dummy_text, 1240, "Helladic", 8),
             strstr(dummy_text, "Helladic"));
-  ASSERT_EQ(strstr(dummy_text, 1240, "ly\1", 3), strstr(dummy_text, "ly\1"));
-  ASSERT_EQ(strstr(dummy_text, 1240, "jkahgsf", 7),
+  ASSERT_EQ(simd::strstr(dummy_text, 1240, "ly\1", 3),
+            strstr(dummy_text, "ly\1"));
+  ASSERT_EQ(simd::strstr(dummy_text, 1240, "jkahgsf", 7),
             strstr(dummy_text, "jkahgsf"));
 }
 
 TEST(simd_searchTest, findNext) {
-  ASSERT_EQ(findNext("Liane", 5, dummy_text, 1240, 0), 0);
-  ASSERT_EQ(findNext("smooth-bellied chirognostic inkos BVM antigraphy pagne "
+  ASSERT_EQ(simd::findNext("Liane", 5, dummy_text, 1240, 0), 0);
+  ASSERT_EQ(
+      simd::findNext("smooth-bellied chirognostic inkos BVM antigraphy pagne "
                      "bicorne complementizer commorant ever-endingly sheikhly",
                      110, dummy_text, 1240, 0),
-            113);
-  ASSERT_EQ(findNext("Helladic", 8, dummy_text, 1240, 0), 346);
-  ASSERT_EQ(findNext("ly\1", 3, dummy_text, 1240, 0), 1237);
-  ASSERT_EQ(findNext("jkahgsf", 7, dummy_text, 1240, 0), -1);
-  ASSERT_EQ(findNext("ia", 2, dummy_text, 1240, 0), 1);
-  ASSERT_EQ(findNext("ia", 2, dummy_text, 1240, 3), 455);
+      113);
+  ASSERT_EQ(simd::findNext("Helladic", 8, dummy_text, 1240, 0), 346);
+  ASSERT_EQ(simd::findNext("ly\1", 3, dummy_text, 1240, 0), 1237);
+  ASSERT_EQ(simd::findNext("jkahgsf", 7, dummy_text, 1240, 0), -1);
+  ASSERT_EQ(simd::findNext("ia", 2, dummy_text, 1240, 0), 1);
+  ASSERT_EQ(simd::findNext("ia", 2, dummy_text, 1240, 3), 455);
 }
 
 TEST(simd_searchTest, findNextNewLine) {
-  ASSERT_EQ(findNextNewLine(dummy_text, 1240, 0), 223);
-  ASSERT_EQ(findNextNewLine(dummy_text, 1240, 224), 282);
-  ASSERT_EQ(findNextNewLine(dummy_text, 1240, 283), 728);
-  ASSERT_EQ(findNextNewLine(dummy_text, 1240, 729), -1);
+  ASSERT_EQ(simd::findNextNewLine(dummy_text, 1240, 0), 223);
+  ASSERT_EQ(simd::findNextNewLine(dummy_text, 1240, 224), 282);
+  ASSERT_EQ(simd::findNextNewLine(dummy_text, 1240, 283), 728);
+  ASSERT_EQ(simd::findNextNewLine(dummy_text, 1240, 729), -1);
 }
 
 TEST(simd_searchTest, findAllPerLine) {
-  ASSERT_EQ(findAllPerLine("is", 2, dummy_text, 1240), 2);
-  ASSERT_EQ(findAllPerLine("th", 2, dummy_text, 1240), 3);
-  ASSERT_EQ(findAllPerLine("Van", 3, dummy_text, 1240), 1);
-  ASSERT_EQ(findAllPerLine("y\1", 2, dummy_text, 1240), 1);
-  ASSERT_EQ(findAllPerLine("Liane", 5, dummy_text, 1240), 1);
-  ASSERT_EQ(findAllPerLine("Vansdf", 6, dummy_text, 1240), 0);
+  ASSERT_EQ(simd::findAllPerLine("is", 2, dummy_text, 1240), 2);
+  ASSERT_EQ(simd::findAllPerLine("th", 2, dummy_text, 1240), 3);
+  ASSERT_EQ(simd::findAllPerLine("Van", 3, dummy_text, 1240), 1);
+  ASSERT_EQ(simd::findAllPerLine("y\1", 2, dummy_text, 1240), 1);
+  ASSERT_EQ(simd::findAllPerLine("Liane", 5, dummy_text, 1240), 1);
+  ASSERT_EQ(simd::findAllPerLine("Vansdf", 6, dummy_text, 1240), 0);
 }
 
 TEST(simd_searchTest, findAll) {
-  ASSERT_EQ(findAll("is", 2, dummy_text, 1240), 8);
-  ASSERT_EQ(findAll("th", 2, dummy_text, 1240), 5);
-  ASSERT_EQ(findAll("Van", 3, dummy_text, 1240), 1);
-  ASSERT_EQ(findAll("y\1", 2, dummy_text, 1240), 1);
-  ASSERT_EQ(findAll("Liane", 5, dummy_text, 1240), 1);
-  ASSERT_EQ(findAll("Vansdf", 6, dummy_text, 1240), 0);
+  ASSERT_EQ(simd::findAll("is", 2, dummy_text, 1240), 8);
+  ASSERT_EQ(simd::findAll("th", 2, dummy_text, 1240), 5);
+  ASSERT_EQ(simd::findAll("Van", 3, dummy_text, 1240), 1);
+  ASSERT_EQ(simd::findAll("y\1", 2, dummy_text, 1240), 1);
+  ASSERT_EQ(simd::findAll("Liane", 5, dummy_text, 1240), 1);
+  ASSERT_EQ(simd::findAll("Vansdf", 6, dummy_text, 1240), 0);
+}
+
+TEST(simd_searchTest, strcasestr) {
+  std::string test("moin and Hello and hello");
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hello", 5),
+            strcasestr(test.data(), "hello"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "HELLO", 5),
+            strcasestr(test.data(), "HELLO"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hElLO", 5),
+            strcasestr(test.data(), "hElLO"));
+  test.assign("moin and hELLo and HELLO");
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hello", 5),
+            strcasestr(test.data(), "hello"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "HELLO", 5),
+            strcasestr(test.data(), "HELLO"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hElLO", 5),
+            strcasestr(test.data(), "hElLO"));
+  test.assign("moin and HELLO and hello");
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hello", 5),
+            strcasestr(test.data(), "hello"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "HELLO", 5),
+            strcasestr(test.data(), "HELLO"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hElLO", 5),
+            strcasestr(test.data(), "hElLO"));
+  test.assign("moin and hello and Hello");
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hello", 5),
+            strcasestr(test.data(), "hello"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "HELLO", 5),
+            strcasestr(test.data(), "HELLO"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hElLO", 5),
+            strcasestr(test.data(), "hElLO"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "kerm", 5),
+            strcasestr(test.data(), "kerm"));
+  test.assign("moin and hellO and Hello");
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hello", 5),
+            strcasestr(test.data(), "hello"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "HELLO", 5),
+            strcasestr(test.data(), "HELLO"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "hElLO", 5),
+            strcasestr(test.data(), "hElLO"));
+  ASSERT_EQ(simd::strcasestr(test.data(), test.size(), "kerm", 5),
+            strcasestr(test.data(), "kerm"));
 }

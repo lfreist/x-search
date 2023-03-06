@@ -10,8 +10,8 @@ namespace xs::utils::str::simd {
 
 void toLower(char* src, size_t size) {
   __m256i diff = _mm256_set1_epi8('a' - 'A');
-  __m256i A = _mm256_set1_epi8('A');
-  __m256i Z = _mm256_set1_epi8('Z');
+  __m256i A = _mm256_set1_epi8('A' - 1);
+  __m256i Z = _mm256_set1_epi8('Z' + 1);
   while (size >= 32) {
     const __m256i data =
         _mm256_loadu_si256(reinterpret_cast<const __m256i*>(src));

@@ -1,0 +1,12 @@
+add_executable(std_strcasestr std_strcasestr.cpp)
+
+add_executable(std_tolower_strstr std_tolower_strstr.cpp)
+
+add_executable(simd_strcasestr simd_strcasestr.cpp)
+target_link_libraries(simd_strcasestr xsearch)
+
+add_executable(simd_tolower_strstr simd_tolower_strstr.cpp)
+target_link_libraries(simd_tolower_strstr xsearch)
+
+add_executable(re2_icase_literal re2_icase_literal.cpp)
+target_link_libraries(re2_icase_literal re2::re2)
