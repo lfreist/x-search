@@ -117,8 +117,8 @@ FileBlockMetaReaderMMAP::read_no_mmap(ChunkMetaData cmd) {
 
 // _____________________________________________________________________________
 FileBlockReader::FileBlockReader(std::string file_path, size_t min_size,
-                                 size_t max_oversize, bool read_binary)
-    : FileReader<DataChunk>(std::move(file_path), read_binary),
+                                 size_t max_oversize)
+    : FileReader<DataChunk>(std::move(file_path)),
       _min_size(min_size),
       _max_oversize(max_oversize),
       _file_stream(_file_path) {
@@ -176,8 +176,8 @@ FileBlockReader::getNextData() {
 
 // _____________________________________________________________________________
 FileBlockReaderMMAP::FileBlockReaderMMAP(std::string file_path, size_t min_size,
-                                         size_t max_oversize, bool read_binary)
-    : FileReader<DataChunk>(std::move(file_path), read_binary),
+                                         size_t max_oversize)
+    : FileReader<DataChunk>(std::move(file_path)),
       _min_size(min_size),
       _max_oversize(max_oversize),
       // rounding _max size to a factorial of page size

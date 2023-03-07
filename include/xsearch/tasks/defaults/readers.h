@@ -21,7 +21,7 @@ namespace xs::task::reader {
 template <typename T>
 class FileReader : public base::DataProvider<T> {
  public:
-  explicit FileReader(std::string file_path, bool read_binary = false)
+  explicit FileReader(std::string file_path)
       : _file_path(std::move(file_path)) {}
 
  protected:
@@ -97,8 +97,7 @@ class FileBlockMetaReaderMMAP : public FileReader<DataChunk>, MetaReader {
 class FileBlockReader : public FileReader<DataChunk> {
  public:
   explicit FileBlockReader(std::string file_path, size_t min_size = 16777216,
-                           size_t max_oversize = 65536,
-                           bool read_binary = false);
+                           size_t max_oversize = 65536);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 
@@ -126,8 +125,7 @@ class FileBlockReaderMMAP : public FileReader<DataChunk> {
  public:
   explicit FileBlockReaderMMAP(std::string file_path,
                                size_t min_size = 16777216,
-                               size_t max_oversize = 65536,
-                               bool read_binary = false);
+                               size_t max_oversize = 65536);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 
