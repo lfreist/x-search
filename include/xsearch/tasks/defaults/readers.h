@@ -63,7 +63,7 @@ class MetaReader {
 class FileBlockMetaReader : public FileReader<DataChunk>, MetaReader {
  public:
   FileBlockMetaReader(std::string file_path, std::string meta_file_path,
-                      int max_readers = 1);
+                      int max_readers);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 };
@@ -78,7 +78,7 @@ class FileBlockMetaReader : public FileReader<DataChunk>, MetaReader {
 class FileBlockMetaReaderMMAP : public FileReader<DataChunk>, MetaReader {
  public:
   FileBlockMetaReaderMMAP(std::string file_path, std::string meta_file_path,
-                          int max_readers = 1);
+                          int max_readers);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 

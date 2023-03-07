@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 uint64_t count_matches(char* data, size_t size, char* pattern,
                        size_t pattern_size) {

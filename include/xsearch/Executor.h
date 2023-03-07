@@ -23,7 +23,7 @@ template <class DataT, class ResT, class PartResT, typename... ResArgs>
 class Executor {
  public:
   // ---------------------------------------------------------------------------
-  Executor(int num_threads, int max_readers,
+  Executor(int num_threads,
            std::unique_ptr<task::base::DataProvider<DataT>> reader,
            std::vector<std::unique_ptr<task::base::InplaceProcessor<DataT>>>
                inplace_processors,
@@ -36,7 +36,6 @@ class Executor {
         _return_processor(std::move(return_processor)),
         _workers(num_threads) {
     _threads.resize(num_threads);
-    _max_readers = max_readers;
     _running.store(true);
     for (auto& t : _threads) {
       t = std::thread(&Executor::main_task, this);
@@ -88,23 +87,7 @@ class Executor {
   }
 
   std::optional<std::pair<DataT, uint64_t>> reader_task() {
-    std::unique_lock reader_lock(_reader_worker_mutex);
-    while (true) {
-      {
-        std::unique_lock check_lock(_check_reader_worker_mutex);
-        if (_max_readers > 0) {
-          break;
-        }
-      }
-      _reader_cv.wait(reader_lock);
-    }
-    _max_readers--;
-    reader_lock.unlock();
-    auto chunk_index_pair = _reader->getNextData();
-    reader_lock.lock();
-    _max_readers++;
-    _reader_cv.notify_one();
-    return chunk_index_pair;
+    return _reader->getNextData();
   }
 
   void inplace_processors_task(DataT* chunk) {
@@ -132,11 +115,6 @@ class Executor {
       _return_processor;
 
   std::vector<std::thread> _threads;
-
-  std::mutex _reader_worker_mutex;
-  std::mutex _check_reader_worker_mutex;
-  std::condition_variable _reader_cv;
-  int _max_readers = 2;
 
   std::atomic<bool> _running{false};
   std::atomic<int> _workers{1};
