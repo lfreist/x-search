@@ -1,7 +1,6 @@
 // Copyright 2023, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
-#include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <xsearch/utils/safe_read.h>

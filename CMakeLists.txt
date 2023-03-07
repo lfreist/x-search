@@ -52,6 +52,11 @@ IF (${MAIN_PROJECT})
     add_executable(metafile_cat metafile_cat.cpp)
     target_link_libraries(metafile_cat PUBLIC xsearch)
 
+    # ___ Benchmarks ___________________________________________________________________________________________________
+    add_subdirectory(third_party/nanobench)
+    include_directories(third_party/nanobench/src/include)
+    add_subdirectory(benchmarks)
+
     # ___ Tests ________________________________________________________________________________________________________
     include(CTest)
     add_subdirectory(test)
