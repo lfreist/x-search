@@ -22,11 +22,10 @@ template <typename T>
 class FileReader : public base::DataProvider<T> {
  public:
   explicit FileReader(std::string file_path, bool read_binary = false)
-      : _file_path(std::move(file_path)), _read_binary(read_binary) {}
+      : _file_path(std::move(file_path)) {}
 
  protected:
   const std::string _file_path;
-  bool _read_binary;
 };
 
 /**

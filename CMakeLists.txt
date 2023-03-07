@@ -48,7 +48,6 @@ IF (${MAIN_PROJECT})
     # ___ Executables __________________________________________________________________________________________________
     add_subdirectory(task_benchmarks)
     add_subdirectory(example)
-    add_subdirectory(xsproc)
 
     add_executable(metafile_cat metafile_cat.cpp)
     target_link_libraries(metafile_cat PUBLIC xsearch)

@@ -145,11 +145,6 @@ FileBlockReader::getNextData() {
   INLINE_BENCHMARK_WALL_STOP("actual read");
   auto num_bytes_read = _file_stream.gcount();
 
-  if (!_read_binary && !xs::utils::str::is_utf8(chunk.data(), num_bytes_read)) {
-    // file is not utf-8 -> skip it as binary
-    return {};
-  }
-
   if (num_bytes_read > 0 && chunk.data()[num_bytes_read - 1] != '\n' &&
       !_file_stream.eof()) {
     int64_t additional_bytes_read = 0;
@@ -229,14 +224,9 @@ FileBlockReaderMMAP::getNextData() {
   // search new line char
   size_t size = std::min<size_t>(_file_size - _current_offset, _min_size);
 
-  if (!_read_binary && !xs::utils::str::is_utf8(buffer, size)) {
-    // file is not utf-8 -> skip it as binary
-    return {};
-  }
-
   // get last char of data
   size_t offset = page_offset + size;
-  if (size == _min_size) {
+  if (size == _min_size) {  // -> we have not read EOF
     while (true) {
       if (buffer[offset] == '\n' ||
           offset - page_offset + _current_offset >= _file_size) {
@@ -276,11 +266,6 @@ FileBlockReaderMMAP::read_no_mmap() {
   stream.read(chunk.data(), static_cast<int64_t>(_min_size));
   INLINE_BENCHMARK_WALL_STOP("actual read");
   auto num_bytes_read = stream.gcount();
-
-  if (!_read_binary && !xs::utils::str::is_utf8(chunk.data(), num_bytes_read)) {
-    // file is not utf-8 -> skip it as binary
-    return {};
-  }
 
   if (num_bytes_read > 0 && chunk.data()[num_bytes_read - 1] != '\n' &&
       !stream.eof()) {
