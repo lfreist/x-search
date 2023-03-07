@@ -26,18 +26,18 @@ def parse_config(path: str, cwd: str | None = None) -> base.Benchmark:
         return gnutime.GNUTimeBenchmark(
             data["name"],
             commands=commands,
-            setup_commands=data["setup_cmd"],
-            cleanup_commands=data["cleanup_cmd"]
+            setup_commands=[base.Command(cmd[0], cmd=cmd, cwd=cwd) for cmd in data["setup_cmd"]],
+            cleanup_commands=[base.Command(cmd[0], cmd=cmd, cwd=cwd) for cmd in data["cleanup_cmd"]]
         )
-    elif data["timer"].lower() == "InlineBench":
+    elif data["timer"].lower() == "inlinebench":
         commands = [
-            InlineBench.InlineBenchCommand(name=name, cmd=value["cmd"]) for name, value in data["commands"].items()
+            InlineBench.InlineBenchCommand(name=name, cmd=cmd, cwd=cwd) for name, cmd in data["commands"].items()
         ]
         return InlineBench.InlineBenchBenchmark(
             data["name"],
             commands=commands,
-            setup_commands=data["setup_cmd"],
-            cleanup_commands=data["cleanup_cmd"]
+            setup_commands=[base.Command(cmd[0], cmd=cmd, cwd=cwd) for cmd in data["setup_cmd"]],
+            cleanup_commands=[base.Command(cmd[0], cmd=cmd, cwd=cwd) for cmd in data["cleanup_cmd"]]
         )
     else:
         raise UnknownTimerError(data["timer"])
@@ -60,7 +60,7 @@ def parse_arguments() -> argparse.Namespace:
                                      description="Compare command line tools")
     parser.add_argument("--config", metavar="PATH", nargs='+', required=True,
                         help="Path to directory containing config file or path to config file")
-    parser.add_argument("--data-dir", metavar="PATH", default=os.path.join(os.getcwd(), "sample_data"),
+    parser.add_argument("--cwd", metavar="PATH", default=os.path.join(os.getcwd()),
                         help="Directory containing files. If config files contain absolute or valid relative paths "
                              "this argument can be ignored.")
     parser.add_argument("--list-benchmarks", action="store_true", help="List available benchmarks by name and exit")
@@ -73,7 +73,7 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main(conf_file: str, cwd: str | None) -> None:
+def main(conf_file: str, cwd: str | None, out_dir: str) -> None:
     bm = parse_config(conf_file, cwd=cwd)
     if bm is None:
         print("No valid config files found.")
@@ -86,18 +86,18 @@ def main(conf_file: str, cwd: str | None) -> None:
         bm.drop_cache = None
     gnutime.log(f" Running {bm.name}:")
     result = bm.run()
-    if args.output:
-        if not os.path.exists(args.output):
-            os.makedirs(args.output)
+    if out_dir:
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
         result_info_data = read_result_info_data(result_meta_data)
         tmp_id = 0
         file_name = bm.name.replace(" ", "_")
         tmp_file_name = f"{file_name}_{tmp_id}.json"
-        while os.path.exists(os.path.join(args.output, tmp_file_name)):
+        while os.path.exists(os.path.join(out_dir, tmp_file_name)):
             tmp_id += 1
             tmp_file_name = f"{file_name}_{tmp_id}.json"
         file_name = f"{file_name}_{tmp_id}"
-        output_file = os.path.join(args.output, file_name)
+        output_file = os.path.join(out_dir, file_name)
         result_info_data[file_name + ".json"] = result.get_setup()
         result_info_data[file_name + ".json"]["plot"] = file_name + ".pdf"
         result_info_data[file_name + ".json"]["config_file"] = conf_file
@@ -121,7 +121,7 @@ if __name__ == "__main__":
             for obj in os.listdir(conf):
                 path = os.path.join(conf, obj)
                 if os.path.isfile(path) and obj.endswith(".json"):
-                    main(path, args.data_dir)
+                    main(path, args.cwd, args.output)
         else:
-            main(conf, args.data_dir)
+            main(conf, args.cwd, args.output)
 

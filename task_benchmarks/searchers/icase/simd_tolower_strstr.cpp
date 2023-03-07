@@ -45,10 +45,11 @@ int main(int argc, char** argv) {
   stream.read(content.data(), file_size);
 
   // ----- transform pattern and data to lower case ----------------------------
+  std::vector<char> content_lower(content.begin(), content.end());
   xs::utils::str::simd::toLower(pattern.data(), pattern.size());
-  xs::utils::str::simd::toLower(content.data(), content.size());
+  xs::utils::str::simd::toLower(content_lower.data(), content_lower.size());
   // ----- count matches using simd::strcasestr --------------------------------
-  auto num_matches = count_matches(content.data(), content.size(),
+  auto num_matches = count_matches(content_lower.data(), content_lower.size(),
                                    pattern.data(), pattern.size());
   // ----- search done ---------------------------------------------------------
 

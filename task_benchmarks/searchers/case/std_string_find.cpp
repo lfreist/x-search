@@ -1,20 +1,18 @@
 // Copyright 2023, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
-#include <re2/re2.h>
-
 #include <cassert>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
 
-uint64_t count_matches(char* data, size_t size, const re2::RE2& pattern) {
+uint64_t count_matches(const std::string& data, const std::string& pattern) {
   uint64_t count = 0;
-  re2::StringPiece input(data, size);
-  re2::StringPiece match;
-  while (re2::RE2::FindAndConsume(&input, pattern, &match)) {
+  size_t shift = 0;
+  while ((shift = data.find(pattern, shift)) != std::string::npos) {
     ++count;
+    shift += pattern.size();
   }
   return count;
 }
@@ -37,10 +35,8 @@ int main(int argc, char** argv) {
   content.resize(file_size);
   stream.read(content.data(), file_size);
 
-  re2::RE2 re_pattern('(' + pattern + ')');
-
   // ----- count matches -------------------------------------------------------
-  auto num_matches = count_matches(content.data(), content.size(), re_pattern);
+  auto num_matches = count_matches(content, pattern);
   // ----- search done ---------------------------------------------------------
 
   std::cout << num_matches << std::endl;

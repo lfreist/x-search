@@ -191,7 +191,7 @@ class InlineBenchBenchmark(Benchmark):
                 else:
                     self.drop_cache.run()
                 log(f"  {iteration}/{self.iterations}: {cmd.name}", end='\r', flush=True)
-                part_res = cmd.run(self.drop_cache)
+                part_res = cmd.run()
                 if part_res is not None:
                     result += part_res
         log()

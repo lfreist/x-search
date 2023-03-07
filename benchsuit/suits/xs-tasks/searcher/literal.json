@@ -1,16 +1,29 @@
 {
-  "timer": "InlineBench",
-  "name": "comparing regex searchers",
+  "timer": "GNU time",
+  "name": "comparing substring searchers",
   "description": "",
   "commands": {
     "RE2": [
+      "build/task_benchmarks/searchers/case/re2_literal",
+      "Sherlock",
+      "sample_data/en-100M.txt"
     ],
-    "boost::regex": [
+    "std::strstr": [
+      "build/task_benchmarks/searchers/case/std_strstr",
+      "Sherlock",
+      "sample_data/en-100M.txt"
     ],
-    "std::strstr": [],
-    "std::string::find": [],
-    "simd::strstr": []
+    "std::string::find": [
+      "build/task_benchmarks/searchers/case/std_string_find",
+      "Sherlock",
+      "sample_data/en-100M.txt"
+    ],
+    "simd::strstr": [
+      "build/task_benchmarks/searchers/case/simd_strstr",
+      "Sherlock",
+      "sample_data/en-100M.txt"
+    ]
   },
-  "setup_cmd": [],
-  "cleanup_cmd": []
+  "setup_cmd": ["head -c 1000000000 sample_data/en.txt > sample_data/en-100M.txt"],
+  "cleanup_cmd": [["rm", "sample_data/en-100M.txt"]]
 }

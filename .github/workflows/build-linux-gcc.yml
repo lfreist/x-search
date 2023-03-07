@@ -23,7 +23,7 @@ jobs:
       run: sudo apt update && sudo apt install -y apt-utils build-essential git make cmake libzstd-dev liblz4-dev
 
     - name: install boost
-      run: sudo apt update && sudo apt install -y libboost-dev libboost-program-options-dev
+      run: sudo apt update && sudo apt install -y libboost-dev libboost-program-options-dev libboost-regex-dev
 
     - name: git submodules
       run: git submodule update --init --recursive
