@@ -11,9 +11,9 @@ namespace xs::task::searcher {
 // ===== MatchCounter ==========================================================
 // _____________________________________________________________________________
 MatchCounter::MatchCounter(std::string pattern, bool regex,
-                           bool case_insensitive)
+                           bool case_insensitive, bool utf8)
     : BaseSearcher<DataChunk, uint64_t>(std::move(pattern), regex,
-                                        case_insensitive) {}
+                                        case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
 uint64_t MatchCounter::process(DataChunk* data) const {
@@ -38,9 +38,10 @@ uint64_t MatchCounter::process_re2(DataChunk* data) const {
 
 // ===== LineCounter ===========================================================
 // _____________________________________________________________________________
-LineCounter::LineCounter(std::string pattern, bool regex, bool case_insensitive)
+LineCounter::LineCounter(std::string pattern, bool regex, bool case_insensitive,
+                         bool utf8)
     : BaseSearcher<DataChunk, uint64_t>(std::move(pattern), regex,
-                                        case_insensitive) {}
+                                        case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
 uint64_t LineCounter::process(DataChunk* data) const {
@@ -67,9 +68,10 @@ uint64_t LineCounter::process_re2(DataChunk* data) const {
 // _____________________________________________________________________________
 MatchBytePositionSearcher::MatchBytePositionSearcher(std::string pattern,
                                                      bool regex,
-                                                     bool case_insensitive)
+                                                     bool case_insensitive,
+                                                     bool utf8)
     : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern), regex,
-                                                     case_insensitive) {}
+                                                     case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
 std::vector<uint64_t> MatchBytePositionSearcher::process(
@@ -98,9 +100,10 @@ std::vector<uint64_t> MatchBytePositionSearcher::process_re2(
 // _____________________________________________________________________________
 LineBytePositionSearcher::LineBytePositionSearcher(std::string pattern,
                                                    bool regex,
-                                                   bool case_insensitive)
+                                                   bool case_insensitive,
+                                                   bool utf8)
     : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern), regex,
-                                                     case_insensitive) {}
+                                                     case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineBytePositionSearcher::process(DataChunk* data) const {
@@ -127,9 +130,9 @@ std::vector<uint64_t> LineBytePositionSearcher::process_re2(
 // ===== LineIndexSearcher =====================================================
 // _____________________________________________________________________________
 LineIndexSearcher::LineIndexSearcher(std::string pattern, bool regex,
-                                     bool ignore_case)
+                                     bool ignore_case, bool utf8)
     : BaseSearcher<DataChunk, std::vector<uint64_t>>(std::move(pattern), regex,
-                                                     ignore_case) {}
+                                                     ignore_case, utf8) {}
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineIndexSearcher::process(DataChunk* data) const {
@@ -156,9 +159,9 @@ std::vector<uint64_t> LineIndexSearcher::process_re2(DataChunk* data) const {
 // ===== LineSearcher ==========================================================
 // _____________________________________________________________________________
 LineSearcher::LineSearcher(std::string pattern, bool regex,
-                           bool case_insensitive)
+                           bool case_insensitive, bool utf8)
     : BaseSearcher<DataChunk, std::vector<std::string>>(
-          std::move(pattern), regex, case_insensitive) {}
+          std::move(pattern), regex, case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
 std::vector<std::string> LineSearcher::process(DataChunk* data) const {

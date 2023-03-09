@@ -16,21 +16,28 @@ namespace xs::task::searcher {
 template <typename T, typename R>
 class BaseSearcher : public base::ReturnProcessor<T, R> {
  public:
-  BaseSearcher(std::string pattern, bool regex, bool ignore_case)
+  BaseSearcher(std::string pattern, bool regex, bool ignore_case, bool utf8)
       : _pattern(std::move(pattern)),
         _regex(regex),
         _ignore_case(ignore_case),
-        _no_ascii(!xs::utils::str::is_ascii(_pattern)) {
+        _utf8(utf8) {
     if (_regex) {
       re2::RE2::Options options;
       options.set_posix_syntax(true);
       options.set_case_sensitive(!_ignore_case);
       _re_pattern = std::make_unique<re2::RE2>('(' + _pattern + ')', options);
-    } else if (_no_ascii && _ignore_case) {
+      return;
+    }
+    if (_utf8 && _ignore_case) {
       re2::RE2::Options options;
       options.set_case_sensitive(false);
       _re_pattern = std::make_unique<re2::RE2>(
           '(' + xs::utils::str::escaped(_pattern) + ')', options);
+      return;
+    }
+    if (_ignore_case) {
+      std::transform(_pattern.begin(), _pattern.end(), _pattern.begin(),
+                     ::tolower);
     }
   };
 
@@ -44,12 +51,13 @@ class BaseSearcher : public base::ReturnProcessor<T, R> {
   std::unique_ptr<re2::RE2> _re_pattern = nullptr;
   bool _regex = false;
   bool _ignore_case = false;
-  bool _no_ascii = false;
+  bool _utf8 = false;
 };
 
 class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
  public:
-  MatchCounter(std::string pattern, bool regex, bool case_insensitive);
+  MatchCounter(std::string pattern, bool regex, bool case_insensitive = false,
+               bool utf8 = false);
 
   uint64_t process(DataChunk* data) const override;
 
@@ -60,7 +68,8 @@ class MatchCounter : public BaseSearcher<DataChunk, uint64_t> {
 
 class LineCounter : public BaseSearcher<DataChunk, uint64_t> {
  public:
-  LineCounter(std::string pattern, bool regex, bool case_insensitive);
+  LineCounter(std::string pattern, bool regex, bool case_insensitive = false,
+              bool utf8 = false);
 
   uint64_t process(DataChunk* data) const override;
 
@@ -73,7 +82,7 @@ class MatchBytePositionSearcher
     : public BaseSearcher<DataChunk, std::vector<uint64_t>> {
  public:
   MatchBytePositionSearcher(std::string pattern, bool regex,
-                            bool case_insensitive);
+                            bool case_insensitive = false, bool utf8 = false);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
 
@@ -86,7 +95,7 @@ class LineBytePositionSearcher
     : public BaseSearcher<DataChunk, std::vector<uint64_t>> {
  public:
   LineBytePositionSearcher(std::string pattern, bool regex,
-                           bool case_insensitive);
+                           bool case_insensitive = false, bool utf8 = false);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
 
@@ -98,7 +107,8 @@ class LineBytePositionSearcher
 class LineIndexSearcher
     : public BaseSearcher<DataChunk, std::vector<uint64_t>> {
  public:
-  LineIndexSearcher(std::string pattern, bool regex, bool case_insensitive);
+  LineIndexSearcher(std::string pattern, bool regex,
+                    bool case_insensitive = false, bool utf8 = false);
 
   std::vector<uint64_t> process(DataChunk* data) const override;
 
@@ -109,7 +119,8 @@ class LineIndexSearcher
 
 class LineSearcher : public BaseSearcher<DataChunk, std::vector<std::string>> {
  public:
-  LineSearcher(std::string pattern, bool regex, bool case_insensitive);
+  LineSearcher(std::string pattern, bool regex, bool case_insensitive = false,
+               bool utf8 = false);
 
   std::vector<std::string> process(DataChunk* data) const override;
 
