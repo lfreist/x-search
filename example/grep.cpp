@@ -40,10 +40,6 @@ int main(int argc, char** argv) {
   add("FILE", po::value<std::string>(&file_path)->default_value(""),
       "input file, stdin if '-' or empty");
   add("help,h", "prints this help message");
-  add("version,V", "display version information and exit");
-  add("threads,j",
-      po::value<int>(&num_threads)->default_value(0)->implicit_value(0),
-      "number of threads");
   add("count,c", po::bool_switch(&count),
       "print only a count of selected lines");
   add("ignore-case,i", po::bool_switch(&ignore_case)->default_value(false),
@@ -75,14 +71,6 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // fix number of threads -----------------------------------------------------
-  //  a) 0 -> 1
-  //  b) < 0 -> number of threads available
-  //  c) > number of threads available -> number of threads available
-  int max_threads = static_cast<int>(std::thread::hardware_concurrency()) / 2;
-  num_threads = num_threads <= 0 ? max_threads : num_threads;
-  num_threads = num_threads > max_threads ? max_threads : num_threads;
-
   // ===== Setup xs::Executor for searching ====================================
   if (count) {
     auto searcher = xs::extern_search<xs::count_lines>(
@@ -93,8 +81,7 @@ int main(int argc, char** argv) {
     auto searcher =
         xs::extern_search<xs::lines>(pattern, file_path,
                                      ignore_case, num_threads);
-    searcher->join();
-    for (auto line : *searcher->getResult()) {
+    for (auto const& line : *searcher->getResult()) {
       std::cout << line << '\n';
     }
   }

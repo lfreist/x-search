@@ -50,7 +50,7 @@ class ContainerResult : public Result<std::vector<T>> {
    public:
     iterator(R& result, size_t index) : _result(result), _index(index) {}
 
-    T operator*() { return _result[_index]; }
+    T const& operator*() { return _result[_index]; }
 
     iterator& operator++() {
       _index++;
@@ -109,7 +109,7 @@ class ContainerResult : public Result<std::vector<T>> {
 
   auto getLockedResult() { return _data.wlock(); }
 
-  T operator[](size_t index) { return _data.rlock()->at(index); }
+  T const& operator[](size_t index) { return _data.rlock()->at(index); }
 
   [[nodiscard]] size_t size() const override { return _data.rlock()->size(); }
 

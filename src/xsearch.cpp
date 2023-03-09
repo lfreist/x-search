@@ -16,7 +16,6 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
-  processors.push_back(std::make_unique<task::processor::NewLineSearcher>());
   // ---------------------------------------------------------------------------
   auto searcher = std::make_unique<task::searcher::MatchCounter>(
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
@@ -36,7 +35,6 @@ std::shared_ptr<count_lines> extern_search(const std::string& pattern,
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
-  processors.push_back(std::make_unique<task::processor::NewLineSearcher>());
   // ---------------------------------------------------------------------------
   auto searcher = std::make_unique<task::searcher::LineCounter>(
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
@@ -57,7 +55,6 @@ std::shared_ptr<match_byte_offsets> extern_search(const std::string& pattern,
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
-  processors.push_back(std::make_unique<task::processor::NewLineSearcher>());
   // ---------------------------------------------------------------------------
   auto searcher = std::make_unique<task::searcher::MatchBytePositionSearcher>(
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
@@ -78,7 +75,6 @@ std::shared_ptr<line_byte_offsets> extern_search(const std::string& pattern,
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
-  processors.push_back(std::make_unique<task::processor::NewLineSearcher>());
   // ---------------------------------------------------------------------------
   auto searcher = std::make_unique<task::searcher::LineBytePositionSearcher>(
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
@@ -118,7 +114,6 @@ std::shared_ptr<lines> extern_search(const std::string& pattern,
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
-  processors.push_back(std::make_unique<task::processor::NewLineSearcher>());
   // ---------------------------------------------------------------------------
   auto searcher = std::make_unique<task::searcher::LineSearcher>(
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
