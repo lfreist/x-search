@@ -18,7 +18,7 @@ namespace xs::search::simd {
  * @param c int to be searched for in str
  * @return pointer to match
  */
-char* strchr(char* str, size_t str_len, char c);
+const char* strchr(const char* str, size_t str_len, char c);
 
 /**
  * std::strstr implementation using simd instruction set (AVX). Additionally to
@@ -32,10 +32,11 @@ char* strchr(char* str, size_t str_len, char c);
  * @param pattern_len size of pattern
  * @return pointer to match
  */
-char* strstr(char* str, size_t str_len, const char* pattern,
-             size_t pattern_len);
+const char* strstr(const char* str, size_t str_len, const char* pattern,
+                   size_t pattern_len);
 
-char* strcasestr(char* str, size_t str_len, const char* pat, size_t pat_len);
+const char* strcasestr(const char* str, size_t str_len, const char* pat,
+                       size_t pat_len);
 
 /**
  * simd::strstr wrapper for getting offset of the next match of pattern in
@@ -62,7 +63,7 @@ int64_t findNext(const char* pattern, size_t pattern_len, char* str,
  * performed)
  * @return offset of match with respect to start of str
  */
-int64_t findNextNewLine(char* str, size_t str_len, size_t shift);
+int64_t findNextNewLine(const char* str, size_t str_len, size_t shift);
 
 /**
  * Counts the occurrences of pattern in str, moving to next new line char (\n)

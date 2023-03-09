@@ -21,12 +21,11 @@ namespace xs::task::reader {
 template <typename T>
 class FileReader : public base::DataProvider<T> {
  public:
-  explicit FileReader(std::string file_path, bool read_binary = false)
-      : _file_path(std::move(file_path)), _read_binary(read_binary) {}
+  explicit FileReader(std::string file_path)
+      : _file_path(std::move(file_path)) {}
 
  protected:
   const std::string _file_path;
-  bool _read_binary;
 };
 
 /**
@@ -64,7 +63,7 @@ class MetaReader {
 class FileBlockMetaReader : public FileReader<DataChunk>, MetaReader {
  public:
   FileBlockMetaReader(std::string file_path, std::string meta_file_path,
-                      int max_readers = 1);
+                      int max_readers);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 };
@@ -79,7 +78,7 @@ class FileBlockMetaReader : public FileReader<DataChunk>, MetaReader {
 class FileBlockMetaReaderMMAP : public FileReader<DataChunk>, MetaReader {
  public:
   FileBlockMetaReaderMMAP(std::string file_path, std::string meta_file_path,
-                          int max_readers = 1);
+                          int max_readers);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 
@@ -98,8 +97,7 @@ class FileBlockMetaReaderMMAP : public FileReader<DataChunk>, MetaReader {
 class FileBlockReader : public FileReader<DataChunk> {
  public:
   explicit FileBlockReader(std::string file_path, size_t min_size = 16777216,
-                           size_t max_oversize = 65536,
-                           bool read_binary = false);
+                           size_t max_oversize = 65536);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 
@@ -127,8 +125,7 @@ class FileBlockReaderMMAP : public FileReader<DataChunk> {
  public:
   explicit FileBlockReaderMMAP(std::string file_path,
                                size_t min_size = 16777216,
-                               size_t max_oversize = 65536,
-                               bool read_binary = false);
+                               size_t max_oversize = 65536);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
 

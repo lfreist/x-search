@@ -88,12 +88,12 @@ std::string to_line(xs::DataChunk* data, uint64_t match_global_byte_offset) {
   char* match = data->data() + match_local_byte_offset;
   // we search the position of the previous new line char starting at the byte
   //  position of the match...
-  char* prev_nl = (*match == '\n') ? match - 1 : match;
+  const char* prev_nl = (*match == '\n') ? match - 1 : match;
   while (prev_nl > data->data() && *prev_nl != '\n') {
     prev_nl--;
   }
   // ... we then search the next new line char...
-  char* next_nl = xs::search::simd::strchr(
+  const char* next_nl = xs::search::simd::strchr(
       match, data->size() - (match - data->data()), '\n');
   // ... and construct a std::string from prev_nl to next_nl
   if (next_nl == nullptr) {

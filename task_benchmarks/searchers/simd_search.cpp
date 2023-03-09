@@ -13,7 +13,7 @@ uint64_t count(char* data, size_t size, const std::string& pattern) {
   uint64_t result = 0;
   size_t shift = 0;
   while (shift < size) {
-    char* match = xs::search::simd::strstr(data + shift, size, pattern.data(),
+    const char* match = xs::search::simd::strstr(data + shift, size, pattern.data(),
                                            pattern.size());
     if (match == nullptr) {
       break;
@@ -28,7 +28,7 @@ uint64_t count_icase(char* data, size_t size, const std::string& pattern) {
   uint64_t result = 0;
   size_t shift = 0;
   while (shift < size) {
-    char* match = xs::search::simd::strcasestr(data + shift, size - shift,
+    const char* match = xs::search::simd::strcasestr(data + shift, size - shift,
                                                pattern.data(), pattern.size());
     if (match == nullptr) {
       break;

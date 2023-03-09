@@ -48,10 +48,14 @@ IF (${MAIN_PROJECT})
     # ___ Executables __________________________________________________________________________________________________
     add_subdirectory(task_benchmarks)
     add_subdirectory(example)
-    add_subdirectory(xsproc)
 
     add_executable(metafile_cat metafile_cat.cpp)
     target_link_libraries(metafile_cat PUBLIC xsearch)
+
+    # ___ Benchmarks ___________________________________________________________________________________________________
+    add_subdirectory(third_party/nanobench)
+    include_directories(third_party/nanobench/src/include)
+    add_subdirectory(benchmarks)
 
     # ___ Tests ________________________________________________________________________________________________________
     include(CTest)

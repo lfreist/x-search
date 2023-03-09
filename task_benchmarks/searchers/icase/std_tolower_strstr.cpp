@@ -1,12 +1,12 @@
 // Copyright 2023, Leon Freist
 // Author: Leon Freist <freist@informatik.uni-freiburg.de>
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <vector>
 
 uint64_t count_matches(const char* data, const char* pattern,
                        size_t pattern_size) {

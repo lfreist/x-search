@@ -6,8 +6,6 @@
 [![Thread Sanitizer](https://github.com/lfreist/x-search/actions/workflows/thread-sanitizer-test.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/thread-sanitizer-test.yml)
 [![Address Sanitizer](https://github.com/lfreist/x-search/actions/workflows/address-sanitizer-test.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/address-sanitizer-test.yml)
 
-[![Test Executables](https://github.com/lfreist/x-search/actions/workflows/exe-test.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/exe-test.yml)
-
 [![Code Style (clang14)](https://github.com/lfreist/x-search/actions/workflows/clang-format.yml/badge.svg)](https://github.com/lfreist/x-search/actions/workflows/clang-format.yml)
 
 
