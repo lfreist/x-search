@@ -40,9 +40,7 @@ FileBlockMetaReader::getNextData() {
     std::ifstream stream(_file_path);
     stream.seekg(static_cast<int64_t>(chunk.getMetaData().actual_offset),
                  std::ios::beg);
-    INLINE_BENCHMARK_WALL_START(_, "actual read");
     stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
-    INLINE_BENCHMARK_WALL_STOP("actual read");
   });
 
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
@@ -81,11 +79,9 @@ FileBlockMetaReaderMMAP::getNextData() {
     if (fd < 0) {
       exit(1);
     }
-    INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
     mapped =
         mmap(nullptr, cmd.actual_size + page_offset, PROT_READ, MAP_PRIVATE, fd,
              static_cast<int64_t>(cmd.actual_offset - page_offset));
-    INLINE_BENCHMARK_WALL_STOP("actual read");
     close(fd);
   });
 
@@ -108,9 +104,7 @@ FileBlockMetaReaderMMAP::read_no_mmap(ChunkMetaData cmd) {
     std::ifstream stream(_file_path);
     stream.seekg(static_cast<int64_t>(chunk.getMetaData().actual_offset),
                  std::ios::beg);
-    INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
     stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
-    INLINE_BENCHMARK_WALL_STOP("actual read");
   });
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
@@ -140,9 +134,7 @@ FileBlockReader::getNextData() {
                     _min_size + _max_oversize,
                     {}};
   DataChunk chunk(std::move(cmd));
-  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
   _file_stream.read(chunk.data(), static_cast<int64_t>(_min_size));
-  INLINE_BENCHMARK_WALL_STOP("actual read");
   auto num_bytes_read = _file_stream.gcount();
 
   if (num_bytes_read > 0 && chunk.data()[num_bytes_read - 1] != '\n' &&
@@ -206,7 +198,6 @@ FileBlockReaderMMAP::getNextData() {
 
   size_t page_size = sysconf(_SC_PAGE_SIZE);
   size_t page_offset = _current_offset % page_size;
-  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
   char* buffer;
 
   void* mapped =
@@ -220,7 +211,6 @@ FileBlockReaderMMAP::getNextData() {
   }
 
   buffer = static_cast<char*>(mapped);
-  INLINE_BENCHMARK_WALL_STOP("actual read");
   // search new line char
   size_t size = std::min<size_t>(_file_size - _current_offset, _min_size);
 
@@ -262,9 +252,7 @@ FileBlockReaderMMAP::read_no_mmap() {
   DataChunk chunk(std::move(cmd));
   std::ifstream stream(_file_path);
   stream.seekg(static_cast<int64_t>(_current_offset), std::ios::beg);
-  INLINE_BENCHMARK_WALL_START_GLOBAL("actual read");
   stream.read(chunk.data(), static_cast<int64_t>(_min_size));
-  INLINE_BENCHMARK_WALL_STOP("actual read");
   auto num_bytes_read = stream.gcount();
 
   if (num_bytes_read > 0 && chunk.data()[num_bytes_read - 1] != '\n' &&
