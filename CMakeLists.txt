@@ -46,7 +46,6 @@ add_subdirectory(src)
 
 IF (${MAIN_PROJECT})
     # ___ Executables __________________________________________________________________________________________________
-    add_subdirectory(task_benchmarks)
     add_subdirectory(example)
 
     add_executable(metafile_cat metafile_cat.cpp)
