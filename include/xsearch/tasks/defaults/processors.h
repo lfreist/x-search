@@ -96,14 +96,4 @@ class NewLineSearcher : public base::InplaceProcessor<DataChunk> {
       std::make_unique<std::condition_variable>();
 };
 
-/**
- * ToLower; A predefined processor that inplace transforms data to lower case.
- */
-class ToLower : public base::InplaceProcessor<DataChunk> {
- public:
-  ToLower() = default;
-
-  void process(DataChunk* data) override;
-};
-
 }  // namespace xs::task::processor
