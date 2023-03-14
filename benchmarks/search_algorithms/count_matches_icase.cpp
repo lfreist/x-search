@@ -10,6 +10,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #define SIZE 16777216

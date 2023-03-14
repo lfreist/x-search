@@ -9,6 +9,7 @@
 #include <cassert>
 #include <fstream>
 #include <functional>
+#include <sstream>
 #include <string>
 
 #define SIZE 16777216

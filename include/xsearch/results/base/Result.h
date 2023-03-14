@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <xsearch/utils/ad_utility/Synchronized.h>
-
 #include <algorithm>
 #include <condition_variable>
 #include <iostream>
@@ -59,14 +57,14 @@ class ContainerResult : public Result<std::vector<T>> {
 
     bool operator!=(const iterator& other) {
       std::unique_lock lock(*_result._mutex);
-      while (_index >= _result.size()) {
+      while (_index >= _result.no_lock_size()) {
         if (_result._done) {
           return false;
         }
         _result._cv->wait(lock);
       }
       if (_result._done) {
-        return _index <= _result.size();
+        return _index <= _result.no_lock_size();
       }
       return true;
     }
@@ -87,10 +85,8 @@ class ContainerResult : public Result<std::vector<T>> {
    */
   void add(std::vector<T> partial_result) override {
     std::unique_lock lock(*this->_mutex);
-    _data.withWriteLock([&](auto& data) {
-      data.insert(data.end(), std::make_move_iterator(partial_result.begin()),
-                  std::make_move_iterator(partial_result.end()));
-    });
+    _data.insert(_data.end(), std::make_move_iterator(partial_result.begin()),
+                 std::make_move_iterator(partial_result.end()));
     this->_cv->notify_one();
   }
 
@@ -100,25 +96,29 @@ class ContainerResult : public Result<std::vector<T>> {
 
   std::vector<T> copyResultSafe() {
     std::unique_lock lock(*this->_mutex);
-    std::vector<T> tmp(_data.rlock()->size());
-    _data.withWriteLock([&](auto& mr) { tmp.assign(mr.begin(), mr.end()); });
+    std::vector<T> tmp(_data.size());
+    tmp.assign(_data.begin(), _data.end());
     return tmp;
   }
 
-  auto* getSynchronizedResultPtr() { return &_data; }
+  T const& operator[](size_t index) {
+    std::unique_lock lock(*this->_mutex);
+    return _data[index];
+  }
 
-  auto getLockedResult() { return _data.wlock(); }
+  [[nodiscard]] size_t size() const override {
+    std::unique_lock lock(*this->_mutex);
+    return _data.size();
+  }
 
-  T const& operator[](size_t index) { return _data.rlock()->at(index); }
-
-  [[nodiscard]] size_t size() const override { return _data.rlock()->size(); }
+  [[nodiscard]] size_t no_lock_size() const { return _data.size(); }
 
   virtual Iterator begin() { return Iterator(*this, 0); }
 
   virtual Iterator end() { return Iterator(*this, 0); }
 
  protected:
-  ad_utility::Synchronized<std::vector<T>> _data;
+  std::vector<T> _data;
 };
 
 /**

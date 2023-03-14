@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
   std::string file_path;
   bool ignore_case = false;
   bool count = false;
-  int num_threads = 0;
+  int num_threads = 2;
 
   po::options_description options("Options for example/grep");
   po::positional_options_description positional_options;
@@ -44,13 +44,6 @@ int main(int argc, char** argv) {
       "print only a count of selected lines");
   add("ignore-case,i", po::bool_switch(&ignore_case)->default_value(false),
       "ignore case distinctions in patterns and data");
-#ifdef BENCHMARK
-  add("benchmark-file", po::value<std::string>(&benchmark_file),
-      "set output file of benchmark measurements.");
-  add("benchmark-format",
-      po::value<std::string>(&benchmark_format)->default_value("json"),
-      "specify the output format of benchmark measurements (plain, json, csv");
-#endif
 
   // parse command line options ------------------------------------------------
   po::variables_map optionsMap;
@@ -86,14 +79,5 @@ int main(int argc, char** argv) {
     }
   }
 
-  INLINE_BENCHMARK_WALL_STOP("total");
-#ifdef BENCHMARK
-  if (optionsMap.count("benchmark-file")) {
-    std::ofstream out_stream(benchmark_file);
-    out_stream << INLINE_BENCHMARK_REPORT(benchmark_format);
-  } else {
-    std::cerr << INLINE_BENCHMARK_REPORT(benchmark_format) << std::endl;
-  }
-#endif
   return 0;
 }
