@@ -60,7 +60,6 @@ std::optional<std::pair<DataChunk, chunk_index>>
 FileBlockMetaReaderSingle::getNextData() {
   std::unique_lock lock(*_stream_mutex);
   INLINE_BENCHMARK_WALL_START(read, "reading");
-  std::optional<std::pair<DataChunk, chunk_index>> ret{};
   auto opt = _meta_file.next_chunk_meta_data();
   if (!opt.has_value()) {
     return {};
