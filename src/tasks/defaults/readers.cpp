@@ -51,7 +51,9 @@ FileBlockMetaReader::getNextData() {
 FileBlockMetaReaderSingle::FileBlockMetaReaderSingle(std::string file_path,
                                                      std::string meta_file_path)
     : FileReader<DataChunk>(std::move(file_path)),
-      MetaReader(std::move(meta_file_path), 1) {}
+      MetaReader(std::move(meta_file_path), 1) {
+  _file_stream.open(_file_path);
+}
 
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, chunk_index>>
