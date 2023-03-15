@@ -54,6 +54,7 @@ class MetaReader {
   MetaFile _meta_file;
   /// controls simultaneous read operations
   utils::Semaphore<std::function<void(void)>> _semaphore;
+  int _num_reader_threads;
 };
 
 /**
@@ -66,6 +67,17 @@ class FileBlockMetaReader : public FileReader<DataChunk>, MetaReader {
                       int max_readers);
 
   std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
+};
+
+class FileBlockMetaReaderSingle : public FileReader<DataChunk>, MetaReader {
+ public:
+  FileBlockMetaReaderSingle(std::string file_path, std::string meta_file_path);
+
+  std::optional<std::pair<DataChunk, chunk_index>> getNextData() override;
+
+ private:
+  std::ifstream _file_stream;
+  std::unique_ptr<std::mutex> _stream_mutex = std::make_unique<std::mutex>();
 };
 
 /**

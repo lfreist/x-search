@@ -15,7 +15,8 @@ namespace xs::task::reader {
 // _____________________________________________________________________________
 MetaReader::MetaReader(std::string meta_file_path, int max_readers)
     : _meta_file(std::move(meta_file_path), std::ios::in),
-      _semaphore(max_readers) {}
+      _semaphore(max_readers),
+      _num_reader_threads(max_readers) {}
 
 // _____________________________________________________________________________
 FileBlockMetaReader::FileBlockMetaReader(std::string file_path,
@@ -43,6 +44,27 @@ FileBlockMetaReader::getNextData() {
     stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
   });
 
+  return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
+}
+
+// _____________________________________________________________________________
+FileBlockMetaReaderSingle::FileBlockMetaReaderSingle(std::string file_path,
+                                                     std::string meta_file_path)
+    : FileReader<DataChunk>(std::move(file_path)),
+      MetaReader(std::move(meta_file_path), 1) {}
+
+// _____________________________________________________________________________
+std::optional<std::pair<DataChunk, chunk_index>>
+FileBlockMetaReaderSingle::getNextData() {
+  std::unique_lock lock(*_stream_mutex);
+  INLINE_BENCHMARK_WALL_START(read, "reading");
+  std::optional<std::pair<DataChunk, chunk_index>> ret{};
+  auto opt = _meta_file.next_chunk_meta_data();
+  if (!opt.has_value()) {
+    return {};
+  }
+  DataChunk chunk(std::move(opt.value()));
+  _file_stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
