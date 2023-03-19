@@ -4,618 +4,3921 @@
 #include <gtest/gtest.h>
 #include <xsearch/xsearch.h>
 
-static const std::string pattern("over");
-static const std::string re_pattern("ov[e|i]r");
-static const std::string file_path("test/files/dummy.txt");
-static const std::string meta_file_path("test/files/dummy.xs.meta");
+static const std::string pattern("Sherlock");
+static const std::string re_pattern("She[r ]lock");
+static const std::string file_path("test/files/sample.txt");
+static const std::string meta_file_path("test/files/sample.meta");
+static const std::string lz4_path("test/files/sample.xslz4");
+static const std::string lz4_meta("test/files/sample.xslz4.meta");
+static const std::string zst_path("test/files/sample.xszst");
+static const std::string zst_meta("test/files/sample.xszst.meta");
 
-TEST(ExternSearcherTest, count) {
-  // with meta files
-  {  // plain text
-    auto res = xs::extern_search<xs::count_matches>(
-        pattern, file_path, meta_file_path, false, 1, 1);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 152);
-  }
-  {  // regex
-    auto res = xs::extern_search<xs::count_matches>(
-        re_pattern, file_path, meta_file_path, false, 1, 1);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 156);
-  }
-  {  // multiple threads
-    auto res = xs::extern_search<xs::count_matches>(
-        pattern, file_path, meta_file_path, false, 4, 1);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 152);
-  }
-  {  // multiple readers
-    auto res = xs::extern_search<xs::count_matches>(
-        pattern, file_path, meta_file_path, false, 1, 2);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 152);
-  }
-  {  // multiple readers and threads
-    auto res = xs::extern_search<xs::count_matches>(
-        pattern, file_path, meta_file_path, false, 4, 2);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 152);
-  }
-  {  // multiple readers and threads and regex pattern
-    auto res = xs::extern_search<xs::count_matches>(
-        re_pattern, file_path, meta_file_path, false, 4, 4);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 156);
-  }
-  {  // compression
-    auto res = xs::extern_search<xs::count_matches>(
-        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta",
-        false, 4, 2);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 156);
-  }
-  // no meta files
-  {  // plain text
+static const uint64_t literal_case_count = 46;
+static const uint64_t literal_icase_count = 48;
+static const uint64_t regex_case_count = 53;
+static const uint64_t regex_icase_count = 59;
+static const uint64_t literal_case_count_match = 46;
+static const uint64_t literal_icase_count_match = 48;
+static const uint64_t regex_case_count_match = 53;
+static const uint64_t regex_icase_count_match = 59;
+static const std::vector<uint64_t> literal_case_line_byte_offsets{
+    3069978,  16699621, 16710519, 16719916, 16731645, 16741644, 16753058,
+    29284087, 29306116, 29366861, 40366176, 40370472, 56795637, 56846283,
+    56898623, 56950633, 57000246, 57055263, 57105384, 57155473, 57203089,
+    57254051, 57302528, 57353529, 57407561, 57455096, 57502512, 57553326,
+    57603496, 57655820, 57707597, 57759041, 57809187, 57859958, 73940808,
+    73976836, 74008903, 74037906, 74074010, 74106199, 74142366, 74174416,
+    74203571, 74232206, 86549400, 86549455};
+static const std::vector<uint64_t> regex_case_line_byte_offsets{
+    3069978,  15811186, 15850270, 15889344, 16699621, 16710519, 16719916,
+    16731645, 16741644, 16753058, 26238516, 29284087, 29306116, 29366861,
+    40366176, 40370472, 56795637, 56846283, 56898623, 56950633, 57000246,
+    57055263, 57105384, 57155473, 57203089, 57254051, 57302528, 57353529,
+    57407561, 57455096, 57502512, 57553326, 57603496, 57655820, 57707597,
+    57759041, 57809187, 57859958, 73940808, 73976836, 74008903, 74037906,
+    74074010, 74106199, 74142366, 74174416, 74203571, 74232206, 86549400,
+    86549455, 96221854, 96889681, 98104205};
+static const std::vector<uint64_t> literal_icase_line_byte_offsets{
+    3069978,  16699621, 16710519, 16719916, 16731645, 16741644, 16753058,
+    29284087, 29306116, 29366861, 40333565, 40338107, 40366176, 40370472,
+    56795637, 56846283, 56898623, 56950633, 57000246, 57055263, 57105384,
+    57155473, 57203089, 57254051, 57302528, 57353529, 57407561, 57455096,
+    57502512, 57553326, 57603496, 57655820, 57707597, 57759041, 57809187,
+    57859958, 73940808, 73976836, 74008903, 74037906, 74074010, 74106199,
+    74142366, 74174416, 74203571, 74232206, 86549400, 86549455};
+static const std::vector<uint64_t> regex_icase_line_byte_offsets{
+    3069978,  15811186, 15850270, 15889344, 16699621, 16710519, 16719916,
+    16731645, 16741644, 16753058, 26238516, 29284087, 29306116, 29366861,
+    40333565, 40338107, 40366176, 40370472, 56795637, 56846283, 56898623,
+    56950633, 57000246, 57055263, 57105384, 57155473, 57203089, 57254051,
+    57302528, 57353529, 57407561, 57455096, 57502512, 57553326, 57603496,
+    57655820, 57707597, 57759041, 57809187, 57859958, 73940808, 73976836,
+    74008903, 74037906, 74074010, 74106199, 74142366, 74174416, 74203571,
+    74232206, 83143686, 83179720, 86549400, 86549455, 96221854, 96222331,
+    96889681, 96890158, 98104205};
+static const std::vector<uint64_t> literal_case_match_byte_offsets{
+    3069997,  16699644, 16710519, 16719939, 16731662, 16741667, 16753075,
+    29284101, 29306130, 29366870, 40366191, 40370478, 56795653, 56846299,
+    56898639, 56950647, 57000259, 57055279, 57105400, 57155488, 57203105,
+    57254067, 57302543, 57353542, 57407576, 57455110, 57502527, 57553342,
+    57603512, 57655833, 57707613, 57759057, 57809203, 57859974, 73940817,
+    73976845, 74008912, 74037915, 74074019, 74106208, 74142375, 74174425,
+    74203580, 74232215, 86549405, 86549455};
+static const std::vector<uint64_t> regex_case_match_byte_offsets{
+    3069997,  15811186, 15850270, 15889344, 16699644, 16710519, 16719939,
+    16731662, 16741667, 16753075, 26238516, 29284101, 29306130, 29366870,
+    40366191, 40370478, 56795653, 56846299, 56898639, 56950647, 57000259,
+    57055279, 57105400, 57155488, 57203105, 57254067, 57302543, 57353542,
+    57407576, 57455110, 57502527, 57553342, 57603512, 57655833, 57707613,
+    57759057, 57809203, 57859974, 73940817, 73976845, 74008912, 74037915,
+    74074019, 74106208, 74142375, 74174425, 74203580, 74232215, 86549405,
+    86549455, 96221854, 96889681, 98104205};
+static const std::vector<uint64_t> literal_icase_match_byte_offsets{
+    3069997,  16699644, 16710519, 16719939, 16731662, 16741667, 16753075,
+    29284101, 29306130, 29366870, 40333580, 40338113, 40366191, 40370478,
+    56795653, 56846299, 56898639, 56950647, 57000259, 57055279, 57105400,
+    57155488, 57203105, 57254067, 57302543, 57353542, 57407576, 57455110,
+    57502527, 57553342, 57603512, 57655833, 57707613, 57759057, 57809203,
+    57859974, 73940817, 73976845, 74008912, 74037915, 74074019, 74106208,
+    74142375, 74174425, 74203580, 74232215, 86549405, 86549455};
+static const std::vector<uint64_t> regex_icase_match_byte_offsets{
+    3069997,  15811186, 15850270, 15889344, 16699644, 16710519, 16719939,
+    16731662, 16741667, 16753075, 26238516, 29284101, 29306130, 29366870,
+    40333580, 40338113, 40366191, 40370478, 56795653, 56846299, 56898639,
+    56950647, 57000259, 57055279, 57105400, 57155488, 57203105, 57254067,
+    57302543, 57353542, 57407576, 57455110, 57502527, 57553342, 57603512,
+    57655833, 57707613, 57759057, 57809203, 57859974, 73940817, 73976845,
+    74008912, 74037915, 74074019, 74106208, 74142375, 74174425, 74203580,
+    74232215, 83143693, 83179727, 86549405, 86549455, 96221854, 96222360,
+    96889681, 96890187, 98104205};
+static const std::vector<uint64_t> literal_case_line_indices{
+    113525,  577444,  577785,  578046,  578425,  578714,  579084,  1025581,
+    1026348, 1028314, 1407712, 1407826, 1983678, 1985388, 1987113, 1988884,
+    1990607, 1992500, 1994181, 1995861, 1997493, 1999204, 2000839, 2002600,
+    2004453, 2006083, 2007712, 2009457, 2011139, 2012932, 2014694, 2016412,
+    2018093, 2019813, 2563484, 2564900, 2566318, 2567731, 2569154, 2570573,
+    2571992, 2573410, 2574820, 2576164, 2984075, 2984077};
+static const std::vector<uint64_t> regex_case_line_indices{
+    113525,  547405,  548914,  550269,  577444,  577785,  578046,  578425,
+    578714,  579084,  918771,  1025581, 1026348, 1028314, 1407712, 1407826,
+    1983678, 1985388, 1987113, 1988884, 1990607, 1992500, 1994181, 1995861,
+    1997493, 1999204, 2000839, 2002600, 2004453, 2006083, 2007712, 2009457,
+    2011139, 2012932, 2014694, 2016412, 2018093, 2019813, 2563484, 2564900,
+    2566318, 2567731, 2569154, 2570573, 2571992, 2573410, 2574820, 2576164,
+    2984075, 2984077, 3318488, 3345733, 3384278};
+static const std::vector<uint64_t> literal_icase_line_indices{
+    113525,  577444,  577785,  578046,  578425,  578714,  579084,  1025581,
+    1026348, 1028314, 1406449, 1406631, 1407712, 1407826, 1983678, 1985388,
+    1987113, 1988884, 1990607, 1992500, 1994181, 1995861, 1997493, 1999204,
+    2000839, 2002600, 2004453, 2006083, 2007712, 2009457, 2011139, 2012932,
+    2014694, 2016412, 2018093, 2019813, 2563484, 2564900, 2566318, 2567731,
+    2569154, 2570573, 2571992, 2573410, 2574820, 2576164, 2984075, 2984077};
+static const std::vector<uint64_t> regex_icase_line_indices{
+    113525,  547405,  548914,  550269,  577444,  577785,  578046,  578425,
+    578714,  579084,  918771,  1025581, 1026348, 1028314, 1406449, 1406631,
+    1407712, 1407826, 1983678, 1985388, 1987113, 1988884, 1990607, 1992500,
+    1994181, 1995861, 1997493, 1999204, 2000839, 2002600, 2004453, 2006083,
+    2007712, 2009457, 2011139, 2012932, 2014694, 2016412, 2018093, 2019813,
+    2563484, 2564900, 2566318, 2567731, 2569154, 2570573, 2571992, 2573410,
+    2574820, 2576164, 2867410, 2868630, 2984075, 2984077, 3318488, 3318508,
+    3345733, 3345753, 3384278};
+static const std::vector<std::string> literal_case_lines{
+    "-l'll get a check, Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "Take it easy, Sherlock.",
+    "Take it easy, Sherlock.",
+    "No shit, Sherlock.",
+    "Just a minute, Sherlock.",
+    "Look, Sherlock.",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "Meet Sherlock Bones.",
+    "Sherlock, okay, Harvey was last seen--"};
+static const std::vector<std::string> regex_case_lines{
+    "-l'll get a check, Sherlock.",
+    "She locked herself inside",
+    "She locked herself inside",
+    "She locked herself inside",
+    "Playing Watson to your Sherlock.",
+    "Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "She locked the door.",
+    "Take it easy, Sherlock.",
+    "Take it easy, Sherlock.",
+    "No shit, Sherlock.",
+    "Just a minute, Sherlock.",
+    "Look, Sherlock.",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "Meet Sherlock Bones.",
+    "Sherlock, okay, Harvey was last seen--",
+    "She locks the door, staggers back, collapses...",
+    "She locks the door, staggers back, collapses...",
+    "She locked me in at home and ran to spend the evening with them."};
+static const std::vector<std::string> literal_icase_lines{
+    "-l'll get a check, Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "Take it easy, Sherlock.",
+    "Take it easy, Sherlock.",
+    "No shit, Sherlock.",
+    "JUST A MINUTE, SHERLOCK.",
+    "LOOK, SHERLOCK,",
+    "Just a minute, Sherlock.",
+    "Look, Sherlock.",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "Meet Sherlock Bones.",
+    "Sherlock, okay, Harvey was last seen--"};
+static const std::vector<std::string> regex_icase_lines{
+    "-l'll get a check, Sherlock.",
+    "She locked herself inside",
+    "She locked herself inside",
+    "She locked herself inside",
+    "Playing Watson to your Sherlock.",
+    "Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "Playing Watson to your Sherlock.",
+    "- No... [Static] Sherlock.",
+    "She locked the door.",
+    "Take it easy, Sherlock.",
+    "Take it easy, Sherlock.",
+    "No shit, Sherlock.",
+    "JUST A MINUTE, SHERLOCK.",
+    "LOOK, SHERLOCK,",
+    "Just a minute, Sherlock.",
+    "Look, Sherlock.",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "So where to, Sherlock?",
+    "-So, where to, Sherlock?",
+    "So, where to, Sherlock?",
+    "- So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "So where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "- So, where to, Sherlock?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "You read Sherlock Holmes to deduce that?",
+    "Why is she locked up?",
+    "Why is she locked up?",
+    "Meet Sherlock Bones.",
+    "Sherlock, okay, Harvey was last seen--",
+    "She locks the door, staggers back, collapses...",
+    "The question now is, who was she locking out?",
+    "She locks the door, staggers back, collapses...",
+    "The question now is, who was she locking out?",
+    "She locked me in at home and ran to spend the evening with them."};
+
+// _____ Reading plain text file without metadata ______________________________
+
+// ===== join search and copy results ==========================================
+
+TEST(ExternSearcherTest, count_matches_literal_join) {
+  {  // case, single thread
     auto res =
         xs::extern_search<xs::count_matches>(pattern, file_path, false, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->size(), 152);
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
   }
-  {  // regex
+  {  // icase, single thread
     auto res =
-        xs::extern_search<xs::count_matches>(re_pattern, file_path, false, 1);
+        xs::extern_search<xs::count_matches>(pattern, file_path, true, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->size(), 156);
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
   }
-  {  // multiple threads
+  {  // case, 4 threads
     auto res =
         xs::extern_search<xs::count_matches>(pattern, file_path, false, 4);
     res->join();
-    ASSERT_EQ(res->getResult()->size(), 152);
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::count_matches>(pattern, file_path, true, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
   }
 }
 
-TEST(ExternSearcherTest, count_lines) {
-  // with meta file
-  {  // plain text
-    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
-                                                  meta_file_path, false, 1, 1);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 133);
-  }
-  {  // regex
-    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
-                                                  meta_file_path, false, 1, 1);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 137);
-  }
-  {  // multiple threads
-    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
-                                                  meta_file_path, false, 4, 1);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 133);
-  }
-  {  // multiple readers
-    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
-                                                  meta_file_path, false, 1, 2);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 133);
-  }
-  {  // multiple readers and threads
-    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
-                                                  meta_file_path, false, 4, 2);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 133);
-  }
-  {  // multiple readers and threads and regex pattern
-    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
-                                                  meta_file_path, false, 4, 4);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 137);
-  }
-  {  // compression
-    auto res = xs::extern_search<xs::count_lines>(
-        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta",
-        false, 4, 2);
-    res->join();
-    ASSERT_EQ(res->getResult()->size(), 137);
-  }
-  // no meta file
-  {  // plain text
+TEST(ExternSearcherTest, count_lines_literal_join) {
+  {  // case, single thread
     auto res = xs::extern_search<xs::count_lines>(pattern, file_path, false, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->size(), 133);
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
   }
-  {  // regex
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, true, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, false, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, true, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_join) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, false, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, true, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, false, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, true, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_regex_join) {
+  {  // case, single thread
     auto res =
         xs::extern_search<xs::count_lines>(re_pattern, file_path, false, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->size(), 137);
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
   }
-  {  // multiple threads
-    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, false, 4);
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, file_path, true, 1);
     res->join();
-    ASSERT_EQ(res->getResult()->size(), 133);
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, file_path, false, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, file_path, true, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
   }
 }
 
-TEST(ExternSearcherTest, match_byte_offsets) {
-  const std::vector<size_t> plain_res = {
-      567,    1524,   2618,   3259,   3540,   4009,   4071,   8395,   9045,
-      10770,  11290,  13386,  16684,  18207,  20585,  22272,  24272,  24713,
-      25667,  25823,  26496,  26787,  29117,  32111,  35073,  36484,  36695,
-      37541,  37568,  37921,  40577,  40661,  42145,  42628,  43104,  43838,
-      43968,  44851,  44910,  46793,  48951,  48998,  49613,  51773,  52911,
-      53066,  54435,  56924,  58697,  59452,  60569,  62030,  62061,  63528,
-      68569,  68828,  69216,  69624,  70802,  71856,  74898,  76786,  82871,
-      84551,  84659,  85904,  87073,  87706,  88132,  89065,  90223,  91563,
-      93953,  94393,  94898,  96407,  96590,  97176,  97813,  99014,  99258,
-      100294, 100566, 101352, 101988, 103264, 103380, 104975, 105041, 108304,
-      109036, 109812, 111008, 113091, 113300, 115122, 116301, 118928, 122337,
-      123475, 125210, 125472, 125535, 125801, 128326, 129939, 131143, 131818,
-      132707, 132745, 133594, 136407, 137060, 137870, 139918, 142424, 142919,
-      143707, 145296, 146293, 147033, 147452, 149181, 150752, 151190, 151419,
-      151458, 151609, 153092, 154041, 155175, 156048, 156403, 158137, 158682,
-      160076, 160518, 161341, 162334, 165204, 165324, 165580, 165623, 169338,
-      169844, 171450, 174841, 178365, 178859, 179278, 179375, 180045};
-  const std::vector<size_t> regex_res = {
-      567,    1524,   2618,   3259,   3540,   4009,   4071,   8395,   9045,
-      10770,  11290,  13386,  16684,  18207,  20585,  21221,  22272,  24272,
-      24713,  25667,  25823,  26496,  26787,  29117,  32111,  35073,  36484,
-      36695,  37541,  37568,  37921,  40577,  40661,  42145,  42628,  43104,
-      43838,  43968,  44851,  44910,  46793,  48951,  48998,  49613,  51773,
-      52911,  53066,  54435,  56924,  58697,  59452,  60569,  62030,  62061,
-      63528,  68569,  68828,  69216,  69624,  70802,  71856,  74898,  76786,
-      81033,  82871,  84551,  84659,  85904,  87073,  87706,  88132,  89065,
-      90223,  91563,  93953,  94393,  94898,  96407,  96590,  97176,  97813,
-      99014,  99258,  100294, 100566, 101352, 101988, 103264, 103380, 104975,
-      105041, 108304, 109036, 109812, 111008, 113091, 113300, 115122, 116301,
-      118928, 122337, 123475, 125210, 125472, 125535, 125801, 128326, 129939,
-      131143, 131818, 132707, 132745, 133594, 136407, 137060, 137870, 139918,
-      142424, 142919, 143707, 145296, 146293, 147033, 147452, 149181, 150752,
-      151190, 151419, 151458, 151609, 153092, 154041, 155175, 156048, 156403,
-      158137, 158682, 160076, 160518, 161341, 162334, 165204, 165324, 165580,
-      165623, 169338, 169844, 171450, 174841, 176726, 177359, 178365, 178859,
-      179278, 179375, 180045};
-  // with meta file
-  {  // plain text
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+TEST(ExternSearcherTest, line_byte_offsets_literal_join) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
   }
-  {  // regex
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        re_pattern, file_path, meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
   }
-  {  // multiple threads
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 4, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, false, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
   }
-  {  // multiple readers
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 1, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, true, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
   }
-  {  // multiple readers and threads
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_join) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
   }
-  {  // multiple readers and threads and regex pattern
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        re_pattern, file_path, meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
   }
-  {  // compression
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta",
-        false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        false, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
   }
-  // with meta file
-  {  // plain text
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        true, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
   }
-  // no meta file
-  {  // regex
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
-                                                         false, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_join) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::match_byte_offsets>(pattern, file_path, false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
   }
-  {  // multiple threads
-    auto _xs =
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::match_byte_offsets>(pattern, file_path, true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res =
         xs::extern_search<xs::match_byte_offsets>(pattern, file_path, false, 4);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::match_byte_offsets>(pattern, file_path, true, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
   }
 }
 
-TEST(ExternSearcherTest, match_byte_offsets_iterator) {
-  const std::vector<size_t> plain_res = {
-      567,    1524,   2618,   3259,   3540,   4009,   4071,   8395,   9045,
-      10770,  11290,  13386,  16684,  18207,  20585,  22272,  24272,  24713,
-      25667,  25823,  26496,  26787,  29117,  32111,  35073,  36484,  36695,
-      37541,  37568,  37921,  40577,  40661,  42145,  42628,  43104,  43838,
-      43968,  44851,  44910,  46793,  48951,  48998,  49613,  51773,  52911,
-      53066,  54435,  56924,  58697,  59452,  60569,  62030,  62061,  63528,
-      68569,  68828,  69216,  69624,  70802,  71856,  74898,  76786,  82871,
-      84551,  84659,  85904,  87073,  87706,  88132,  89065,  90223,  91563,
-      93953,  94393,  94898,  96407,  96590,  97176,  97813,  99014,  99258,
-      100294, 100566, 101352, 101988, 103264, 103380, 104975, 105041, 108304,
-      109036, 109812, 111008, 113091, 113300, 115122, 116301, 118928, 122337,
-      123475, 125210, 125472, 125535, 125801, 128326, 129939, 131143, 131818,
-      132707, 132745, 133594, 136407, 137060, 137870, 139918, 142424, 142919,
-      143707, 145296, 146293, 147033, 147452, 149181, 150752, 151190, 151419,
-      151458, 151609, 153092, 154041, 155175, 156048, 156403, 158137, 158682,
-      160076, 160518, 161341, 162334, 165204, 165324, 165580, 165623, 169338,
-      169844, 171450, 174841, 178365, 178859, 179278, 179375, 180045};
-  const std::vector<size_t> regex_res = {
-      567,    1524,   2618,   3259,   3540,   4009,   4071,   8395,   9045,
-      10770,  11290,  13386,  16684,  18207,  20585,  21221,  22272,  24272,
-      24713,  25667,  25823,  26496,  26787,  29117,  32111,  35073,  36484,
-      36695,  37541,  37568,  37921,  40577,  40661,  42145,  42628,  43104,
-      43838,  43968,  44851,  44910,  46793,  48951,  48998,  49613,  51773,
-      52911,  53066,  54435,  56924,  58697,  59452,  60569,  62030,  62061,
-      63528,  68569,  68828,  69216,  69624,  70802,  71856,  74898,  76786,
-      81033,  82871,  84551,  84659,  85904,  87073,  87706,  88132,  89065,
-      90223,  91563,  93953,  94393,  94898,  96407,  96590,  97176,  97813,
-      99014,  99258,  100294, 100566, 101352, 101988, 103264, 103380, 104975,
-      105041, 108304, 109036, 109812, 111008, 113091, 113300, 115122, 116301,
-      118928, 122337, 123475, 125210, 125472, 125535, 125801, 128326, 129939,
-      131143, 131818, 132707, 132745, 133594, 136407, 137060, 137870, 139918,
-      142424, 142919, 143707, 145296, 146293, 147033, 147452, 149181, 150752,
-      151190, 151419, 151458, 151609, 153092, 154041, 155175, 156048, 156403,
-      158137, 158682, 160076, 160518, 161341, 162334, 165204, 165324, 165580,
-      165623, 169338, 169844, 171450, 174841, 176726, 177359, 178365, 178859,
-      179278, 179375, 180045};
-  {  // plain text
-    std::vector<uint64_t> res;
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 1, 1);
-    for (auto bo : *_xs->getResult()) {
-      res.push_back(bo);
+TEST(ExternSearcherTest, match_byte_offsets_regex_join) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         false, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         true, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_join) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::line_indices>(pattern, file_path, false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path, true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::line_indices>(pattern, file_path, false, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path, true, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_join) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, false, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, true, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_join) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, false, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
     }
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
   }
-  {  // regex
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        re_pattern, file_path, meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
-  }
-  {  // multiple threads
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 4, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
-  }
-  {  // multiple readers
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 1, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
-  }
-  {  // multiple readers and threads
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 152);
-    ASSERT_EQ(res, plain_res);
-  }
-  {  // multiple readers and threads and regex pattern
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        re_pattern, file_path, meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
-  }
-  {  // compression
-    auto _xs = xs::extern_search<xs::match_byte_offsets>(
-        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta",
-        false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 156);
-    ASSERT_EQ(res, regex_res);
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, true, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
   }
 }
 
-TEST(ExternSearcherTest, line_byte_offsets) {
-  const std::vector<size_t> plain_res = {
-      421,    1375,   2507,   3251,   3521,   3626,   4031,   8348,   8704,
-      10683,  11266,  13230,  16464,  17925,  20440,  22120,  24177,  24506,
-      25651,  26404,  26629,  28994,  31761,  34689,  36324,  37384,  37687,
-      40361,  42130,  42513,  43078,  43828,  44749,  46614,  48608,  48973,
-      49557,  51679,  52849,  54244,  56808,  58435,  59113,  60474,  61639,
-      63252,  68337,  69165,  70554,  71778,  74667,  76677,  82749,  84440,
-      85752,  87014,  87690,  88123,  89065,  90107,  91395,  93943,  94104,
-      94684,  96004,  96539,  97104,  97765,  98737,  99227,  100051, 100452,
-      101299, 101975, 103234, 104926, 108146, 108916, 109771, 110946, 113041,
-      113125, 115093, 116154, 118494, 122205, 123440, 124857, 125265, 125677,
-      128227, 129668, 130974, 131790, 132671, 133527, 136283, 136778, 137752,
-      139849, 142222, 142736, 143634, 145272, 146003, 146848, 147212, 149071,
-      150699, 151182, 151378, 151600, 153031, 154035, 155153, 155884, 156096,
-      158024, 158318, 160013, 160457, 161091, 162073, 165069, 165272, 169177,
-      169663, 171346, 174725, 178340, 178565, 179272, 179847};
-  const std::vector<size_t> regex_res = {
-      421,    1375,   2507,   3251,   3521,   3626,   4031,   8348,   8704,
-      10683,  11266,  13230,  16464,  17925,  20440,  21153,  22120,  24177,
-      24506,  25651,  26404,  26629,  28994,  31761,  34689,  36324,  37384,
-      37687,  40361,  42130,  42513,  43078,  43828,  44749,  46614,  48608,
-      48973,  49557,  51679,  52849,  54244,  56808,  58435,  59113,  60474,
-      61639,  63252,  68337,  69165,  70554,  71778,  74667,  76677,  80671,
-      82749,  84440,  85752,  87014,  87690,  88123,  89065,  90107,  91395,
-      93943,  94104,  94684,  96004,  96539,  97104,  97765,  98737,  99227,
-      100051, 100452, 101299, 101975, 103234, 104926, 108146, 108916, 109771,
-      110946, 113041, 113125, 115093, 116154, 118494, 122205, 123440, 124857,
-      125265, 125677, 128227, 129668, 130974, 131790, 132671, 133527, 136283,
-      136778, 137752, 139849, 142222, 142736, 143634, 145272, 146003, 146848,
-      147212, 149071, 150699, 151182, 151378, 151600, 153031, 154035, 155153,
-      155884, 156096, 158024, 158318, 160013, 160457, 161091, 162073, 165069,
-      165272, 169177, 169663, 171346, 174725, 176685, 177091, 178340, 178565,
-      179272, 179847};
-  {  // plain text
-    auto _xs = xs::extern_search<xs::line_byte_offsets>(
+TEST(ExternSearcherTest, lines_regex_join) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, false, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, true, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_icase_lines);
+  }
+
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, false, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, true, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+// ===== live results accessed via iterators ===================================
+
+TEST(ExternSearcherTest, count_matches_literal_live) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::count_matches>(pattern, file_path, false, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::count_matches>(pattern, file_path, true, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::count_matches>(pattern, file_path, false, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::count_matches>(pattern, file_path, true, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_literal_live) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, false, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, true, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, false, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path, true, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_live) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, false, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, true, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, false, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::count_matches>(re_pattern, file_path, true, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_regex_live) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, file_path, false, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, file_path, true, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, file_path, false, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::count_lines>(re_pattern, file_path, true, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_literal_live) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, false, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, true, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, false, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::line_byte_offsets>(pattern, file_path, true, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_live) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        false, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        true, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        false, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, file_path,
+                                                        true, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_live) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::match_byte_offsets>(pattern, file_path, false, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::match_byte_offsets>(pattern, file_path, true, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::match_byte_offsets>(pattern, file_path, false, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::match_byte_offsets>(pattern, file_path, true, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_regex_live) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         false, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         true, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         false, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, file_path,
+                                                         true, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_live) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::line_indices>(pattern, file_path, false, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path, true, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::line_indices>(pattern, file_path, false, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path, true, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_live) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, false, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, true, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, false, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::line_indices>(re_pattern, file_path, true, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_live) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, false, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, true, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, false, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, true, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+TEST(ExternSearcherTest, lines_regex_live) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, false, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, true, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, false, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path, true, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+// _____ Reading file with metadata ____________________________________________
+
+// ===== join search and copy results ==========================================
+
+TEST(ExternSearcherTest, count_matches_literal_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(
         pattern, file_path, meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
   }
-  {  // regex
-    auto _xs = xs::extern_search<xs::line_byte_offsets>(
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(
+        pattern, file_path, meta_file_path, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_literal_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(
         re_pattern, file_path, meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
   }
-  {  // multiple threads
-    auto _xs = xs::extern_search<xs::line_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 4, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
+                                                    meta_file_path, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
   }
-  {  // multiple readers
-    auto _xs = xs::extern_search<xs::line_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 1, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(
+        re_pattern, file_path, meta_file_path, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
   }
-  {  // multiple readers and threads
-    auto _xs = xs::extern_search<xs::line_byte_offsets>(
-        pattern, file_path, meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
-  }
-  {  // multiple readers and threads and regex pattern
-    auto _xs = xs::extern_search<xs::line_byte_offsets>(
-        re_pattern, file_path, meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
-  }
-  {  // compression
-    auto _xs = xs::extern_search<xs::line_byte_offsets>(
-        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta",
-        false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
+                                                    meta_file_path, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
   }
 }
 
-TEST(ExternSearcherTest, line_indices) {
-  const std::vector<size_t> plain_res = {
-      1,   5,   8,   10,  12,  13,  14,  35,  37,  44,  47,  54,  65,  71,  79,
-      86,  93,  95,  100, 102, 103, 112, 120, 131, 137, 140, 141, 152, 160, 162,
-      164, 166, 169, 175, 185, 186, 189, 198, 203, 209, 220, 225, 227, 231, 235,
-      240, 258, 260, 264, 269, 281, 289, 310, 318, 323, 326, 329, 330, 332, 335,
-      339, 348, 349, 351, 357, 359, 361, 363, 366, 367, 371, 373, 377, 380, 385,
-      390, 403, 406, 408, 411, 420, 421, 426, 429, 440, 453, 459, 465, 466, 467,
-      476, 480, 485, 488, 492, 497, 505, 506, 508, 515, 523, 525, 528, 534, 537,
-      541, 542, 548, 556, 558, 560, 561, 568, 573, 576, 579, 580, 586, 587, 592,
-      594, 596, 599, 610, 611, 625, 626, 634, 645, 658, 659, 661, 664};
-  const std::vector<size_t> regex_res = {
-      1,   5,   8,   10,  12,  13,  14,  35,  37,  44,  47,  54,  65,  71,
-      79,  81,  86,  93,  95,  100, 102, 103, 112, 120, 131, 137, 140, 141,
-      152, 160, 162, 164, 166, 169, 175, 185, 186, 189, 198, 203, 209, 220,
-      225, 227, 231, 235, 240, 258, 260, 264, 269, 281, 289, 302, 310, 318,
-      323, 326, 329, 330, 332, 335, 339, 348, 349, 351, 357, 359, 361, 363,
-      366, 367, 371, 373, 377, 380, 385, 390, 403, 406, 408, 411, 420, 421,
-      426, 429, 440, 453, 459, 465, 466, 467, 476, 480, 485, 488, 492, 497,
-      505, 506, 508, 515, 523, 525, 528, 534, 537, 541, 542, 548, 556, 558,
-      560, 561, 568, 573, 576, 579, 580, 586, 587, 592, 594, 596, 599, 610,
-      611, 625, 626, 634, 645, 652, 653, 658, 659, 661, 664};
-  {  // plain text
-    auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
-                                                   meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+TEST(ExternSearcherTest, count_lines_regex_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
   }
-  {  // regex
-    auto _xs = xs::extern_search<xs::line_indices>(re_pattern, file_path,
-                                                   meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
   }
-  {  // multiple threads
-    auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
-                                                   meta_file_path, false, 4, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
   }
-  {  // multiple readers
-    auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
-                                                   meta_file_path, false, 1, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
-  }
-  {  // multiple readers and threads
-    auto _xs = xs::extern_search<xs::line_indices>(pattern, file_path,
-                                                   meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 133);
-    ASSERT_EQ(res, plain_res);
-  }
-  {  // multiple readers and threads and regex pattern
-    auto _xs = xs::extern_search<xs::line_indices>(re_pattern, file_path,
-                                                   meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
-  }
-  {  // compression
-    auto _xs = xs::extern_search<xs::line_indices>(
-        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta",
-        false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    std::sort(res.begin(), res.end());
-    ASSERT_EQ(res.size(), 137);
-    ASSERT_EQ(res, regex_res);
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
   }
 }
 
-TEST(ExternSearcherTest, lines) {
-  {  // plain text
-    auto _xs = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+TEST(ExternSearcherTest, line_byte_offsets_literal_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_regex_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
                                             false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    ASSERT_EQ(res.size(), 133);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_case_lines);
   }
-  {  // regex
-    auto _xs = xs::extern_search<xs::lines>(re_pattern, file_path,
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+                                            true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+                                            false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+                                            true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+TEST(ExternSearcherTest, lines_regex_join_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
                                             meta_file_path, false, 1, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    ASSERT_EQ(res.size(), 137);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_case_lines);
   }
-  {  // multiple threads
-    auto _xs = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
-                                            false, 4, 1);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    ASSERT_EQ(res.size(), 133);
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
+                                            meta_file_path, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_icase_lines);
   }
-  {  // multiple readers
-    auto _xs = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
-                                            false, 1, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    ASSERT_EQ(res.size(), 133);
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
+                                            meta_file_path, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
   }
-  {  // multiple readers and threads
-    auto _xs = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
-                                            false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    ASSERT_EQ(res.size(), 133);
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
+                                            meta_file_path, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
   }
-  {  // multiple readers and threads and regex pattern
-    auto _xs = xs::extern_search<xs::lines>(re_pattern, file_path,
-                                            meta_file_path, false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    ASSERT_EQ(res.size(), 137);
+}
+
+// ===== live results accessed via iterators ===================================
+
+TEST(ExternSearcherTest, count_matches_literal_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(
+        pattern, file_path, meta_file_path, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
   }
-  {  // compression
-    auto _xs = xs::extern_search<xs::lines>(
-        re_pattern, "test/files/dummy.xslz4", "test/files/dummy.xslz4.meta",
-        false, 4, 2);
-    _xs->join();
-    auto res = _xs->getResult()->copyResultSafe();
-    ASSERT_EQ(res.size(), 137);
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(
+        pattern, file_path, meta_file_path, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, file_path,
+                                                    meta_file_path, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_literal_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, file_path,
+                                                  meta_file_path, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(
+        re_pattern, file_path, meta_file_path, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
+                                                    meta_file_path, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(
+        re_pattern, file_path, meta_file_path, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, file_path,
+                                                    meta_file_path, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_regex_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, file_path,
+                                                  meta_file_path, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_literal_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        pattern, file_path, meta_file_path, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_regex_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(
+        re_pattern, file_path, meta_file_path, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, file_path,
+                                                   meta_file_path, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, file_path,
+                                                   meta_file_path, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+                                            false, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+                                            true, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+                                            false, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(pattern, file_path, meta_file_path,
+                                            true, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+TEST(ExternSearcherTest, lines_regex_live_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
+                                            meta_file_path, false, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
+                                            meta_file_path, true, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
+                                            meta_file_path, false, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, file_path,
+                                            meta_file_path, true, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+// _____ Reading lz4 compressed file with metadata _____________________________
+
+// ===== join search and copy results ==========================================
+
+TEST(ExternSearcherTest, count_matches_literal_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_literal_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_regex_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_literal_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_regex_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_join_lz4_meta) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_case_lines);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+TEST(ExternSearcherTest, lines_regex_join_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+// ===== live results accessed via iterators ===================================
+
+TEST(ExternSearcherTest, count_matches_literal_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, lz4_path, lz4_meta,
+                                                    true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_literal_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, lz4_path, lz4_meta,
+                                                  true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, lz4_path,
+                                                    lz4_meta, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_regex_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, lz4_path,
+                                                  lz4_meta, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_literal_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, lz4_path,
+                                                        lz4_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, lz4_path,
+                                                        lz4_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, lz4_path,
+                                                         lz4_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_regex_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, lz4_path,
+                                                         lz4_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, lz4_path, lz4_meta,
+                                                   true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, lz4_path,
+                                                   lz4_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_live_lz4_meta) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, false, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_case_lines);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, true, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, false, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, lz4_path, lz4_meta, true, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+TEST(ExternSearcherTest, lines_regex_live_lz4_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            false, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            true, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            false, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, lz4_path, lz4_meta,
+                                            true, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+// _____ Reading zst compressed file with metadata _____________________________
+
+// ===== join search and copy results ==========================================
+
+TEST(ExternSearcherTest, count_matches_literal_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_literal_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_regex_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, false, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, true, 1, 1);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, false, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, true, 4, 4);
+    res->join();
+    ASSERT_EQ(res->getResult()->size(), regex_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_literal_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_regex_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_join_zst_meta) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_case_lines);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+TEST(ExternSearcherTest, lines_regex_join_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            false, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            true, 1, 1);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    ASSERT_EQ(result, regex_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            false, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            true, 4, 4);
+    res->join();
+    auto result = res->getResult()->copyResultSafe();
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+// ===== live results accessed via iterators ===================================
+
+TEST(ExternSearcherTest, count_matches_literal_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(pattern, zst_path, zst_meta,
+                                                    true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_literal_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(pattern, zst_path, zst_meta,
+                                                  true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, literal_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, count_matches_regex_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count_match);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_matches>(re_pattern, zst_path,
+                                                    zst_meta, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count_match);
+  }
+}
+
+TEST(ExternSearcherTest, count_lines_regex_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, false, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, true, 1, 1);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, false, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_case_count);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::count_lines>(re_pattern, zst_path,
+                                                  zst_meta, true, 4, 4);
+    uint64_t result = 0;
+    for (auto i : *res->getResult()) {
+      result = i;
+    }
+    ASSERT_EQ(result, regex_icase_count);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_literal_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(pattern, zst_path,
+                                                        zst_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_byte_offsets_regex_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_byte_offsets>(re_pattern, zst_path,
+                                                        zst_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_literal_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(pattern, zst_path,
+                                                         zst_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, match_byte_offsets_regex_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_match_byte_offsets);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::match_byte_offsets>(re_pattern, zst_path,
+                                                         zst_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_match_byte_offsets);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_literal_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(pattern, zst_path, zst_meta,
+                                                   true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, literal_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, line_indices_regex_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, false, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, true, 1, 1);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, false, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_case_line_indices);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::line_indices>(re_pattern, zst_path,
+                                                   zst_meta, true, 4, 4);
+    std::vector<uint64_t> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(result, regex_icase_line_indices);
+  }
+}
+
+TEST(ExternSearcherTest, lines_literal_live_zst_meta) {
+  {  // case, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, false, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_case_lines);
+  }
+  {  // icase, single thread
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, true, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, literal_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, false, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res =
+        xs::extern_search<xs::lines>(pattern, zst_path, zst_meta, true, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(literal_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+}
+
+TEST(ExternSearcherTest, lines_regex_live_zst_meta) {
+  {  // case, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            false, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_case_lines);
+  }
+  {  // icase, single thread
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            true, 1, 1);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    ASSERT_EQ(result, regex_icase_lines);
+  }
+  {  // case, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            false, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_case_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
+  }
+  {  // icase, 4 threads
+    auto res = xs::extern_search<xs::lines>(re_pattern, zst_path, zst_meta,
+                                            true, 4, 4);
+    std::vector<std::string> result{};
+    for (auto r : *res->getResult()) {
+      result.push_back(r);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<std::string> tmp(regex_icase_lines);
+    std::sort(tmp.begin(), tmp.end());
+    ASSERT_EQ(result, tmp);
   }
 }

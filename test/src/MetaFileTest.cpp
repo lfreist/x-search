@@ -115,39 +115,32 @@ TEST(MetaFileTest, write_chunk_meta_data) {
 
 TEST(MetaFile, get_compression_type) {
   {
-    MetaFile meta_file("test/files/dummy.xs.meta", std::ios::in);
-
+    MetaFile meta_file("test/files/sample.meta", std::ios::in);
     ASSERT_EQ(meta_file.get_compression_type(), CompressionType::NONE);
   }
   {
-    MetaFile meta_file("test/files/dummy.xslz4.meta", std::ios::in);
-
+    MetaFile meta_file("test/files/sample.xslz4.meta", std::ios::in);
     ASSERT_EQ(meta_file.get_compression_type(), CompressionType::LZ4);
   }
   {
-    MetaFile meta_file("test/files/dummy.xszst.meta", std::ios::in);
-
+    MetaFile meta_file("test/files/sample.xslz4hc.meta", std::ios::in);
+    ASSERT_EQ(meta_file.get_compression_type(), CompressionType::LZ4);
+  }
+  {
+    MetaFile meta_file("test/files/sample.xszst.meta", std::ios::in);
     ASSERT_EQ(meta_file.get_compression_type(), CompressionType::ZSTD);
   }
 }
 
 TEST(MetaFile, get_compression_type_static) {
-  {
-    ASSERT_EQ(MetaFile::getCompressionType("test/files/dummy.xs.meta"),
-              CompressionType::NONE);
-  }
-  {
-    ASSERT_EQ(MetaFile::getCompressionType("test/files/dummy.xslz4.meta"),
-              CompressionType::LZ4);
-  }
-  {
-    ASSERT_EQ(MetaFile::getCompressionType("test/files/dummy.xszst.meta"),
-              CompressionType::ZSTD);
-  }
-  {
-    ASSERT_EQ(MetaFile::getCompressionType("test/files/dummy.xszst.meta"),
-              CompressionType::ZSTD);
-  }
+  ASSERT_EQ(MetaFile::getCompressionType("test/files/sample.meta"),
+            CompressionType::NONE);
+  ASSERT_EQ(MetaFile::getCompressionType("test/files/sample.xslz4.meta"),
+            CompressionType::LZ4);
+  ASSERT_EQ(MetaFile::getCompressionType("test/files/sample.xslz4hc.meta"),
+            CompressionType::LZ4);
+  ASSERT_EQ(MetaFile::getCompressionType("test/files/sample.xszst.meta"),
+            CompressionType::ZSTD);
 }
 
 }  // namespace xs

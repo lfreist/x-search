@@ -48,7 +48,7 @@ class ContainerResult : public Result<std::vector<T>> {
    public:
     iterator(R& result, size_t index) : _result(result), _index(index) {}
 
-    T const& operator*() { return _result[_index]; }
+    T operator*() { return _result[_index]; }
 
     iterator& operator++() {
       _index++;
@@ -134,31 +134,35 @@ class CountResult : public Result<uint64_t> {
  public:
   class iterator {
    public:
-    iterator(CountResult& result, size_t index)
-        : _result(result), _index(index) {}
+    explicit iterator(CountResult& result) : _result(result) {}
 
     uint64_t operator*() {
       std::unique_lock lock(*_result._mutex);
-      return _result._sum_result;
+      _value = std::max(_value, _result._sum_result);
+      return _value;
     }
 
-    iterator& operator++() {
-      _index++;
-      return *this;
-    }
+    iterator& operator++() { return *this; }
 
     bool operator!=(const iterator& other) {
       std::unique_lock lock(*_result._mutex);
-      _result._cv->wait(lock);
+      if (!flag) {
+        _result._cv->wait(lock);
+      }
       if (_result._done) {
-        return false;
+        if (flag) {
+          return false;
+        }
+        flag = true;
+        return true;
       }
       return true;
     }
 
    private:
     CountResult& _result;
-    size_t _index;
+    size_t _value = 0;
+    bool flag = false;
   };
 
  public:
@@ -169,9 +173,9 @@ class CountResult : public Result<uint64_t> {
 
   [[nodiscard]] size_t size() const override;
 
-  iterator begin() { return {*this, 0}; }
+  iterator begin() { return iterator{*this}; }
 
-  iterator end() { return {*this, 0}; }
+  iterator end() { return iterator{*this}; }
 
  protected:
   uint64_t _sum_result = 0;

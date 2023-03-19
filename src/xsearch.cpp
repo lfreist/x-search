@@ -12,7 +12,13 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
                                              const std::string& file_path,
                                              bool ignore_case,
                                              int num_threads) {
-  auto reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  std::unique_ptr<task::reader::FileReader<DataChunk>> reader;
+  if (ignore_case) {
+    reader = std::make_unique<task::reader::FileBlockReader>(file_path);
+  } else {
+    reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  }
+
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -31,7 +37,12 @@ template <>
 std::shared_ptr<count_lines> extern_search(const std::string& pattern,
                                            const std::string& file_path,
                                            bool ignore_case, int num_threads) {
-  auto reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  std::unique_ptr<task::reader::FileReader<DataChunk>> reader;
+  if (ignore_case) {
+    reader = std::make_unique<task::reader::FileBlockReader>(file_path);
+  } else {
+    reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -51,7 +62,12 @@ std::shared_ptr<match_byte_offsets> extern_search(const std::string& pattern,
                                                   const std::string& file_path,
                                                   bool ignore_case,
                                                   int num_threads) {
-  auto reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  std::unique_ptr<task::reader::FileReader<DataChunk>> reader;
+  if (ignore_case) {
+    reader = std::make_unique<task::reader::FileBlockReader>(file_path);
+  } else {
+    reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -71,7 +87,12 @@ std::shared_ptr<line_byte_offsets> extern_search(const std::string& pattern,
                                                  const std::string& file_path,
                                                  bool ignore_case,
                                                  int num_threads) {
-  auto reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  std::unique_ptr<task::reader::FileReader<DataChunk>> reader;
+  if (ignore_case) {
+    reader = std::make_unique<task::reader::FileBlockReader>(file_path);
+  } else {
+    reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -90,7 +111,12 @@ template <>
 std::shared_ptr<line_indices> extern_search(const std::string& pattern,
                                             const std::string& file_path,
                                             bool ignore_case, int num_threads) {
-  auto reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  std::unique_ptr<task::reader::FileReader<DataChunk>> reader;
+  if (ignore_case) {
+    reader = std::make_unique<task::reader::FileBlockReader>(file_path);
+  } else {
+    reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -110,7 +136,12 @@ template <>
 std::shared_ptr<lines> extern_search(const std::string& pattern,
                                      const std::string& file_path,
                                      bool ignore_case, int num_threads) {
-  auto reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  std::unique_ptr<task::reader::FileReader<DataChunk>> reader;
+  if (ignore_case) {
+    reader = std::make_unique<task::reader::FileBlockReader>(file_path);
+  } else {
+    reader = std::make_unique<task::reader::FileBlockReaderMMAP>(file_path);
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -135,8 +166,19 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
     return extern_search<count_matches>(pattern, file_path, ignore_case,
                                         num_threads);
   }
-  auto reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
-      file_path, meta_file_path, num_readers);
+  std::unique_ptr<task::base::DataProvider<DataChunk>> reader;
+  if (num_readers == 1) {
+    reader = std::make_unique<task::reader::FileBlockMetaReaderSingle>(
+        file_path, meta_file_path);
+  } else {
+    if (ignore_case) {
+      reader = std::make_unique<task::reader::FileBlockMetaReader>(
+          file_path, meta_file_path, num_readers);
+    } else {
+      reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
+          file_path, meta_file_path, num_readers);
+    }
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -175,8 +217,19 @@ std::shared_ptr<count_lines> extern_search(const std::string& pattern,
     return extern_search<count_lines>(pattern, file_path, ignore_case,
                                       num_threads);
   }
-  auto reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
-      file_path, meta_file_path, num_readers);
+  std::unique_ptr<task::base::DataProvider<DataChunk>> reader;
+  if (num_readers == 1) {
+    reader = std::make_unique<task::reader::FileBlockMetaReaderSingle>(
+        file_path, meta_file_path);
+  } else {
+    if (ignore_case) {
+      reader = std::make_unique<task::reader::FileBlockMetaReader>(
+          file_path, meta_file_path, num_readers);
+    } else {
+      reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
+          file_path, meta_file_path, num_readers);
+    }
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -214,8 +267,19 @@ std::shared_ptr<match_byte_offsets> extern_search(
     return extern_search<match_byte_offsets>(pattern, file_path, ignore_case,
                                              num_threads);
   }
-  auto reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
-      file_path, meta_file_path, num_readers);
+  std::unique_ptr<task::base::DataProvider<DataChunk>> reader;
+  if (num_readers == 1) {
+    reader = std::make_unique<task::reader::FileBlockMetaReaderSingle>(
+        file_path, meta_file_path);
+  } else {
+    if (ignore_case) {
+      reader = std::make_unique<task::reader::FileBlockMetaReader>(
+          file_path, meta_file_path, num_readers);
+    } else {
+      reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
+          file_path, meta_file_path, num_readers);
+    }
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -253,8 +317,19 @@ std::shared_ptr<line_byte_offsets> extern_search(
     return extern_search<line_byte_offsets>(pattern, file_path, ignore_case,
                                             num_threads);
   }
-  auto reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
-      file_path, meta_file_path, num_readers);
+  std::unique_ptr<task::base::DataProvider<DataChunk>> reader;
+  if (num_readers == 1) {
+    reader = std::make_unique<task::reader::FileBlockMetaReaderSingle>(
+        file_path, meta_file_path);
+  } else {
+    if (ignore_case) {
+      reader = std::make_unique<task::reader::FileBlockMetaReader>(
+          file_path, meta_file_path, num_readers);
+    } else {
+      reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
+          file_path, meta_file_path, num_readers);
+    }
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -292,8 +367,19 @@ std::shared_ptr<lines> extern_search(const std::string& pattern,
   if (meta_file_path.empty()) {
     return extern_search<lines>(pattern, file_path, ignore_case, num_threads);
   }
-  auto reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
-      file_path, meta_file_path, num_readers);
+  std::unique_ptr<task::base::DataProvider<DataChunk>> reader;
+  if (num_readers == 1) {
+    reader = std::make_unique<task::reader::FileBlockMetaReaderSingle>(
+        file_path, meta_file_path);
+  } else {
+    if (ignore_case) {
+      reader = std::make_unique<task::reader::FileBlockMetaReader>(
+          file_path, meta_file_path, num_readers);
+    } else {
+      reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
+          file_path, meta_file_path, num_readers);
+    }
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
@@ -331,8 +417,19 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
     return extern_search<line_indices>(pattern, file_path, ignore_case,
                                        num_threads);
   }
-  auto reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
-      file_path, meta_file_path, num_readers);
+  std::unique_ptr<task::base::DataProvider<DataChunk>> reader;
+  if (num_readers == 1) {
+    reader = std::make_unique<task::reader::FileBlockMetaReaderSingle>(
+        file_path, meta_file_path);
+  } else {
+    if (ignore_case) {
+      reader = std::make_unique<task::reader::FileBlockMetaReader>(
+          file_path, meta_file_path, num_readers);
+    } else {
+      reader = std::make_unique<task::reader::FileBlockMetaReaderMMAP>(
+          file_path, meta_file_path, num_readers);
+    }
+  }
   // check for compression and add decompression task --------------------------
   std::vector<std::unique_ptr<task::base::InplaceProcessor<DataChunk>>>
       processors;
