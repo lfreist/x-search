@@ -1,5 +1,6 @@
 add_subdirectory(string_search)
 add_subdirectory(utils)
+add_subdirectory(tasks)
 
 add_executable(DataChunkTestMain DataChunkTest.cpp)
 target_link_libraries(DataChunkTestMain PUBLIC DataChunk gtest_main MetaFile)

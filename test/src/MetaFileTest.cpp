@@ -4,25 +4,29 @@
 #include <gtest/gtest.h>
 #include <xsearch/MetaFile.h>
 
+#include <cstdio>
+
 namespace xs {
 
 TEST(MetaFileTest, constructor) {
   {
-    MetaFile meta_file("test/files/dummy.xs.meta", std::ios::in);
+    MetaFile meta_file("test/files/sample.meta", std::ios::in);
 
-    ASSERT_EQ(meta_file.get_file_path(), "test/files/dummy.xs.meta");
+    ASSERT_EQ(meta_file.get_file_path(), "test/files/sample.meta");
     ASSERT_FALSE(meta_file.is_writable());
   }
   {
-    MetaFile meta_file("test/files/dummy.meta.tmp", std::ios::out);
+    MetaFile meta_file("test/files/sample.meta.tmp", std::ios::out);
 
-    ASSERT_EQ(meta_file.get_file_path(), "test/files/dummy.meta.tmp");
+    ASSERT_EQ(meta_file.get_file_path(), "test/files/sample.meta.tmp");
     ASSERT_TRUE(meta_file.is_writable());
+
+    std::remove("test/files/sample.meta.tmp");
   }
 }
 
 TEST(MetaFileTest, next_chunk_meta_data) {
-  MetaFile meta_file("test/files/dummy.xslz4.meta", std::ios::in);
+  MetaFile meta_file("test/files/sample.xslz4.meta", std::ios::in);
 
   std::optional<ChunkMetaData> chunk_size = meta_file.next_chunk_meta_data();
   ASSERT_TRUE(chunk_size.has_value());
@@ -30,26 +34,17 @@ TEST(MetaFileTest, next_chunk_meta_data) {
   ASSERT_EQ(cs.chunk_index, 0);
   ASSERT_EQ(cs.original_offset, 0);
   ASSERT_EQ(cs.actual_offset, 0);
-  ASSERT_EQ(cs.original_size, 4497);
-  ASSERT_EQ(cs.actual_size, 4050);
+  ASSERT_EQ(cs.original_size, 16777222);
+  ASSERT_EQ(cs.actual_size, 6661835);
 
   chunk_size = meta_file.next_chunk_meta_data();
   ASSERT_TRUE(chunk_size.has_value());
   cs = chunk_size.value();
   ASSERT_EQ(cs.chunk_index, 1);
-  ASSERT_EQ(cs.original_offset, 4497);
-  ASSERT_EQ(cs.actual_offset, 4050);
-  ASSERT_EQ(cs.original_size, 4207);
-  ASSERT_EQ(cs.actual_size, 3872);
-
-  chunk_size = meta_file.next_chunk_meta_data();
-  ASSERT_TRUE(chunk_size.has_value());
-  cs = chunk_size.value();
-  ASSERT_EQ(cs.chunk_index, 2);
-  ASSERT_EQ(cs.original_offset, 8704);
-  ASSERT_EQ(cs.actual_offset, 7922);
-  ASSERT_EQ(cs.original_size, 4216);
-  ASSERT_EQ(cs.actual_size, 3835);
+  ASSERT_EQ(cs.original_offset, 16777222);
+  ASSERT_EQ(cs.actual_offset, 6661835);
+  ASSERT_EQ(cs.original_size, 16777261);
+  ASSERT_EQ(cs.actual_size, 7090180);
 
   // get last chunk
   while (true) {
@@ -59,29 +54,31 @@ TEST(MetaFileTest, next_chunk_meta_data) {
     }
     cs = tmp.value();
   }
-  ASSERT_EQ(cs.chunk_index, 42);
-  ASSERT_EQ(cs.original_offset, 179001);
-  ASSERT_EQ(cs.actual_offset, 162345);
-  ASSERT_EQ(cs.original_size, 1406);
-  ASSERT_EQ(cs.actual_size, 1352);
+  ASSERT_EQ(cs.chunk_index, 5);
+  ASSERT_EQ(cs.original_offset, 83886210);
+  ASSERT_EQ(cs.actual_offset, 34833468);
+  ASSERT_EQ(cs.original_size, 16113790);
+  ASSERT_EQ(cs.actual_size, 7035946);
 }
 
 TEST(MetaFileTest, next_chunk_meta_data_multiple) {
-  MetaFile meta_file("test/files/dummy.xslz4.meta", std::ios::in);
+  MetaFile meta_file("test/files/sample.meta", std::ios::in);
 
-  std::vector<ChunkMetaData> chunk_sizes = meta_file.next_chunk_meta_data(5);
-  ASSERT_EQ(chunk_sizes.size(), 5);
+  // get first 5
+  std::vector<ChunkMetaData> chunk_sizes = meta_file.next_chunk_meta_data(2);
+  ASSERT_EQ(chunk_sizes.size(), 2);
   ASSERT_EQ(chunk_sizes[0].original_offset, 0);
   ASSERT_EQ(chunk_sizes[0].actual_offset, 0);
-  ASSERT_EQ(chunk_sizes[0].original_size, 4497);
-  ASSERT_EQ(chunk_sizes[0].actual_size, 4050);
+  ASSERT_EQ(chunk_sizes[0].original_size, 16777222);
+  ASSERT_EQ(chunk_sizes[0].actual_size, 16777222);
 
-  chunk_sizes = meta_file.next_chunk_meta_data(150);
-  ASSERT_EQ(chunk_sizes.size(), 38);
-  ASSERT_EQ(chunk_sizes[37].original_offset, 179001);
-  ASSERT_EQ(chunk_sizes[37].actual_offset, 162345);
-  ASSERT_EQ(chunk_sizes[37].original_size, 1406);
-  ASSERT_EQ(chunk_sizes[37].actual_size, 1352);
+  // get remaining
+  chunk_sizes = meta_file.next_chunk_meta_data(200);
+  ASSERT_EQ(chunk_sizes.size(), 4);
+  ASSERT_EQ(chunk_sizes[3].original_offset, 83886210);
+  ASSERT_EQ(chunk_sizes[3].actual_offset, 83886210);
+  ASSERT_EQ(chunk_sizes[3].original_size, 16113790);
+  ASSERT_EQ(chunk_sizes[3].actual_size, 16113790);
 }
 
 TEST(MetaFileTest, write_chunk_meta_data) {
@@ -111,6 +108,8 @@ TEST(MetaFileTest, write_chunk_meta_data) {
 
   auto cs_opt = meta_file_read.next_chunk_meta_data();
   ASSERT_FALSE(cs_opt.has_value());
+
+  std::remove("test/files/tmp.meta");
 }
 
 TEST(MetaFile, get_compression_type) {

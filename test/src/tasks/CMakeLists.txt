@@ -1,0 +1,8 @@
+add_executable(processorsTestMain processorsTest.cpp)
+target_link_libraries(processorsTestMain PRIVATE xsearch gtest_main)
+
+add_executable(readersTestMain readersTest.cpp)
+target_link_libraries(readersTestMain PRIVATE xsearch gtest_main)
+
+add_executable(searchersTestMain searchersTest.cpp)
+target_link_libraries(searchersTestMain PRIVATE xsearch gtest_main)

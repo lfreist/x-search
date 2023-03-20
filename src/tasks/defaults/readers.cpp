@@ -164,7 +164,7 @@ FileBlockReader::getNextData() {
       !_file_stream.eof()) {
     int64_t additional_bytes_read = 0;
     while (true) {
-      if (static_cast<size_t>(additional_bytes_read) > _max_oversize) {
+      if (static_cast<size_t>(additional_bytes_read) >= _max_oversize) {
         throw std::runtime_error(
             "ERROR: maximum size exceeded while reading data: " +
             std::to_string(additional_bytes_read + num_bytes_read));
