@@ -16,13 +16,13 @@ MatchCounter::MatchCounter(std::string pattern, bool regex,
                                         case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
-uint64_t MatchCounter::process(DataChunk* data) const {
+uint64_t MatchCounter::process(const DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START(_, "search");
   return _re_pattern == nullptr ? process_ascii(data) : process_re2(data);
 }
 
 // _____________________________________________________________________________
-uint64_t MatchCounter::process_ascii(DataChunk* data) const {
+uint64_t MatchCounter::process_ascii(const DataChunk* data) const {
   if (_ignore_case) {
     DataChunk chunk(*data);
     utils::str::simd::toLower(chunk.data(), chunk.size());
@@ -32,7 +32,7 @@ uint64_t MatchCounter::process_ascii(DataChunk* data) const {
 }
 
 // _____________________________________________________________________________
-uint64_t MatchCounter::process_re2(DataChunk* data) const {
+uint64_t MatchCounter::process_re2(const DataChunk* data) const {
   return search::regex::count(data, *_re_pattern, false);
 }
 
@@ -44,13 +44,13 @@ LineCounter::LineCounter(std::string pattern, bool regex, bool case_insensitive,
                                         case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
-uint64_t LineCounter::process(DataChunk* data) const {
+uint64_t LineCounter::process(const DataChunk* data) const {
   INLINE_BENCHMARK_WALL_START(_, "search");
   return _re_pattern == nullptr ? process_ascii(data) : process_re2(data);
 }
 
 // _____________________________________________________________________________
-uint64_t LineCounter::process_ascii(DataChunk* data) const {
+uint64_t LineCounter::process_ascii(const DataChunk* data) const {
   if (_ignore_case) {
     DataChunk chunk(*data);
     utils::str::simd::toLower(chunk.data(), chunk.size());
@@ -60,7 +60,7 @@ uint64_t LineCounter::process_ascii(DataChunk* data) const {
 }
 
 // _____________________________________________________________________________
-uint64_t LineCounter::process_re2(DataChunk* data) const {
+uint64_t LineCounter::process_re2(const DataChunk* data) const {
   return search::regex::count(data, *_re_pattern, true);
 }
 
@@ -75,13 +75,13 @@ MatchBytePositionSearcher::MatchBytePositionSearcher(std::string pattern,
 
 // _____________________________________________________________________________
 std::vector<uint64_t> MatchBytePositionSearcher::process(
-    DataChunk* data) const {
+    const DataChunk* data) const {
   return _re_pattern == nullptr ? process_ascii(data) : process_re2(data);
 }
 
 // _____________________________________________________________________________
 std::vector<uint64_t> MatchBytePositionSearcher::process_ascii(
-    DataChunk* data) const {
+    const DataChunk* data) const {
   if (_ignore_case) {
     DataChunk chunk(*data);
     utils::str::simd::toLower(chunk.data(), chunk.size());
@@ -92,7 +92,7 @@ std::vector<uint64_t> MatchBytePositionSearcher::process_ascii(
 
 // _____________________________________________________________________________
 std::vector<uint64_t> MatchBytePositionSearcher::process_re2(
-    DataChunk* data) const {
+    const DataChunk* data) const {
   return search::regex::global_byte_offsets_match(data, *_re_pattern, false);
 }
 
@@ -106,13 +106,14 @@ LineBytePositionSearcher::LineBytePositionSearcher(std::string pattern,
                                                      case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
-std::vector<uint64_t> LineBytePositionSearcher::process(DataChunk* data) const {
+std::vector<uint64_t> LineBytePositionSearcher::process(
+    const DataChunk* data) const {
   return _re_pattern == nullptr ? process_ascii(data) : process_re2(data);
 }
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineBytePositionSearcher::process_ascii(
-    DataChunk* data) const {
+    const DataChunk* data) const {
   if (_ignore_case) {
     DataChunk chunk(*data);
     utils::str::simd::toLower(chunk.data(), chunk.size());
@@ -123,7 +124,7 @@ std::vector<uint64_t> LineBytePositionSearcher::process_ascii(
 
 // _____________________________________________________________________________
 std::vector<uint64_t> LineBytePositionSearcher::process_re2(
-    DataChunk* data) const {
+    const DataChunk* data) const {
   return search::regex::global_byte_offsets_line(data, *_re_pattern);
 }
 
@@ -135,14 +136,15 @@ LineIndexSearcher::LineIndexSearcher(std::string pattern, bool regex,
                                                      ignore_case, utf8) {}
 
 // _____________________________________________________________________________
-std::vector<uint64_t> LineIndexSearcher::process(DataChunk* data) const {
+std::vector<uint64_t> LineIndexSearcher::process(const DataChunk* data) const {
   return _re_pattern == nullptr
              ? map::bytes::to_line_indices(data, process_ascii(data))
              : map::bytes::to_line_indices(data, process_re2(data));
 }
 
 // _____________________________________________________________________________
-std::vector<uint64_t> LineIndexSearcher::process_ascii(DataChunk* data) const {
+std::vector<uint64_t> LineIndexSearcher::process_ascii(
+    const DataChunk* data) const {
   if (_ignore_case) {
     DataChunk chunk(*data);
     utils::str::simd::toLower(chunk.data(), chunk.size());
@@ -152,7 +154,8 @@ std::vector<uint64_t> LineIndexSearcher::process_ascii(DataChunk* data) const {
 }
 
 // _____________________________________________________________________________
-std::vector<uint64_t> LineIndexSearcher::process_re2(DataChunk* data) const {
+std::vector<uint64_t> LineIndexSearcher::process_re2(
+    const DataChunk* data) const {
   return search::regex::global_byte_offsets_line(data, *_re_pattern);
 }
 
@@ -164,12 +167,13 @@ LineSearcher::LineSearcher(std::string pattern, bool regex,
           std::move(pattern), regex, case_insensitive, utf8) {}
 
 // _____________________________________________________________________________
-std::vector<std::string> LineSearcher::process(DataChunk* data) const {
+std::vector<std::string> LineSearcher::process(const DataChunk* data) const {
   return _re_pattern == nullptr ? process_ascii(data) : process_re2(data);
 }
 
 // _____________________________________________________________________________
-std::vector<std::string> LineSearcher::process_ascii(DataChunk* data) const {
+std::vector<std::string> LineSearcher::process_ascii(
+    const DataChunk* data) const {
   if (_ignore_case) {
     DataChunk chunk(*data);
     utils::str::simd::toLower(chunk.data(), chunk.size());
@@ -179,13 +183,14 @@ std::vector<std::string> LineSearcher::process_ascii(DataChunk* data) const {
 }
 
 // _____________________________________________________________________________
-std::vector<std::string> LineSearcher::process_re2(DataChunk* data) const {
+std::vector<std::string> LineSearcher::process_re2(
+    const DataChunk* data) const {
   return map(data, search::regex::global_byte_offsets_line(data, *_re_pattern));
 }
 
 // _____________________________________________________________________________
 std::vector<std::string> LineSearcher::map(
-    DataChunk* data, const std::vector<uint64_t>& mapping_data) {
+    const DataChunk* data, const std::vector<uint64_t>& mapping_data) {
   INLINE_BENCHMARK_WALL_START(_, "mapping to lines");
   std::vector<std::string> tmp;
   tmp.reserve(mapping_data.size());

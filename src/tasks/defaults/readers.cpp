@@ -241,13 +241,14 @@ FileBlockReaderMMAP::getNextData() {
   size_t offset = page_offset + size;
   if (size == _min_size) {  // -> we have not read EOF
     while (true) {
-      if (buffer[offset] == '\n' ||
-          offset - page_offset + _current_offset >= _file_size) {
-        break;
-      }
       offset++;
       if (offset - page_offset - size > _max_oversize) {
         throw std::runtime_error("ERROR: failed to find new line char.");
+      }
+      if (buffer[offset] == '\n' ||
+          offset - page_offset + _current_offset >= _file_size) {
+        offset++;
+        break;
       }
     }
   }

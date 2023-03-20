@@ -11,7 +11,7 @@ namespace xs {
 
 // ----- public ----------------------------------------------------------------
 // _____________________________________________________________________________
-DataChunk::DataChunk(char* data, size_t size)
+DataChunk::DataChunk(const char* data, size_t size)
     : _data(new char[size]), _size(size) {
   memcpy(_data, data, _size);
 }

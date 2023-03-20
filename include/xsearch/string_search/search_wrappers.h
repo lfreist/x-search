@@ -31,7 +31,7 @@ uint64_t previous_new_line_offset_relative_to_match(
  * find all matches per line
  * @return std::vector<uint64_t>: vector of all found byte offsets
  */
-std::vector<uint64_t> local_byte_offsets_match(xs::DataChunk* data,
+std::vector<uint64_t> local_byte_offsets_match(const xs::DataChunk* data,
                                                const std::string& pattern,
                                                bool skip_to_nl = false);
 
@@ -46,7 +46,7 @@ std::vector<uint64_t> local_byte_offsets_match(xs::DataChunk* data,
  * find all matches per line
  * @return std::vector<uint64_t>: vector of all found byte offsets
  */
-std::vector<uint64_t> global_byte_offsets_match(xs::DataChunk* data,
+std::vector<uint64_t> global_byte_offsets_match(const xs::DataChunk* data,
                                                 const std::string& pattern,
                                                 bool skip_to_nl = false);
 
@@ -58,7 +58,7 @@ std::vector<uint64_t> global_byte_offsets_match(xs::DataChunk* data,
  * @param pattern const std::string&: pattern to be searched for
  * @return std::vector<uint64_t>: vector of all found byte offsets
  */
-std::vector<uint64_t> local_byte_offsets_line(xs::DataChunk* data,
+std::vector<uint64_t> local_byte_offsets_line(const xs::DataChunk* data,
                                               const std::string& pattern);
 
 /**
@@ -69,7 +69,7 @@ std::vector<uint64_t> local_byte_offsets_line(xs::DataChunk* data,
  * @param pattern const std::string&: pattern to be searched for
  * @return std::vector<uint64_t>: vector of all found byte offsets
  */
-std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
+std::vector<uint64_t> global_byte_offsets_line(const xs::DataChunk* data,
                                                const std::string& pattern);
 
 /**
@@ -79,7 +79,7 @@ std::vector<uint64_t> global_byte_offsets_line(xs::DataChunk* data,
  * @param pattern const std::string&: pattern to be searched for
  * @return number of matching lines within data
  */
-uint64_t count(xs::DataChunk* data, const std::string& pattern,
+uint64_t count(const xs::DataChunk* data, const std::string& pattern,
                bool skip_to_nl = true);
 
 namespace regex {
@@ -144,7 +144,7 @@ std::vector<uint64_t> global_byte_offsets_match(const xs::DataChunk* data,
  * @param pattern const re2::RE2&: pattern to be searched for
  * @return number of matching lines within data
  */
-uint64_t count(xs::DataChunk* data, const re2::RE2& pattern,
+uint64_t count(const xs::DataChunk* data, const re2::RE2& pattern,
                bool skip_to_nl = true);
 
 }  // namespace regex

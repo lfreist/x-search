@@ -32,6 +32,7 @@ namespace xs::map::byte {
  * @param match_local_byte_offset
  * @return std::string: full line containing byte offset
  */
-std::string to_line(xs::DataChunk* data, uint64_t match_global_byte_offset);
+std::string to_line(const xs::DataChunk* data,
+                    uint64_t match_global_byte_offset);
 
 }  // namespace xs::map::byte

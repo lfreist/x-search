@@ -12,7 +12,6 @@
 namespace xs {
 
 // using strtype = std::vector<char, xs::utils::just_allocator<char>>;
-using strtype = char*;
 
 /**
  * SFString is a string type object, internally holding a std::basic_string
@@ -25,7 +24,7 @@ class DataChunk {
  public:
   DataChunk() = default;
   DataChunk(char* data, size_t size, ChunkMetaData meta_data);
-  explicit DataChunk(strtype data, size_t size);
+  explicit DataChunk(const char* data, size_t size);
   explicit DataChunk(ChunkMetaData meta_data);
   explicit DataChunk(size_t size);
 
