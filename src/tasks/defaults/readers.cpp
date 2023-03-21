@@ -13,17 +13,15 @@
 namespace xs::task::reader {
 
 // _____________________________________________________________________________
-MetaReader::MetaReader(std::string meta_file_path, int max_readers)
-    : _meta_file(std::move(meta_file_path), std::ios::in),
-      _semaphore(max_readers),
-      _num_reader_threads(max_readers) {}
+MetaReader::MetaReader(std::string meta_file_path)
+    : _meta_file(std::move(meta_file_path), std::ios::in) {}
 
 // _____________________________________________________________________________
 FileBlockMetaReader::FileBlockMetaReader(std::string file_path,
                                          std::string meta_file_path,
                                          int max_readers)
-    : FileReader<DataChunk>(std::move(file_path)),
-      MetaReader(std::move(meta_file_path), max_readers) {}
+    : FileReader<DataChunk>(std::move(file_path), max_readers),
+      MetaReader(std::move(meta_file_path)) {}
 
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, chunk_index>>
@@ -50,8 +48,8 @@ FileBlockMetaReader::getNextData() {
 // _____________________________________________________________________________
 FileBlockMetaReaderSingle::FileBlockMetaReaderSingle(std::string file_path,
                                                      std::string meta_file_path)
-    : FileReader<DataChunk>(std::move(file_path)),
-      MetaReader(std::move(meta_file_path), 1) {
+    : FileReader<DataChunk>(std::move(file_path), 1),
+      MetaReader(std::move(meta_file_path)) {
   _file_stream.open(_file_path);
 }
 
@@ -73,8 +71,8 @@ FileBlockMetaReaderSingle::getNextData() {
 FileBlockMetaReaderMMAP::FileBlockMetaReaderMMAP(std::string file_path,
                                                  std::string meta_file_path,
                                                  int max_readers)
-    : FileReader<DataChunk>(std::move(file_path)),
-      MetaReader(std::move(meta_file_path), max_readers) {}
+    : FileReader<DataChunk>(std::move(file_path), max_readers),
+      MetaReader(std::move(meta_file_path)) {}
 
 // _____________________________________________________________________________
 std::optional<std::pair<DataChunk, chunk_index>>

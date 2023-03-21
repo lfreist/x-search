@@ -21,8 +21,8 @@ namespace xs::task::reader {
 template <typename T>
 class FileReader : public base::DataProvider<T> {
  public:
-  explicit FileReader(std::string file_path)
-      : _file_path(std::move(file_path)) {}
+  explicit FileReader(std::string file_path, int max_readers = 1)
+      : base::DataProvider<T>(max_readers), _file_path(std::move(file_path)) {}
 
  protected:
   const std::string _file_path;
@@ -34,27 +34,10 @@ class FileReader : public base::DataProvider<T> {
  */
 class MetaReader {
  public:
-  /**
-   * Constructor:
-   *  We allow reading with multiple threads because we know the positions and
-   *  size of the chunks read from a file from the meta data. Thus, we can open
-   *  multiple streams to the given file and read simultaneously.
-   *  If files are accessed from drives like HDDs, simultaneous reads can
-   *  decrease performance heavily (because of the magnetic reader head that
-   *  might jump around for while reading different locations of the drive at
-   *  the same time...).
-   *  Therefor, we introduce the max_readers setting that restricts the number
-   *  of simultaneous reads to the provided number using a semaphore.
-   * @param meta_file_path
-   * @param max_readers
-   */
-  MetaReader(std::string meta_file_path, int max_readers);
+  explicit MetaReader(std::string meta_file_path);
 
  protected:
   MetaFile _meta_file;
-  /// controls simultaneous read operations
-  utils::Semaphore<std::function<void(void)>> _semaphore;
-  int _num_reader_threads;
 };
 
 /**

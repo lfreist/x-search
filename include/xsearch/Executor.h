@@ -9,6 +9,7 @@
 #include <xsearch/tasks/base/InplaceProcessor.h>
 #include <xsearch/tasks/base/ReturnProcessor.h>
 #include <xsearch/utils/InlineBench.h>
+#include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/utils.h>
 
 #include <memory>
@@ -35,10 +36,17 @@ class Executor {
         _inplace_processors(std::move(inplace_processors)),
         _return_processor(std::move(return_processor)),
         _workers(num_threads) {
-    _threads.resize(num_threads);
+    _worker_threads.resize(num_threads);
     _running.store(true);
-    for (auto& t : _threads) {
-      t = std::thread(&Executor::main_task, this);
+    if (_reader->get_max_readers() == 1) {
+      _reader_thread = std::thread(&Executor::reader_task_single_read, this);
+      for (auto& t : _worker_threads) {
+        t = std::thread(&Executor::worker_task_single_read, this);
+      }
+    } else {
+      for (auto& t : _worker_threads) {
+        t = std::thread(&Executor::pipeline_multi_read, this);
+      }
     }
   }
 
@@ -50,10 +58,13 @@ class Executor {
 
   void join() {
     std::unique_lock lock(_join_mutex);
-    for (auto& t : _threads) {
+    for (auto& t : _worker_threads) {
       if (t.joinable()) {
         t.join();
       }
+    }
+    if (_reader_thread.joinable()) {
+      _reader_thread.join();
     }
     _running.store(false);
   }
@@ -64,7 +75,11 @@ class Executor {
   }
 
  private:
-  void main_task() {
+  /**
+   * Each thread initialized starts reading and then runs all processing on the
+   * data it read in a linear manner
+   */
+  void pipeline_multi_read() {
     while (true) {
       if (_stop.load()) {
         break;
@@ -74,15 +89,64 @@ class Executor {
         break;
       }
       auto& chunk_index_pair = optPair.value();
-      inplace_processors_task(&chunk_index_pair.first);
-      if (_return_processor != nullptr) {
-        auto partial_results = return_processor_task(&chunk_index_pair.first);
-        results_join_task(std::move(partial_results), chunk_index_pair.second);
-      }
+      processors_task(&chunk_index_pair.first, chunk_index_pair.second);
     }
     if (_workers.fetch_sub(1) == 1) {
       _running.store(false);
       _result->done();
+    }
+  }
+
+  /**
+   * A single reader task reads data and writes them onto the data queue.
+   */
+  void reader_task_single_read() {
+    while (true) {
+      if (_stop.load()) {
+        _data.close();
+        break;
+      }
+      auto optData = reader_task();
+      if (!optData) {
+        _data.close();
+        break;
+      }
+      _data.push(std::move(optData.value()));
+    }
+  }
+
+  /**
+   * The worker threads pop data from the data queue and run the processing on
+   * them
+   */
+  void worker_task_single_read() {
+    while (true) {
+      auto optPair = _data.pop();
+      if (_stop.load()) {
+        break;
+      }
+      if (!optPair) {
+        break;
+      }
+      processors_task(&optPair.value().first, optPair.value().second);
+    }
+    if (_workers.fetch_sub(1) == 1) {
+      _running.store(false);
+      _result->done();
+    }
+  }
+
+  /**
+   * The default worker task: run inplace processors and the return processor on
+   * the data. Last, write the results to the result.
+   * @param chunk
+   * @param index
+   */
+  void processors_task(DataChunk* chunk, chunk_index index) {
+    inplace_processors_task(chunk);
+    if (_return_processor != nullptr) {
+      auto res = return_processor_task(chunk);
+      results_join_task(res, index);
     }
   }
 
@@ -114,7 +178,10 @@ class Executor {
   std::unique_ptr<task::base::ReturnProcessor<DataT, PartResT>>
       _return_processor;
 
-  std::vector<std::thread> _threads;
+  std::vector<std::thread> _worker_threads;
+  std::thread _reader_thread;
+
+  utils::TSQueue<std::pair<DataChunk, chunk_index>> _data;
 
   std::atomic<bool> _running{false};
   std::atomic<int> _workers{1};
