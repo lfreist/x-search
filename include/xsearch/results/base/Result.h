@@ -101,7 +101,7 @@ class ContainerResult : public Result<std::vector<T>> {
     return tmp;
   }
 
-  T const& operator[](size_t index) {
+  T operator[](size_t index) {
     std::unique_lock lock(*this->_mutex);
     return _data[index];
   }
