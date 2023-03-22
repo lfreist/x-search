@@ -79,12 +79,12 @@ bool ChunkMetaData::operator<(const ChunkMetaData& other) const {
 }
 
 // _____________________________________________________________________________
-ChunkMetaData read_chunk_meta_data(std::fstream* stream) {
+std::optional<ChunkMetaData> read_chunk_meta_data(std::fstream* stream) {
   ChunkMetaData cmd;
   stream->read(reinterpret_cast<char*>(&cmd.original_offset),
                sizeof(cmd.original_offset));
   if (stream->eof()) {
-    return cmd;
+    return {};
   }
   stream->read(reinterpret_cast<char*>(&cmd.actual_offset),
                sizeof(cmd.actual_offset));
@@ -106,8 +106,9 @@ ChunkMetaData read_chunk_meta_data(std::fstream* stream) {
 
 // _____________________________________________________________________________
 MetaFile::MetaFile(std::string file_path, std::ios::openmode mode,
-                   CompressionType compression_type)
+                   CompressionType compression_type, uint32_t buffer_size)
     : _compression_type(compression_type),
+      _buffer(buffer_size),
       _file_path(std::move(file_path)),
       _open_mode(mode | std::ios::binary),
       _meta_file_stream(_file_path, _open_mode) {
@@ -123,6 +124,7 @@ MetaFile::MetaFile(std::string file_path, std::ios::openmode mode,
       _compression_type == UNKNOWN) {
     _meta_file_stream.read(reinterpret_cast<char*>(&_compression_type),
                            sizeof(_compression_type));
+    read_into_buffer();
   }
 }
 
@@ -140,29 +142,13 @@ MetaFile::~MetaFile() { _meta_file_stream.close(); }
 
 // _____________________________________________________________________________
 std::optional<ChunkMetaData> MetaFile::next_chunk_meta_data() {
-  std::unique_lock lock(_stream_mutex);
-  ChunkMetaData cs = read_chunk_meta_data(&_meta_file_stream);
-  if (_meta_file_stream.eof()) {
-    return {};
+  bool pop_failed_flag;
+  auto cmd = _buffer.pop(&pop_failed_flag);
+  while (pop_failed_flag) {
+    read_into_buffer();
+    cmd = _buffer.pop(&pop_failed_flag);
   }
-  cs.chunk_index = _chunk_index++;
-  return cs;
-}
-
-// _____________________________________________________________________________
-std::vector<ChunkMetaData> MetaFile::next_chunk_meta_data(uint32_t num) {
-  std::unique_lock lock(_stream_mutex);
-  std::vector<ChunkMetaData> cs;
-  cs.reserve(num);
-  for (uint32_t i = 0; i < num; ++i) {
-    auto cmd = read_chunk_meta_data(&_meta_file_stream);
-    if (_meta_file_stream.eof()) {
-      break;
-    }
-    cmd.chunk_index = _chunk_index++;
-    cs.emplace_back(cmd);
-  }
-  return cs;
+  return cmd;
 }
 
 // _____________________________________________________________________________
@@ -199,6 +185,20 @@ CompressionType MetaFile::getCompressionType(
                       sizeof(_compression_type));
   metaFileStream.close();
   return compression_type;
+}
+
+// _____________________________________________________________________________
+void MetaFile::read_into_buffer() {
+  std::unique_lock lock(_stream_mutex);
+  while (!_buffer.isFull()) {
+    auto cs = read_chunk_meta_data(&_meta_file_stream);
+    if (!cs) {
+      _buffer.close();
+      break;
+    }
+    cs->chunk_index = _chunk_index++;
+    _buffer.push(std::move(cs.value()));
+  }
 }
 
 }  // namespace xs

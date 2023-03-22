@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <xsearch/utils/TSQueue.h>
+
 #include <fstream>
 #include <mutex>
 #include <optional>
@@ -49,7 +51,7 @@ struct ChunkMetaData {
   bool operator<(const ChunkMetaData& other) const;
 };
 
-ChunkMetaData read_chunk_meta_data(std::fstream* stream);
+std::optional<ChunkMetaData> read_chunk_meta_data(std::fstream* stream);
 
 /**
  * Representing a meta file consisting of chunkMetaData of all chunks of a file.
@@ -63,20 +65,17 @@ class MetaFile {
    * @param mode std::ios::openmode (::in for reading, ::out for writing)
    */
   explicit MetaFile(std::string file_path, std::ios::openmode mode,
-                    CompressionType compression_type = UNKNOWN);
+                    CompressionType compression_type = UNKNOWN,
+                    uint32_t buffer_size = 100);
   MetaFile(const MetaFile& sfMetaFile) = delete;
   MetaFile(MetaFile&& other) noexcept;
   ~MetaFile();
 
   /**
-   * Returns next chunkMetaData
+   * Returns next chunkMetaData from buffer. If buffer is empty, it gets
+   * refilled.
    */
   std::optional<ChunkMetaData> next_chunk_meta_data();
-  /**
-   * Returns a vector of the next <num> chunkMetaData
-   * @param num number of chunkMetaData to be returned
-   */
-  std::vector<ChunkMetaData> next_chunk_meta_data(uint32_t num);
 
   /**
    * Append chunkMetaData to the opened meta file
@@ -93,9 +92,12 @@ class MetaFile {
   static CompressionType getCompressionType(const std::string& meta_file_path);
 
  private:
+  void read_into_buffer();
   CompressionType _compression_type;
   size_t _chunk_index = 0;
   std::mutex _stream_mutex;
+
+  utils::TSQueue<ChunkMetaData> _buffer;
 
   std::string _file_path;
   std::ios::openmode _open_mode;

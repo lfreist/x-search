@@ -61,26 +61,6 @@ TEST(MetaFileTest, next_chunk_meta_data) {
   ASSERT_EQ(cs.actual_size, 7035946);
 }
 
-TEST(MetaFileTest, next_chunk_meta_data_multiple) {
-  MetaFile meta_file("test/files/sample.meta", std::ios::in);
-
-  // get first 5
-  std::vector<ChunkMetaData> chunk_sizes = meta_file.next_chunk_meta_data(2);
-  ASSERT_EQ(chunk_sizes.size(), 2);
-  ASSERT_EQ(chunk_sizes[0].original_offset, 0);
-  ASSERT_EQ(chunk_sizes[0].actual_offset, 0);
-  ASSERT_EQ(chunk_sizes[0].original_size, 16777222);
-  ASSERT_EQ(chunk_sizes[0].actual_size, 16777222);
-
-  // get remaining
-  chunk_sizes = meta_file.next_chunk_meta_data(200);
-  ASSERT_EQ(chunk_sizes.size(), 4);
-  ASSERT_EQ(chunk_sizes[3].original_offset, 83886210);
-  ASSERT_EQ(chunk_sizes[3].actual_offset, 83886210);
-  ASSERT_EQ(chunk_sizes[3].original_size, 16113790);
-  ASSERT_EQ(chunk_sizes[3].actual_size, 16113790);
-}
-
 TEST(MetaFileTest, write_chunk_meta_data) {
   ChunkMetaData original_cs_0{0, 0, 10, 100, 50, {{1, 2}, {2, 3}}};
   ChunkMetaData original_cs_1{0, 51, 100, 112, 42, {{4, 5}, {7, 2354}}};
