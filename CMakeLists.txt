@@ -19,9 +19,6 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     set(MAIN_PROJECT ON)
 endif ()
 
-option(XS_EXE_TESTS "run exhaustive executable tests" OFF)
-option(TASK_BENCHMARKS "compile task benchmark executables" OFF)
-
 IF (${MAIN_PROJECT})
     # --- BOOST --------------------------------------------------------------------------------------------------------
     find_package(Boost 1.74 REQUIRED COMPONENTS program_options)
