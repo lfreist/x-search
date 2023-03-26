@@ -22,43 +22,50 @@ External string searching library (x-search) written in C++ (C++20)
 - cmake
 - g++ or clang
 
-1. Download x-search and navigate into the directory
-    ```bash
-    git clone https://github.com/lfreist/x-search
-    cd x-search
-    ```
-2. Proceed with either Native- or Docker-Build as follows:
-   1. Native
-    ```
-    git submodule update --init --recursive
-    
-    mkdir build
-    cd build
-    cmake -DCMAKE_BUILD_TYPE=Release .. && make -j $(nproc)
-    ```
-   2. Docker
-    ```
-    docker build -t leon-freist-bachelorprojekt .
-    docker run -it -v $(pwd)/files:/inputfiles/input:ro --name leon-freist-bachelorprojekt leon-freist-bachelorprojekt
-    ```
+# Installation and Usage
+We refer to the corresponding Wiki entry: [Installation](https://github.com/lfreist/x-search/wiki/Installation)
 
-> You can also use the `Makefile` provided within the repository to
-> build, test, benchmark, ... x-search.
+# Example: building a grep-like executable using x-search
+
+As a brief example on how to use x-search, we will create a small (very basic) grep-like executable:
+
+```c++
+// my_grep.cpp
+#include <xsearch/xsearch.h>
+#include <iostream>
+
+int main(int argc, char** argv) {
+  auto searcher = xs::extern_search<xs::lines>(argv[1], argv[2], false, 1);
+  for (auto const& line : *searcher->getResult()) {
+    std::cout << line << '\n';
+  }
+}
+```
+
+Now, just build it and link against xsearch as described [here]([here](https://github.com/lfreist/x-search/wiki/Installation#include-into-c-cmake-project-using-git-modules))
+
+Done! We have created a grep-like command line search tool. Let's check if it can be as fast as GNU grep...
+
+```bash
+# GNU grep:
+$ time grep Sherlock opensubtitles.en.txt > /tmp/grep.result
+
+real    0m3.379s
+user    0m2.525s
+sys     0m0.843s
+
+# Our implementation using x-search
+$ time my_grep Sherlock opensubtitles.en.txt > /tmp/my_grep.result
+
+real    0m1.154s
+user    0m0.716s
+sys     0m0.469s
+```
 
 ## API
 `x-search` provides a simple one-function API call to search on external files.
 
-### Preprocess a file:
-```cpp
-#include <xsearch/xsearch.h>
-
-xs::FilePreprocessor::preprocess(
-      source_file_path, output_path, meta_file_path, compression_alg,
-      compression_level, bytesNewLineMappingDistance, minBlockSize, overflow_size,
-      display_progress);
-```
-
-### Perform Searches
+### One-Function-Call API
 ```cpp
 #include <xsearch/xsearch.h>
 
