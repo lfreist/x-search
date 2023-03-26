@@ -66,7 +66,7 @@ class MetaFile {
    */
   explicit MetaFile(std::string file_path, std::ios::openmode mode,
                     CompressionType compression_type = UNKNOWN,
-                    uint32_t buffer_size = 100);
+                    uint32_t buffer_size = 1000);
   MetaFile(const MetaFile& sfMetaFile) = delete;
   MetaFile(MetaFile&& other) noexcept;
   ~MetaFile();

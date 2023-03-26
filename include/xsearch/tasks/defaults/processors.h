@@ -88,7 +88,7 @@ class NewLineSearcher : public base::InplaceProcessor<DataChunk> {
   uint64_t _next_chunk_id = 0;
   /// all _distance bytes, the mapping data are added.
   ///  At most one mapping data pair per line is added.
-  const uint64_t _distance = 500;
+  const uint64_t _distance = 16000;
 
   std::unique_ptr<std::mutex> _line_index_mutex =
       std::make_unique<std::mutex>();
