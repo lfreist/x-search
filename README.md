@@ -12,20 +12,19 @@
 # x-search
 External string searching library (x-search) written in C++ (C++20)
 
-## Build
-
+# Build, Installation and Usage
 ### Dependencies
 
+- libboost-program-options1.74-dev (only for examples)
 - liblz4-dev
 - libzstd-dev
-- libboost-program-options1.74-dev
 - cmake
 - g++ or clang
 
-# Installation and Usage
+
 We refer to the corresponding Wiki entry: [Installation](https://github.com/lfreist/x-search/wiki/Installation)
 
-# Example: building a grep-like executable using x-search
+# Example: building a (basic) grep-like executable using x-search
 
 As a brief example on how to use x-search, we will create a small (very basic) grep-like executable:
 
@@ -82,6 +81,11 @@ auto res = xs::extern_search<xs::count>(pattern, file_path, meta_file_path, num_
 > - `xs::lines`: a vector of lines (as std::string) containing the match
 
 After calling `xs::extern_search`, the returned shared_ptr of the Searcher instance can be...
-- ... joined (`res->join()`): the main threads sleeps until the search process finished
-- ... used to access already created results using the iterator (`for (auto value : *res->getResult()) {...}`)
-- ... ignored: the threads started for the search by `Searcher` are joined on destruction.
+- ... joined (`res->join()`): the main thread sleeps until the search process finishes
+- ... used to access already created results using the iterator:
+   ```c++
+  for (auto r : *res->getResult()) {
+    ...
+  }
+   ```
+- ... ignored: the threads started for the search are joined on destruction.
