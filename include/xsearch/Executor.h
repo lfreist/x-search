@@ -30,15 +30,12 @@ class Executor {
                inplace_processors,
            std::unique_ptr<task::base::ReturnProcessor<DataT, PartResT>>
                return_processor,
-           std::unique_ptr<ResT> initial_result = nullptr)
+           std::unique_ptr<ResT> initial_result)
       : _result(std::move(initial_result)),
         _reader(std::move(reader)),
         _inplace_processors(std::move(inplace_processors)),
         _return_processor(std::move(return_processor)),
         _workers(num_threads) {
-    if (_result == nullptr) {
-      _result = std::make_unique<ResT>();
-    }
     _worker_threads.resize(num_threads);
     _running.store(true);
     if (_reader->get_max_readers() == 1) {

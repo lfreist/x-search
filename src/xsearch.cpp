@@ -27,9 +27,9 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<count_matches>(num_threads, std::move(reader),
-                                         std::move(processors),
-                                         std::move(searcher));
+  return std::make_shared<count_matches>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::CountMatchesResult>());
 }
 
 // _____________________________________________________________________________
@@ -51,9 +51,9 @@ std::shared_ptr<count_lines> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<count_lines>(num_threads, std::move(reader),
-                                       std::move(processors),
-                                       std::move(searcher));
+  return std::make_shared<count_lines>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::CountLinesResult>());
 }
 
 // _____________________________________________________________________________
@@ -76,9 +76,9 @@ std::shared_ptr<match_byte_offsets> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<match_byte_offsets>(num_threads, std::move(reader),
-                                              std::move(processors),
-                                              std::move(searcher));
+  return std::make_shared<match_byte_offsets>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::MatchByteOffsetsResult>());
 }
 
 // _____________________________________________________________________________
@@ -101,9 +101,9 @@ std::shared_ptr<line_byte_offsets> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<line_byte_offsets>(num_threads, std::move(reader),
-                                             std::move(processors),
-                                             std::move(searcher));
+  return std::make_shared<line_byte_offsets>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::LineByteOffsetsResult>());
 }
 
 // _____________________________________________________________________________
@@ -126,9 +126,9 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<line_indices>(num_threads, std::move(reader),
-                                        std::move(processors),
-                                        std::move(searcher));
+  return std::make_shared<line_indices>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::LineIndicesResult>());
 }
 
 // _____________________________________________________________________________
@@ -151,7 +151,8 @@ std::shared_ptr<lines> extern_search(const std::string& pattern,
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<lines>(num_threads, std::move(reader),
-                                 std::move(processors), std::move(searcher));
+                                 std::move(processors), std::move(searcher),
+                                 std::make_unique<result::LinesResult>());
 }
 
 // _____________________________________________________________________________
@@ -200,9 +201,9 @@ std::shared_ptr<count_matches> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<count_matches>(num_threads, std::move(reader),
-                                         std::move(processors),
-                                         std::move(searcher));
+  return std::make_shared<count_matches>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::CountMatchesResult>());
 }
 
 // _____________________________________________________________________________
@@ -251,9 +252,9 @@ std::shared_ptr<count_lines> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<count_lines>(num_threads, std::move(reader),
-                                       std::move(processors),
-                                       std::move(searcher));
+  return std::make_shared<count_lines>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::CountLinesResult>());
 }
 
 // _____________________________________________________________________________
@@ -301,9 +302,9 @@ std::shared_ptr<match_byte_offsets> extern_search(
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<match_byte_offsets>(num_threads, std::move(reader),
-                                              std::move(processors),
-                                              std::move(searcher));
+  return std::make_shared<match_byte_offsets>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::MatchByteOffsetsResult>());
 }
 
 // _____________________________________________________________________________
@@ -351,9 +352,9 @@ std::shared_ptr<line_byte_offsets> extern_search(
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<line_byte_offsets>(num_threads, std::move(reader),
-                                             std::move(processors),
-                                             std::move(searcher));
+  return std::make_shared<line_byte_offsets>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::LineByteOffsetsResult>());
 }
 
 // _____________________________________________________________________________
@@ -402,7 +403,8 @@ std::shared_ptr<lines> extern_search(const std::string& pattern,
 
   // construct the ExternSearcher and return it as shared_ptr
   return std::make_shared<lines>(num_threads, std::move(reader),
-                                 std::move(processors), std::move(searcher));
+                                 std::move(processors), std::move(searcher),
+                                 std::make_unique<result::LinesResult>());
 }
 
 // _____________________________________________________________________________
@@ -451,9 +453,9 @@ std::shared_ptr<line_indices> extern_search(const std::string& pattern,
       pattern, xs::utils::use_str_as_regex(pattern), ignore_case);
 
   // construct the ExternSearcher and return it as shared_ptr
-  return std::make_shared<line_indices>(num_threads, std::move(reader),
-                                        std::move(processors),
-                                        std::move(searcher));
+  return std::make_shared<line_indices>(
+      num_threads, std::move(reader), std::move(processors),
+      std::move(searcher), std::make_unique<result::LineIndicesResult>());
 }
 
 }  // namespace xs
