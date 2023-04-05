@@ -46,7 +46,8 @@ DataChunk::DataChunk(const DataChunk& other)
       _size(other._size),
       _mmap(false),
       _mmap_offset(0),
-      _meta_data(other._meta_data) {
+      _meta_data(other._meta_data),
+      _file_name(other._file_name) {
   memcpy(_data, other.data(), _size);
 }
 
@@ -58,6 +59,7 @@ DataChunk& DataChunk::operator=(const DataChunk& other) {
     _mmap = false;
     _mmap_offset = 0;
     _meta_data = other._meta_data;
+    _file_name = other._file_name;
     memcpy(_data, other.data(), _size);
   }
   return *this;
@@ -69,7 +71,8 @@ DataChunk::DataChunk(DataChunk&& other) noexcept
       _size(other._size),
       _mmap(other._mmap),
       _mmap_offset(other._mmap_offset),
-      _meta_data(std::move(other._meta_data)) {
+      _meta_data(std::move(other._meta_data)),
+      _file_name(std::move(other._file_name)) {
   other._mmap = false;
   other._size = 0;
   other._data = nullptr;
@@ -88,6 +91,7 @@ DataChunk& DataChunk::operator=(DataChunk&& other) noexcept {
     _mmap = other._mmap;
     _mmap_offset = other._mmap_offset;
     _meta_data = std::move(other._meta_data);
+    _file_name = std::move(other._file_name);
     other._data = nullptr;
     other._size = 0;
   }
@@ -148,9 +152,7 @@ void DataChunk::resize(size_t size) {
 }
 
 // _____________________________________________________________________________
-const std::string& DataChunk::get_file_name() const {
-  return _file_name;
-}
+const std::string& DataChunk::get_file_name() const { return _file_name; }
 
 // _____________________________________________________________________________
 void DataChunk::set_file_name(std::string file) {

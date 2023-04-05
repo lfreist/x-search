@@ -30,7 +30,6 @@ class DataChunk {
 
   ~DataChunk();
 
-  // delete copy constructor
   DataChunk(const DataChunk& other);
   DataChunk& operator=(const DataChunk& other);
 
