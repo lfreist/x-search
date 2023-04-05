@@ -95,6 +95,8 @@ class DataChunk {
    */
   void resize(size_t size);
 
+  [[nodiscard]] const std::string& get_file_name() const;
+
   [[nodiscard]] bool is_mmap() const;
 
  private:
@@ -103,6 +105,7 @@ class DataChunk {
   bool _mmap = false;
   size_t _mmap_offset = 0;
   ChunkMetaData _meta_data{0, 0, 0, 0, 0, {}};
+  std::string _file_name;
 };
 
 }  // namespace xs

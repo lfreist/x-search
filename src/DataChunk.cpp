@@ -148,6 +148,11 @@ void DataChunk::resize(size_t size) {
 }
 
 // _____________________________________________________________________________
+const std::string& DataChunk::get_file_name() const {
+  return _file_name;
+}
+
+// _____________________________________________________________________________
 bool DataChunk::is_mmap() const { return _mmap; }
 
 }  // namespace xs
