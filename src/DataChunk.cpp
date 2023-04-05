@@ -153,6 +153,11 @@ const std::string& DataChunk::get_file_name() const {
 }
 
 // _____________________________________________________________________________
+void DataChunk::set_file_name(std::string file) {
+  _file_name = std::move(file);
+}
+
+// _____________________________________________________________________________
 bool DataChunk::is_mmap() const { return _mmap; }
 
 }  // namespace xs

@@ -96,6 +96,7 @@ class DataChunk {
   void resize(size_t size);
 
   [[nodiscard]] const std::string& get_file_name() const;
+  void set_file_name(std::string file);
 
   [[nodiscard]] bool is_mmap() const;
 
