@@ -42,6 +42,7 @@ FileBlockMetaReader::getNextData() {
     stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
   });
 
+  chunk.set_file_name(_file_path);
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
@@ -64,6 +65,7 @@ FileBlockMetaReaderSingle::getNextData() {
   }
   DataChunk chunk(std::move(opt.value()));
   _file_stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
+  chunk.set_file_name(_file_path);
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
@@ -114,6 +116,7 @@ FileBlockMetaReaderMMAP::getNextData() {
   xs::DataChunk chunk(std::move(cmd));
   chunk.assign_mmap_data(static_cast<char*>(mapped),
                          chunk.getMetaData().actual_size, page_offset);
+  chunk.set_file_name(_file_path);
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
@@ -127,6 +130,7 @@ FileBlockMetaReaderMMAP::read_no_mmap(ChunkMetaData cmd) {
                  std::ios::beg);
     stream.read(chunk.data(), static_cast<int64_t>(chunk.size()));
   });
+  chunk.set_file_name(_file_path);
   return std::make_pair(std::move(chunk), chunk.getMetaData().chunk_index);
 }
 
@@ -182,6 +186,7 @@ FileBlockReader::getNextData() {
     chunk.getMetaData().actual_size = num_bytes_read;
     chunk.getMetaData().original_size = num_bytes_read;
     _current_offset += num_bytes_read;
+    chunk.set_file_name(_file_path);
     return std::make_pair(std::move(chunk), _current_index++);
   }
   return {};
@@ -259,6 +264,7 @@ FileBlockReaderMMAP::getNextData() {
 
   _current_offset += actual_size;
 
+  chunk.set_file_name(_file_path);
   return std::make_pair(std::move(chunk), _current_index++);
 }
 
@@ -300,6 +306,7 @@ FileBlockReaderMMAP::read_no_mmap() {
     chunk.getMetaData().actual_size = num_bytes_read;
     chunk.getMetaData().original_size = num_bytes_read;
     _current_offset += num_bytes_read;
+    chunk.set_file_name(_file_path);
     return std::make_pair(std::move(chunk), _current_index++);
   }
   return {};
