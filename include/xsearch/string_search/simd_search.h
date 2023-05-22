@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
 
 namespace xs::search::simd {
 

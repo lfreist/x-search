@@ -11,7 +11,7 @@ done <sourcelist
 
 FAILED_FILES=()
 for source in "${SOURCE_FILES[@]}"; do
-  clang-format-14 -output-replacements-xml "$source" | grep "<replacement " &>/dev/null
+  clang-format -output-replacements-xml "$source" | grep "<replacement " &>/dev/null
   HAS_WRONG_FILES=$?
   if [ $HAS_WRONG_FILES -ne 1 ]; then
     FAILED_FILES+=("$source")
@@ -23,7 +23,7 @@ rm sourcelist
 if [ "${#FAILED_FILES}" -eq 0 ]; then
   printf "\x1b[32mCongratulations! All sources match the code style\x1b[m\n"
 else
-  printf "\x1b[31mclang-format-14 discovered style issues in the following files:\x1b[m\n"
+  printf "\x1b[31mclang-format discovered style issues in the following files:\x1b[m\n"
   for f in "${FAILED_FILES[@]}"; do
     echo "  - $f"
   done
