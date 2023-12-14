@@ -35,7 +35,7 @@ FileBlockMetaReader::getNextData() {
   xs::DataChunk chunk(std::move(optCmd.value()));
 
   // semaphore protected read: restricted to max_readers
-  _semaphore.access([&]() {
+  _semaphore.access([&]() -> void {
     std::ifstream stream(_file_path);
     stream.seekg(static_cast<int64_t>(chunk.getMetaData().actual_offset),
                  std::ios::beg);

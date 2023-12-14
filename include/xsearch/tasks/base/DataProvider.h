@@ -51,7 +51,7 @@ class DataProvider {
 
  protected:
   /// controls simultaneous read operations
-  utils::Semaphore<std::function<void(void)>> _semaphore;
+  utils::Semaphore _semaphore;
   int _max_readers = 1;
 };
 
