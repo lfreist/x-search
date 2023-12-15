@@ -4,7 +4,6 @@
 #include <xsearch/utils/string_utils.h>
 
 #include <cctype>
-#include <cstring>
 
 namespace xs::utils::str::simd {
 
@@ -38,7 +37,7 @@ namespace xs::utils::str {
 
 bool is_ascii(const std::string& str) {
   return std::all_of(str.begin(), str.end(),
-                     [](char c) { return static_cast<u_char>(c) <= 127; });
+                     [](char c) { return static_cast<unsigned char>(c) <= 127; });
 }
 
 bool is_utf8(const std::string& str) {

@@ -3,90 +3,142 @@
 
 #pragma once
 
-#include <xsearch/DataChunk.h>
-#include <xsearch/Executor.h>
-#include <xsearch/MetaFile.h>
-#include <xsearch/results/Result.h>
-#include <xsearch/results/base/Result.h>
 #include <xsearch/string_search/offset_mappings.h>
 #include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
-#include <xsearch/tasks/base/DataProvider.h>
-#include <xsearch/tasks/base/InplaceProcessor.h>
-#include <xsearch/tasks/base/ReturnProcessor.h>
-#include <xsearch/tasks/defaults/processors.h>
-#include <xsearch/tasks/defaults/readers.h>
-#include <xsearch/tasks/defaults/searchers.h>
-#include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/TSQueue.h>
-#include <xsearch/utils/compression/Lz4Wrapper.h>
-#include <xsearch/utils/compression/ZstdWrapper.h>
 #include <xsearch/utils/string_utils.h>
 #include <xsearch/utils/utils.h>
+#include <xsearch/utils/Semaphore.h>
+#include <xsearch/concepts.h>
 
+#include <coroutine>
+#include <future>
 #include <memory>
+#include <semaphore>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace xs {
 
-/**
- * By defining full Executor<> types, we allow the user to get easy access
- *  to basic search functionalities including:
- *    - count: count matches
- *    - count_lines: count lines containing a match
- *    - match_byte_offsets: a vector of the byte offsets of all matches
- *    - line_byte_offsets: a vector of the byte offsets of matching lines
- *    - line_indices: a vector of the line indices of matching lines
- *    - lines: a vector of lines (as std::string) containing the match
- *    - full: a combined result of the above
- *  The user can easily call the extern_search function using one of the types
- *  defined here as its template argument.
- *
- *  E.g.: extern_search<count>(...) will start and return an ExternSearch object
- *  initialized with everything needed for counting matches.
- */
-typedef Executor<xs::DataChunk, result::CountMatchesResult, uint64_t>
-    count_matches;
-typedef Executor<xs::DataChunk, result::CountLinesResult, uint64_t> count_lines;
-typedef Executor<xs::DataChunk, result::MatchByteOffsetsResult,
-                 std::vector<uint64_t>>
-    match_byte_offsets;
-typedef Executor<xs::DataChunk, result::LineByteOffsetsResult,
-                 std::vector<uint64_t>>
-    line_byte_offsets;
-typedef Executor<xs::DataChunk, result::LineIndicesResult,
-                 std::vector<uint64_t>>
-    line_indices;
-typedef Executor<xs::DataChunk, result::LinesResult, std::vector<std::string>>
-    lines;
+enum class execute { async, blocking };
 
-/**
- * A simple one-function API call to ExternSearcher.
- *
- * @tparam T: defines the type of searcher and result used. Options are:
- *   - count: count matches
- *   - count_lines: count lines containing a match
- *   - match_byte_offsets: a vector of the byte offsets of all matches
- *   - line_byte_offsets: a vector of the byte offsets of matching lines
- *   - lines: a vector of lines (as std::string) containing the match
- *   - full: a combined result of the above
- * @param pattern: pattern to be searched for
- * @param file_path: path to file
- * @param meta_file_path: path to corresponding metafile
- * @param num_threads: max. number of used threads
- * @param num_readers: max. number of threads that are allowed reading at the
- *  same time
- * @return: a shared_ptr of an initialized and started ExternSearcher
- */
-template <typename T>
-std::shared_ptr<T> extern_search(const std::string& pattern,
-                                 const std::string& file_path,
-                                 const std::string& meta_file_path,
-                                 bool ignore_case = false, int num_threads = 1,
-                                 int num_readers = 1);
+template <typename ReaderT, typename SearcherT, typename ProcessorT, typename ResultT, typename PartResT,
+          typename ResIterator, typename DataT = std::vector<char>>
+  requires xs::ReaderC<ReaderT, DataT> && xs::SearcherC<SearcherT, PartResT, DataT> &&
+           xs::ProcessorC<ProcessorT, DataT> && xs::ResultC<ResultT, PartResT, ResIterator>
+class Searcher {
+ public:  // --- public functions --------------------------------------------------------------------------------------
+  Searcher(ReaderT&& reader, SearcherT&& searcher, std::vector<ProcessorT> processors = {}, int num_threads = 1, int num_concurrent_reads = 1)
+      : _reader(std::move(reader)),
+        _searcher(std::move(searcher)),
+        _processors(std::move(processors)),
+        _threads(num_threads),
+        _read_semaphore(num_concurrent_reads) {}
 
-template <typename T>
-std::shared_ptr<T> extern_search(const std::string& pattern,
-                                 const std::string& file_path,
-                                 bool ignore_case = false, int num_threads = 1);
+  ~Searcher() { join(); }
+
+  /// not copyable/movable
+  Searcher(Searcher&&) = delete;
+  Searcher(const Searcher&) = delete;
+  Searcher operator=(Searcher&&) = delete;
+  Searcher operator=(const Searcher&) = delete;
+
+  /**
+   * Join all threads
+   */
+  void join() {
+    for (auto& t : _threads) {
+      if (t.joinable()) {
+        t.join();
+      }
+    }
+    _is_running.store(false);
+  }
+
+  bool add_processor(ProcessorT&& processor) {
+    if (_is_running.load()) {
+      return false;
+    }
+    _processors.emplace_back(std::move(processor));
+    return true;
+  }
+
+  /**
+   * Execute the Searcher.
+   *  Execution can be blocking (a) or asynchronous (b) depending on the template argument.
+   * (a) execute::blocking
+   *     Calling thread blocks until the searcher is done. const ResultT reference is returned.
+   * (b) execute::async
+   *     Searcher runs asynchronous. std::future<const ResultT&> is returned.
+   */
+  template <execute e = execute::blocking>
+  auto execute() {
+    _is_running.store(true);
+    if constexpr (e == execute::async) {
+      return run_async();
+    } else if constexpr (e == execute::blocking) {
+      return run_blocking();
+    }
+  }
+
+  /**
+   * Const pointer access to the result while Searcher is running
+   *
+   * Enabled, if ResIterator is not void
+   */
+  [[nodiscard]] std::enable_if<!std::is_void_v<ResIterator>, const ResultT*> live_result() const { return &_result; }
+
+  /**
+   * Return if Searcher is running.
+   */
+  [[nodiscard]] bool running() const { return _is_running.load(); }
+
+ private:  // --- helper functions -------------------------------------------------------------------------------------
+  const ResultT& run_blocking() {
+    while (true) {
+      if (_force_stop.load()) {
+        break;
+      }
+      auto opt_data = _read_semaphore.access([&]() { return _reader.read(); });
+      if (!opt_data) {
+        break;
+      }
+      for (auto& processor : _processors) {
+        run_processing(processor, &opt_data.value());
+      }
+      auto opt_result = _searcher.search(&opt_data.value());
+      if (opt_result) {
+        _result.add(std::move(opt_result.value()));
+      }
+    }
+    _is_running.store(false);
+    return _result;
+  }
+
+  std::future<ResultT> run_async() {
+    std::future<ResultT> future_result = std::async(std::launch::async, [&]() { return run_blocking(); });
+    return future_result;
+  }
+
+  void run_processing(ProcessorT processor, DataT* data) {
+      processor.process(data);
+  }
+
+ private:  // --- members ----------------------------------------------------------------------------------------------
+  std::atomic<bool> _is_running = false;
+  std::atomic<bool> _force_stop = false;
+
+  ReaderT _reader;
+  std::vector<ProcessorT> _processors;
+  SearcherT _searcher;
+  ResultT _result;
+
+  utils::TSQueue<DataT> _read_queue;
+
+  std::vector<std::thread> _threads;
+  xs::utils::Semaphore _read_semaphore;
+};
 
 }  // namespace xs

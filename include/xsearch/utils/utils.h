@@ -18,7 +18,7 @@ inline bool use_str_as_regex(const std::string& pattern) {
   try {
     std::regex r(pattern);
     return !(std::regex_match(pattern, std::regex("^" + pattern + "$")));
-  } catch (std::regex_error& e) {
+  } catch (std::regex_error&) {
     return false;
   }
 }

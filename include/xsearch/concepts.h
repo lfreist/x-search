@@ -12,7 +12,7 @@
 
 namespace xs {
 
-template <typename Task, typename DataT = DataChunk>
+template <typename Task, typename DataT = std::vector<char>>
 concept ReaderC = requires(Task task) {
   { task.read() } -> std::same_as<std::optional<DataT>>;
   { std::is_move_constructible<Task>::value };
@@ -29,9 +29,16 @@ concept ResultC = requires(Res result, PartRes& partial_result) {
   // { result.end() } -> std::same_as<ResIterator>;
 };
 
-template <typename Task, typename PartRes, typename DataT = DataChunk>
+template <typename Task, typename PartRes, typename DataT = std::vector<char>>
 concept SearcherC = requires(Task task, DataT* data) {
   { task.search(data) } -> std::same_as<std::optional<PartRes>>;
+  { std::is_move_constructible<Task>::value };
+  { std::is_move_constructible<Task>::value };
+};
+
+template <typename Task, typename DataT = std::vector<char>>
+concept ProcessorC = requires(Task task, DataT* data) {
+  { task.process(data) } -> std::same_as<void>;
   { std::is_move_constructible<Task>::value };
   { std::is_move_constructible<Task>::value };
 };

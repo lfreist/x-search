@@ -5,25 +5,24 @@
  * This file is part of x-search.
  */
 
-#include <xsearch/Executor.h>
-#include <xsearch/string_search/simd_search.h>
+#include <xsearch/xsearch.h>
 
 #include <iostream>
 #include <string>
 
-struct Reader {
-  explicit Reader(const std::string& file) {
+struct ReaderTask {
+  explicit ReaderTask(const std::string& file) {
     _stream = std::ifstream(file);
     if (!_stream) {
       std::cerr << "Error opening file " << file << std::endl;
     }
   }
 
-  std::optional<xs::DataChunk> read() {
+  std::optional<std::vector<char>> read() {
     if (_stream.eof()) {
       return {};
     }
-    xs::DataChunk chunk(1024);
+    std::vector<char> chunk(1024);
     _stream.read(chunk.data(), 1024);
     return {chunk};
   }
@@ -48,10 +47,10 @@ struct Result {
   std::vector<PartialResult> _results;
 };
 
-struct Searcher {
-  explicit Searcher(std::string pattern) : _pattern(std::move(pattern)) {}
+struct SearchTask {
+  explicit SearchTask(std::string pattern) : _pattern(std::move(pattern)) {}
 
-  std::optional<PartialResult> search(xs::DataChunk* data) {
+  std::optional<PartialResult> search(std::vector<char>* data) {
     if (data == nullptr) {
       return {};
     }
@@ -76,6 +75,13 @@ struct Searcher {
   std::string _pattern;
 };
 
+template <typename DataT = std::vector<char>>
+struct ProcessorTask {
+  ProcessorTask() = default;
+
+  void process(DataT* data) {}
+};
+
 int main(int argc, char** argv) {
   if (argc != 3) {
     std::cerr << "Usage: ./exe <pattern> <file>" << std::endl;
@@ -84,8 +90,8 @@ int main(int argc, char** argv) {
   std::string pattern(argv[1]);
   std::string file(argv[2]);
 
-  xs::Searcher<Reader, Searcher, Result, PartialResult, void> searcher(
-      Reader(file), Searcher(pattern), 1);
+  xs::Searcher<ReaderTask, SearchTask, ProcessorTask<std::vector<char>>, Result, PartialResult, void> searcher(
+      (ReaderTask(file)), SearchTask(pattern));
   auto res = searcher.execute<xs::execute::async>();
 
   for (auto& pr : res.get()._results) {
