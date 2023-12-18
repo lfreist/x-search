@@ -88,6 +88,11 @@ int main(int argc, char** argv) {
       Reader(file), Searcher(pattern), 1);
   auto res = searcher.execute<xs::execute::async>();
 
+  while (searcher.running()) {
+    std::cout << "running..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::nanoseconds (1));
+  }
+
   for (auto& pr : res.get()._results) {
     for (auto offset : pr.offset) {
       std::cout << offset << std::endl;

@@ -5,11 +5,8 @@
 
 #include <xsearch/DataChunk.h>
 #include <xsearch/concepts.h>
-#include <xsearch/results/base/Result.h>
-#include <xsearch/tasks/base/DataProvider.h>
-#include <xsearch/tasks/base/InplaceProcessor.h>
-#include <xsearch/tasks/base/ReturnProcessor.h>
 #include <xsearch/utils/InlineBench.h>
+#include <xsearch/utils/Semaphore.h>
 #include <xsearch/utils/Synchronized.h>
 #include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/utils.h>
@@ -25,7 +22,7 @@
 
 namespace xs {
 
-enum class execute { async, blocking, live };
+enum class execute { async, blocking, live, lazy };
 
 template <typename ReaderT, typename SearcherT, typename ResultT, typename PartResT, typename ResIterator,
           typename DataT = DataChunk>
@@ -51,14 +48,12 @@ class Searcher {
    * Join all threads
    */
   void join() {
-    if (_is_running) {
-      for (auto& t : _threads) {
-        if (t.joinable()) {
-          t.join();
-        }
+    for (auto& t : _threads) {
+      if (t.joinable()) {
+        t.join();
       }
-      _is_running.store(false);
     }
+    _is_running.store(false);
   }
 
   /**
@@ -100,6 +95,7 @@ class Searcher {
 
  private:  // --- helper functions -------------------------------------------------------------------------------------
   void run_thread() {
+    atomic_fetch_add(&_threads_running, 1);
     while (true) {
       if (_force_stop.load()) {
         break;
@@ -114,6 +110,10 @@ class Searcher {
         res->add(std::move(opt_result.value()));
       }
     }
+    atomic_fetch_sub(&_threads_running, 1);
+    if (_threads_running.load() == 0) {
+      _is_running.store(false);
+    }
   }
 
   std::future<ResultT> run_async() {
@@ -127,16 +127,17 @@ class Searcher {
     return _result.get_unsafe();
   }
 
-  const Synchronized<ResultT>& run_live() {
+  const Synchronized<ResultT>* run_live() {
     for (auto& t : _threads) {
       t = std::thread(&Searcher::run_thread, this);
     }
-    return _result;
+    return &_result;
   }
 
  private:  // --- members ----------------------------------------------------------------------------------------------
   std::atomic<bool> _is_running = false;
   std::atomic<bool> _force_stop = false;
+  std::atomic<int> _threads_running;
 
   ReaderT _reader;
   SearcherT _searcher;
