@@ -262,12 +262,18 @@ const char* strcasestr(const char* str, size_t str_len, const char* pat,
 
 int64_t findNext(const char* pattern, size_t pattern_len, char* str,
                  size_t str_len, size_t shift) {
+  if (shift >= str_len) {
+    return -1;
+  }
   const char* match =
       strstr(str + shift, str_len - shift, pattern, pattern_len);
   return match == nullptr ? -1 : match - str;
 }
 
 int64_t findNextNewLine(const char* str, size_t str_len, size_t shift) {
+  if (shift >= str_len) {
+    return -1;
+  }
   const char* match = strchr(str + shift, str_len - shift, '\n');
   return match == nullptr ? -1 : match - str;
 }

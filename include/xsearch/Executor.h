@@ -10,11 +10,13 @@
 #include <xsearch/tasks/base/InplaceProcessor.h>
 #include <xsearch/tasks/base/ReturnProcessor.h>
 #include <xsearch/utils/InlineBench.h>
+#include <xsearch/utils/Synchronized.h>
 #include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/utils.h>
 
 #include <coroutine>
 #include <future>
+#include <iostream>
 #include <memory>
 #include <semaphore>
 #include <string>
@@ -23,7 +25,7 @@
 
 namespace xs {
 
-enum class execute { async, blocking };
+enum class execute { async, blocking, live };
 
 template <typename ReaderT, typename SearcherT, typename ResultT, typename PartResT, typename ResIterator,
           typename DataT = DataChunk>
@@ -49,12 +51,14 @@ class Searcher {
    * Join all threads
    */
   void join() {
-    for (auto& t : _threads) {
-      if (t.joinable()) {
-        t.join();
+    if (_is_running) {
+      for (auto& t : _threads) {
+        if (t.joinable()) {
+          t.join();
+        }
       }
+      _is_running.store(false);
     }
-    _is_running.store(false);
   }
 
   /**
@@ -72,23 +76,30 @@ class Searcher {
       return run_async();
     } else if constexpr (e == execute::blocking) {
       return run_blocking();
+    } else if constexpr (e == execute::live) {
+      return run_live();
     }
   }
-
-  /**
-   * Const pointer access to the result while Searcher is running
-   *
-   * Enabled, if ResIterator is not void
-   */
-  [[nodiscard]] std::enable_if<!std::is_void_v<ResIterator>, const ResultT*> live_result() const { return &_result; }
 
   /**
    * Return if Searcher is running.
    */
   [[nodiscard]] bool running() const { return _is_running.load(); }
 
+  /*
+  template <typename T = ReaderT>
+  requires InputStreamable<T>
+  friend std::istream& operator>>(std::istream& is, Searcher& searcher) {
+    if (!searcher.running()) {
+      searcher.run_async();
+    }
+    is >> t;
+    return is;
+  }
+   */
+
  private:  // --- helper functions -------------------------------------------------------------------------------------
-  const ResultT& run_blocking() {
+  void run_thread() {
     while (true) {
       if (_force_stop.load()) {
         break;
@@ -99,17 +110,28 @@ class Searcher {
       }
       auto opt_result = _searcher.search(&opt_data.value());
       if (opt_result) {
-        _result.add(std::move(opt_result.value()));
+        auto res = _result.wlock();
+        res->add(std::move(opt_result.value()));
       }
     }
-    _is_running.store(false);
-    return _result;
   }
 
   std::future<ResultT> run_async() {
-    std::future<ResultT> future_result =
-        std::async(std::launch::async, [&]() { return run_blocking(); });
+    std::future<ResultT> future_result = std::async(std::launch::async, [this]() { return run_blocking(); });
     return future_result;
+  }
+
+  const ResultT& run_blocking() {
+    run_live();
+    join();
+    return _result.get_unsafe();
+  }
+
+  const Synchronized<ResultT>& run_live() {
+    for (auto& t : _threads) {
+      t = std::thread(&Searcher::run_thread, this);
+    }
+    return _result;
   }
 
  private:  // --- members ----------------------------------------------------------------------------------------------
@@ -118,7 +140,7 @@ class Searcher {
 
   ReaderT _reader;
   SearcherT _searcher;
-  ResultT _result;
+  Synchronized<ResultT> _result;
 
   utils::TSQueue<DataT> _read_queue;
 

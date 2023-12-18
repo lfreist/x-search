@@ -7,8 +7,9 @@
 
 #pragma once
 
-#include <concepts>
 #include <xsearch/DataChunk.h>
+
+#include <concepts>
 
 namespace xs {
 
@@ -36,4 +37,26 @@ concept SearcherC = requires(Task task, DataT* data) {
   { std::is_move_constructible<Task>::value };
 };
 
-}
+template <typename T>
+concept InputStreamable = requires(std::istream& is, T& t) {
+  { is >> t } -> std::convertible_to<std::istream &>;
+};
+
+template <typename T>
+concept OutputStreamable = requires(std::ostream& os, T& data) {
+  { os << data } -> std::convertible_to<std::ostream &>;
+};
+
+template <typename T>
+concept Lockable = requires(T t) {
+  { t.lock() } -> std::same_as<void>;
+  { t.unlock() } -> std::same_as<void>;
+};
+
+template <typename T>
+concept SharedLockable = requires(T t) {
+  { t.lock_shared() } -> std::same_as<void>;
+  { t.unlock_shared() } -> std::same_as<void>;
+};
+
+}  // namespace xs
