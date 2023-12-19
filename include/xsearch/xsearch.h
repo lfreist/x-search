@@ -4,13 +4,8 @@
 #pragma once
 
 #include <xsearch/Searcher.h>
-#include <xsearch/MetaFile.h>
-#include <xsearch/string_search/search_wrappers.h>
 #include <xsearch/string_search/simd_search.h>
-#include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/TSQueue.h>
-#include <xsearch/utils/compression/Lz4Wrapper.h>
-#include <xsearch/utils/compression/ZstdWrapper.h>
 #include <xsearch/utils/string_utils.h>
 #include <xsearch/utils/utils.h>
 

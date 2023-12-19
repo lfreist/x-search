@@ -9,7 +9,7 @@ add_executable(MetaFileTestMain MetaFileTest.cpp)
 target_link_libraries(MetaFileTestMain PUBLIC MetaFile gtest_main)
 
 add_executable(ExternSearcherTestMain ExternSearcherTest.cpp)
-target_link_libraries(ExternSearcherTestMain PUBLIC Executor gtest_main)
+target_link_libraries(ExternSearcherTestMain PUBLIC Searcher gtest_main)
 
 add_executable(xsearchTestMain xsearchTest.cpp)
 target_link_libraries(xsearchTestMain PUBLIC xsearch gtest_main)

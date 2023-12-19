@@ -23,7 +23,7 @@ concept ReaderC = requires(Task task) {
 
 template <typename Res, typename PartRes, typename ResIterator>
 concept ResultC = requires(Res result, PartRes& partial_result) {
-  { result.add(partial_result) } -> std::same_as<void>;
+  { result.add(partial_result) };
   { result.get() } -> std::same_as<std::vector<PartRes>&>;
   { std::is_move_constructible<Res>::value };
   { std::is_move_constructible<Res>::value };

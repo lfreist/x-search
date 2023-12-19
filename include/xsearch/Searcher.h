@@ -1,5 +1,9 @@
-// Copyright 2023, Leon Freist
-// Author: Leon Freist <freist@informatik.uni-freiburg.de>
+/**
+* Copyright 2023, Leon Freist (https://github.com/lfreist)
+* Author: Leon Freist <freist.leon@gmail.com>
+*
+* This file is part of x-search.
+*/
 
 #pragma once
 
@@ -7,8 +11,8 @@
 #include <xsearch/utils/Semaphore.h>
 #include <xsearch/utils/Synchronized.h>
 #include <xsearch/utils/TSQueue.h>
-#include <xsearch/utils/utils.h>
 #include <xsearch/utils/UninitializedAllocator.h>
+#include <xsearch/utils/utils.h>
 
 #include <coroutine>
 #include <future>
@@ -27,8 +31,7 @@ enum class execute { async, blocking, live, lazy };
 
 template <typename ReaderT, typename SearcherT, typename ResultT, typename PartResT, typename ResIterator,
           typename DataT = strtype>
-  requires ReaderC<ReaderT, DataT> && SearcherC<SearcherT, PartResT, DataT> &&
-           ResultC<ResultT, PartResT, ResIterator>
+  requires ReaderC<ReaderT, DataT> && SearcherC<SearcherT, PartResT, DataT> && ResultC<ResultT, PartResT, ResIterator>
 class Searcher {
  public:  // --- public functions --------------------------------------------------------------------------------------
   Searcher(ReaderT&& reader, SearcherT&& searcher, int num_threads, int num_concurrent_reads = 1)
@@ -73,7 +76,8 @@ class Searcher {
     } else if constexpr (e == execute::blocking) {
       return run_blocking();
     } else if constexpr (e == execute::live) {
-      return run_live();
+      auto res = run_live();
+      return res;
     }
   }
 
@@ -107,8 +111,7 @@ class Searcher {
       }
       auto opt_result = _searcher.search(&opt_data.value());
       if (opt_result) {
-        auto res = _result.wlock();
-        res->add(std::move(opt_result.value()));
+        _result.add(std::move(opt_result.value()));
       }
     }
     atomic_fetch_sub(&_threads_running, 1);
@@ -117,22 +120,29 @@ class Searcher {
     }
   }
 
-  std::future<ResultT> run_async() {
-    std::future<ResultT> future_result = std::async(std::launch::async, [this]() { return run_blocking(); });
+  std::future<const ResultT&> run_async() {
+    std::future<const ResultT&> future_result =
+        std::async(std::launch::async, [this]() -> const ResultT& { return run_blocking().get(); });
     return future_result;
   }
 
-  const ResultT& run_blocking() {
-    run_live();
+  std::future<const ResultT&> run_blocking() {
+    auto ret = run_live();
     join();
-    return _result.get_unsafe();
+    return ret;
   }
 
-  const Synchronized<ResultT>* run_live() {
+  std::future<const ResultT&> run_live() {
+    run();
+    std::promise<const ResultT&> promise;
+    promise.set_value(_result);
+    return promise.get_future();
+  }
+
+  void run() {
     for (auto& t : _threads) {
       t = std::thread(&Searcher::run_thread, this);
     }
-    return &_result;
   }
 
  private:  // --- members ----------------------------------------------------------------------------------------------
@@ -142,7 +152,7 @@ class Searcher {
 
   ReaderT _reader;
   SearcherT _searcher;
-  Synchronized<ResultT> _result;
+  ResultT _result;
 
   utils::TSQueue<DataT> _read_queue;
 

@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <string>
+#include <fstream>
 
 struct Reader {
   explicit Reader(const std::string& file) {
@@ -19,11 +20,11 @@ struct Reader {
     }
   }
 
-  std::optional<xs::DataChunk> read() {
+  std::optional<xs::strtype> read() {
     if (_stream.eof()) {
       return {};
     }
-    xs::DataChunk chunk(1024);
+    xs::strtype chunk(1024);
     _stream.read(chunk.data(), 1024);
     return {chunk};
   }
@@ -41,6 +42,9 @@ struct PartialResult {
 struct Result {
   Result() = default;
 
+  Result(const Result&) = delete;
+  Result& operator=(const Result&) = delete;
+
   void add(PartialResult pr) { _results.push_back(std::move(pr)); }
 
   std::vector<PartialResult>& get() { return _results; }
@@ -51,7 +55,7 @@ struct Result {
 struct Searcher {
   explicit Searcher(std::string pattern) : _pattern(std::move(pattern)) {}
 
-  std::optional<PartialResult> search(xs::DataChunk* data) {
+  std::optional<PartialResult> search(xs::strtype* data) {
     if (data == nullptr) {
       return {};
     }
@@ -86,11 +90,11 @@ int main(int argc, char** argv) {
 
   xs::Searcher<Reader, Searcher, Result, PartialResult, void> searcher(
       Reader(file), Searcher(pattern), 1);
-  auto res = searcher.execute<xs::execute::async>();
+  auto res = searcher.execute<xs::execute::blocking>();
 
   while (searcher.running()) {
     std::cout << "running..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::nanoseconds (1));
+    std::this_thread::sleep_for(std::chrono::nanoseconds (500));
   }
 
   for (auto& pr : res.get()._results) {
