@@ -1,26 +1,25 @@
 #include <vector>
 
-namespace xs::utils {
+namespace xs {
 
 template <typename T>
-class just_allocator : public std::allocator<T> {
+class uninit_allocator : public std::allocator<T> {
   typedef std::allocator<T> A;
   typedef std::allocator_traits<A> a_t;
 
  public:
   using A::A;
 
-  explicit just_allocator(const A& a) : A{a} {}
-  explicit just_allocator(A&& a) : A{std::move(a)} {}
-  just_allocator(const just_allocator&) = default;
-  just_allocator(just_allocator&&) noexcept = default;
-  just_allocator& operator=(just_allocator&&) noexcept = default;
-  just_allocator& operator=(const just_allocator&) = default;
+  explicit uninit_allocator(const A& a) : A{a} {}
+  explicit uninit_allocator(A&& a) : A{std::move(a)} {}
+  uninit_allocator(const uninit_allocator&) = default;
+  uninit_allocator(uninit_allocator&&) noexcept = default;
+  uninit_allocator& operator=(uninit_allocator&&) noexcept = default;
+  uninit_allocator& operator=(const uninit_allocator&) = default;
 
   // overload the construct template with default initialization
   template <typename U>
-  void construct(U* ptr) noexcept(
-      std::is_nothrow_default_constructible<U>::value) {
+  void construct(U* ptr) noexcept(std::is_nothrow_default_constructible<U>::value) {
     ::new (static_cast<void*>(ptr)) U;
   }
   // initialization with parameters, the construction is then performed by
@@ -31,4 +30,4 @@ class just_allocator : public std::allocator<T> {
   }
 };
 
-}  // namespace xs::utils
+}  // namespace xs

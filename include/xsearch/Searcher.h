@@ -3,13 +3,12 @@
 
 #pragma once
 
-#include <xsearch/DataChunk.h>
 #include <xsearch/concepts.h>
-#include <xsearch/utils/InlineBench.h>
 #include <xsearch/utils/Semaphore.h>
 #include <xsearch/utils/Synchronized.h>
 #include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/utils.h>
+#include <xsearch/utils/UninitializedAllocator.h>
 
 #include <coroutine>
 #include <future>
@@ -22,12 +21,14 @@
 
 namespace xs {
 
+typedef std::vector<char, xs::uninit_allocator<char>> strtype;
+
 enum class execute { async, blocking, live, lazy };
 
 template <typename ReaderT, typename SearcherT, typename ResultT, typename PartResT, typename ResIterator,
-          typename DataT = DataChunk>
-  requires xs::ReaderC<ReaderT, DataT> && xs::SearcherC<SearcherT, PartResT, DataT> &&
-           xs::ResultC<ResultT, PartResT, ResIterator>
+          typename DataT = strtype>
+  requires ReaderC<ReaderT, DataT> && SearcherC<SearcherT, PartResT, DataT> &&
+           ResultC<ResultT, PartResT, ResIterator>
 class Searcher {
  public:  // --- public functions --------------------------------------------------------------------------------------
   Searcher(ReaderT&& reader, SearcherT&& searcher, int num_threads, int num_concurrent_reads = 1)

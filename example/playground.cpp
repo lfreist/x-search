@@ -5,7 +5,7 @@
  * This file is part of x-search.
  */
 
-#include <xsearch/Executor.h>
+#include <xsearch/Searcher.h>
 #include <xsearch/string_search/simd_search.h>
 
 #include <iostream>
