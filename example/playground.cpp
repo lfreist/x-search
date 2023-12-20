@@ -6,79 +6,14 @@
  */
 
 #include <xsearch/Searcher.h>
-#include <xsearch/string_search/simd_search.h>
+#include <xsearch/tasks/readers.h>
+#include <xsearch/tasks/searchers.h>
+#include <xsearch/ResultTypes.h>
 
 #include <iostream>
 #include <string>
 #include <fstream>
 
-struct Reader {
-  explicit Reader(const std::string& file) {
-    _stream = std::ifstream(file);
-    if (!_stream) {
-      std::cerr << "Error opening file " << file << std::endl;
-    }
-  }
-
-  std::optional<xs::strtype> read() {
-    if (_stream.eof()) {
-      return {};
-    }
-    xs::strtype chunk(1024);
-    _stream.read(chunk.data(), 1024);
-    return {chunk};
-  }
-
-  std::ifstream _stream;
-};
-
-struct PartialResult {
-  explicit PartialResult(std::string pattern) : _pattern(std::move(pattern)) {}
-
-  std::string _pattern;
-  std::vector<size_t> offset;
-};
-
-struct Result {
-  Result() = default;
-
-  Result(const Result&) = delete;
-  Result& operator=(const Result&) = delete;
-
-  void add(PartialResult pr) { _results.push_back(std::move(pr)); }
-
-  std::vector<PartialResult>& get() { return _results; }
-
-  std::vector<PartialResult> _results;
-};
-
-struct Searcher {
-  explicit Searcher(std::string pattern) : _pattern(std::move(pattern)) {}
-
-  std::optional<PartialResult> search(xs::strtype* data) {
-    if (data == nullptr) {
-      return {};
-    }
-    PartialResult pr(_pattern);
-    size_t shift = 0;
-    while (true) {
-      int64_t match = xs::search::simd::findNext(
-          _pattern.data(), _pattern.size(), data->data(), data->size(), shift);
-      if (match < 0) {
-        break;
-      }
-      pr.offset.push_back(match);
-      shift += match;
-      shift += _pattern.size();
-    }
-    if (pr.offset.empty()) {
-      return {};
-    }
-    return {pr};
-  }
-
-  std::string _pattern;
-};
 
 int main(int argc, char** argv) {
   if (argc != 3) {
@@ -88,8 +23,8 @@ int main(int argc, char** argv) {
   std::string pattern(argv[1]);
   std::string file(argv[2]);
 
-  xs::Searcher<Reader, Searcher, Result, PartialResult, void> searcher(
-      Reader(file), Searcher(pattern), 1);
+  xs::Searcher<xs::FileReader<xs::strtype>, xs::IndexSearcher<xs::strtype>, xs::Result<xs::PartRes1<size_t>>, xs::PartRes1<size_t>, void> searcher(
+      xs::FileReader(file), xs::IndexSearcher(pattern), 1);
   auto res = searcher.execute<xs::execute::blocking>();
 
   while (searcher.running()) {
@@ -97,8 +32,8 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::nanoseconds (500));
   }
 
-  for (auto& pr : res.get()._results) {
-    for (auto offset : pr.offset) {
+  for (auto& pr : res.get().get()) {
+    for (auto offset : pr) {
       std::cout << offset << std::endl;
     }
   }

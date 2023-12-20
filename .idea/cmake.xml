@@ -2,11 +2,11 @@
 <project version="4">
   <component name="CMakeSharedSettings">
     <configurations>
-      <configuration PROFILE_NAME="Benchmark" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-DBENCHMARK&quot; -DRE2_BUILD_TESTING=off" />
-      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
-      <configuration PROFILE_NAME="Release" ENABLED="true" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
-      <configuration PROFILE_NAME="thread-sanitizer" ENABLED="true" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=thread&quot; -DRE2_BUILD_TESTING=off" />
-      <configuration PROFILE_NAME="address-sanitizer" ENABLED="true" CONFIG_NAME="Debug" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=address&quot; -DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="Benchmark" ENABLED="false" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-DBENCHMARK&quot; -DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="Debug" ENABLED="false" CONFIG_NAME="Debug" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="Release" ENABLED="false" CONFIG_NAME="Release" TOOLCHAIN_NAME="gcc" GENERATION_OPTIONS="-DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="thread-sanitizer" ENABLED="false" CONFIG_NAME="RelWithDebInfo" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=thread&quot; -DRE2_BUILD_TESTING=off" />
+      <configuration PROFILE_NAME="address-sanitizer" ENABLED="false" CONFIG_NAME="Debug" TOOLCHAIN_NAME="clang" GENERATION_OPTIONS="-DCMAKE_CXX_FLAGS=&quot;-fsanitize=address&quot; -DRE2_BUILD_TESTING=off" />
     </configurations>
   </component>
 </project>

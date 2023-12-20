@@ -48,30 +48,32 @@ class Result {
       return false;
     }
     auto data = _data.wlock();
-    data.push_back(std::move(pr));
+    data->push_back(std::move(pr));
     return true;
   }
 
   const std::vector<PartResT>& get_unsafe() const { return _data.get_unsafe(); }
 
+  const std::vector<PartResT>& get() const { return get_unsafe(); }
+
   const PartResT& operator[](size_t index) const {
     auto data = _data.rlock();
-    return data[index];
+    return data->operator[](index);
   }
 
   const PartResT& at(size_t index) const {
     auto data = _data.rlock();
-    return data.at(index);
+    return data->at(index);
   }
 
   size_t size() const {
     auto data = _data.rlock();
-    return data.size();
+    return data->size();
   }
 
   bool empty() const {
     auto data = _data.rlock();
-    return _data.empty();
+    return data->empty();
   }
 
   bool is_closed() const { return _closed.load(); }
