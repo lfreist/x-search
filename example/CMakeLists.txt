@@ -3,3 +3,5 @@
 
 add_executable(playground playground.cpp)
 target_link_libraries(playground xsearch)
+
+add_executable(test_playground test.cpp)

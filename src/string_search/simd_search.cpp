@@ -1,5 +1,9 @@
-// Copyright 2022, Leon Freist
-// Author: Leon Freist <freist@informatik.uni-freiburg.de>
+/**
+ * Copyright 2023, Leon Freist (https://github.com/lfreist)
+ * Author: Leon Freist <freist.leon@gmail.com>
+ *
+ * This file is part of x-search.
+ */
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -10,7 +14,7 @@
 #include <xsearch/string_search/simd_search.h>
 
 #include <cstring>
-#include <iostream>
+#include <vector>
 
 namespace xs::search::simd {
 
@@ -51,12 +55,12 @@ inline int count_trailing_zeroes(unsigned int n) {
 }
 
 /// simple strstr implementation for char* that is not null terminated
-const char* rest_strstr(const char* str, size_t str_len, const char* pattern, size_t pat_len) {
+const char* scalar_strstr(const char* str, size_t str_len, const char* pattern, size_t pat_len) {
   size_t shift = 0;
   while (shift < str_len) {
     if (str_len - shift < pat_len) {
       return nullptr;
-    }  // not found
+    }
     bool flag = true;
     size_t str_index = shift;
     for (size_t p_i = 0; p_i < pat_len; ++p_i) {
@@ -66,14 +70,14 @@ const char* rest_strstr(const char* str, size_t str_len, const char* pattern, si
       }
     }
     if (flag) {
-      return str + shift;  // match found
+      return str + shift;
     }
     shift = str_index;
   }
   return nullptr;
 }
 
-const char* rest_strcasestr(const char* str, size_t str_len, const char* pattern, size_t pat_len) {
+const char* scalar_strcasestr(const char* str, size_t str_len, const char* pattern, size_t pat_len) {
   size_t shift = 0;
   while (shift < str_len) {
     if (str_len - shift < pat_len) {
@@ -100,7 +104,7 @@ const char* rest_strcasestr(const char* str, size_t str_len, const char* pattern
 }
 
 /// simple implementation of strchr for char* that is not null terminated
-const char* rest_strchr(const char* str, size_t str_len, int c) {
+const char* scalar_strchr(const char* str, size_t str_len, int c) {
   for (size_t i = 0; i < str_len; ++i) {
     if (str[i] == c) {
       return str + i;
@@ -113,7 +117,7 @@ const char* strchr(const char* str, size_t str_len, char c) {
   // we are using 256 bits (32 bytes) vectors. If str_len is smaller than 32, we
   // just perform std::strchr
   if (str_len < 32) {
-    return rest_strchr(str, str_len, c);
+    return scalar_strchr(str, str_len, c);
   }
   // load c into SIMD vector
   const __m256i _c = _mm256_set1_epi8(c);
@@ -136,7 +140,7 @@ const char* strchr(const char* str, size_t str_len, char c) {
     str += 32;
   }
   // perform rest_strchr on remaining str
-  return rest_strchr(str, str_len, c);
+  return scalar_strchr(str, str_len, c);
 }
 
 /// helper function for strstr
@@ -163,7 +167,7 @@ const char* strstr(const char* str, size_t str_len, const char* pattern, size_t 
   // we are using 256 bits (32 bytes) vectors. If str_len is smaller than 32, we
   // just perform std::strstr
   if (str_len < 32 + pattern_len) {
-    return rest_strstr(str, str_len, pattern, pattern_len);
+    return scalar_strstr(str, str_len, pattern, pattern_len);
   }
   // load first char of pattern
   const __m256i first = _mm256_set1_epi8(pattern[0]);
@@ -196,7 +200,7 @@ const char* strstr(const char* str, size_t str_len, const char* pattern, size_t 
     // shift str pointer to new start
     str += 32;
   }
-  return rest_strstr(str, str_len, pattern, pattern_len);
+  return scalar_strstr(str, str_len, pattern, pattern_len);
 }
 
 const char* make_compare_icase(uint32_t mask, const char* str, const char* pattern, size_t pattern_len) {
@@ -217,7 +221,7 @@ const char* strcasestr(const char* str, size_t str_len, const char* pat, size_t 
   // we are using 256 bits (32 bytes) vectors. If str_len is smaller than 32, we
   // just perform std::strstr
   if (str_len < 32 + pat_len) {
-    return rest_strcasestr(str, str_len, pat, pat_len);
+    return scalar_strcasestr(str, str_len, pat, pat_len);
   }
   // load first char of pattern in lower and upper case
   const __m256i first_lower = _mm256_set1_epi8(static_cast<char>(std::tolower(pat[0])));
@@ -279,20 +283,26 @@ const char* strcasestr(const char* str, size_t str_len, const char* pat, size_t 
     str += 32;
   }
   delete[] results;
-  return rest_strcasestr(str, str_len, pat, pat_len);
+  return scalar_strcasestr(str, str_len, pat, pat_len);
 }
 
-int64_t findNext(const char* pattern, size_t pattern_len, char* str, size_t str_len, size_t shift) {
+int64_t findNext(const char* pattern, size_t pattern_len, const char* str, size_t str_len, size_t shift) {
+  if (shift > str_len) {
+    return -1;
+  }
   const char* match = strstr(str + shift, str_len - shift, pattern, pattern_len);
   return match == nullptr ? -1 : match - str;
 }
 
 int64_t findNextNewLine(const char* str, size_t str_len, size_t shift) {
+  if (shift > str_len) {
+    return -1;
+  }
   const char* match = strchr(str + shift, str_len - shift, '\n');
   return match == nullptr ? -1 : match - str;
 }
 
-uint64_t findAllPerLine(const char* pattern, size_t pattern_len, char* str, size_t str_len) {
+uint64_t countMatchingLines(const char* pattern, size_t pattern_len, const char* str, size_t str_len) {
   uint64_t count = 0;
   size_t shift = 0;
   while (true) {
@@ -311,7 +321,7 @@ uint64_t findAllPerLine(const char* pattern, size_t pattern_len, char* str, size
   return count;
 }
 
-uint64_t findAll(const char* pattern, size_t pattern_len, char* str, size_t str_len) {
+uint64_t countMatches(const char* pattern, size_t pattern_len, const char* str, size_t str_len) {
   uint64_t count = 0;
   size_t shift = 0;
   while (true) {

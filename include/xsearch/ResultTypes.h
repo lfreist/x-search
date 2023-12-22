@@ -1,18 +1,18 @@
 /**
-* Copyright 2023, Leon Freist (https://github.com/lfreist)
-* Author: Leon Freist <freist.leon@gmail.com>
-*
-* This file is part of x-search.
-*/
+ * Copyright 2023, Leon Freist (https://github.com/lfreist)
+ * Author: Leon Freist <freist.leon@gmail.com>
+ *
+ * This file is part of x-search.
+ */
 
 #pragma once
 
 #include <xsearch/utils/Synchronized.h>
 
-#include <vector>
 #include <memory>
 #include <mutex>
 #include <tuple>
+#include <vector>
 
 namespace xs {
 
@@ -28,9 +28,44 @@ using PartRes3 = std::vector<std::tuple<T0, T1, T2>>;
 template <typename T0, typename T1, typename T2, typename T3>
 using PartRes4 = std::vector<std::tuple<T0, T1, T2, T3>>;
 
-
 template <typename PartResT>
 class Result {
+ public:
+  template <typename R>
+  class iterator {
+   public:
+    explicit iterator(R& result) : _result(result), _current_index(0) {}
+
+    iterator& operator++() {
+      _current_index++;
+      return *this;
+    }
+
+    PartResT& operator*() {
+      return _result[_current_index];
+    }
+
+    bool operator!=(const iterator& other) {
+      std::unique_lock lock(*_result._m);
+      while (_current_index >= _result.get_unsafe().size()) {
+        if (_result.is_closed()) {
+          return false;
+        }
+        _result._cv->wait(lock);
+      }
+      if (_result.is_closed()) {
+        return _current_index <= _result.get_unsafe().size();
+      }
+      return true;
+    }
+
+   private:
+    size_t _current_index;
+    R& _result;
+  };
+
+  using Iterator = iterator<Result<PartResT>>;
+
  public:
   Result() = default;
   ~Result() = default;
@@ -40,49 +75,58 @@ class Result {
   Result& operator=(const Result&) = delete;
 
   /// movable
-  Result(Result&&) noexcept = default;
+  Result(Result&& other) noexcept = default;
   Result& operator=(Result&&) noexcept = default;
 
   bool add(PartResT pr) {
-    if (_closed) {
+    if (is_closed()) {
       return false;
     }
-    auto data = _data.wlock();
-    data->push_back(std::move(pr));
+    std::unique_lock lock(*_m);
+    _data.push_back(std::move(pr));
+    _cv->notify_one();
     return true;
   }
 
-  const std::vector<PartResT>& get_unsafe() const { return _data.get_unsafe(); }
+  const std::vector<PartResT>& get_unsafe() const { return _data; }
 
-  const std::vector<PartResT>& get() const { return get_unsafe(); }
+  std::vector<PartResT> get() const { return _data; }
 
   const PartResT& operator[](size_t index) const {
-    auto data = _data.rlock();
-    return data->operator[](index);
+    std::unique_lock lock(*_m);
+    return _data[index];
   }
 
   const PartResT& at(size_t index) const {
-    auto data = _data.rlock();
-    return data->at(index);
+    std::unique_lock lock(*_m);
+    return _data.at(index);
   }
 
   size_t size() const {
-    auto data = _data.rlock();
-    return data->size();
+    std::unique_lock lock(*_m);
+    return _data.size();
   }
 
   bool empty() const {
-    auto data = _data.rlock();
-    return data->empty();
+    std::unique_lock lock(*_m);
+    return _data.empty();
   }
 
   bool is_closed() const { return _closed.load(); }
 
-  void close() { _closed.store(true); }
+  void close() {
+    _closed.store(true);
+    _cv->notify_all();
+  }
+
+  Iterator begin() { return Iterator(*this); }
+  Iterator end() { return Iterator(*this); }
 
  private:
-  Synchronized<std::vector<PartResT>> _data;
+  std::vector<PartResT> _data;
   std::atomic<bool> _closed{false};
+  std::unique_ptr<std::mutex> _m;
+  std::unique_ptr<std::condition_variable> _cv;
 };
 
-}
+}  // namespace xs

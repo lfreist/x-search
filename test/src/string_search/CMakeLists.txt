@@ -1,8 +1,5 @@
-add_executable(OffsetMappingsTestMain offset_mappingsTest.cpp)
-target_link_libraries(OffsetMappingsTestMain PUBLIC SearchUtils DataChunk gtest_main)
-
 add_executable(SearchWrappersTestMain search_wrappersTest.cpp)
-target_link_libraries(SearchWrappersTestMain PUBLIC SearchUtils DataChunk gtest_main)
+target_link_libraries(SearchWrappersTestMain PUBLIC xsearch::simd_search DataChunk gtest_main)
 
 add_executable(SimdSearchTestMain simd_searchTest.cpp)
-target_link_libraries(SimdSearchTestMain PUBLIC SearchUtils gtest_main)
+target_link_libraries(SimdSearchTestMain PUBLIC xsearch::simd_search gtest_main)

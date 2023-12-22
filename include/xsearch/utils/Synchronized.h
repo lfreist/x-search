@@ -150,9 +150,9 @@ class Synchronized {
   const T& get_unsafe() const { return _data; }
   T& get_unsafe() { return _data; }
 
- private:
   M& mutex() const { return const_cast<M&>(_mutex_like); }
 
+ private:
   T _data;
   M _mutex_like;
 };

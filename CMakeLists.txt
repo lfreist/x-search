@@ -22,8 +22,8 @@ IF (${MAIN_PROJECT})
     # include_directories(${Boost_INCLUDE_DIR})
     # ------------------------------------------------------------------------------------------------------------------
     # --- GTEST --------------------------------------------------------------------------------------------------------
-    #add_subdirectory(third_party/googletest/)
-    #include_directories(third_party/googletest/googletest/include)
+    add_subdirectory(third_party/googletest/)
+    include_directories(third_party/googletest/googletest/include)
     # ------------------------------------------------------------------------------------------------------------------
 endif ()
 
@@ -51,8 +51,8 @@ IF (${MAIN_PROJECT})
     #add_subdirectory(benchmarks)
 
     # ___ Tests ________________________________________________________________________________________________________
-    #include(CTest)
-    #add_subdirectory(test)
+    include(CTest)
+    add_subdirectory(test)
 
     #add_test(MetaFileTest test/src/MetaFileTestMain)
     #add_test(DataChunkTest test/src/DataChunkTestMain)
@@ -60,7 +60,7 @@ IF (${MAIN_PROJECT})
     #add_test(TSQueueTest test/src/utils/TSQueueTestMain)
     #add_test(OffsetMappingsTest test/src/string_search/OffsetMappingsTestMain)
     #add_test(SearchWrappersTest test/src/string_search/SearchWrappersTestMain)
-    #add_test(SimdSearchTest test/src/string_search/SimdSearchTestMain)
+    add_test(SimdSearchTest test/src/string_search/SimdSearchTestMain)
     #add_test(xsearchTest test/src/xsearchTestMain)
     #add_test(readersTest test/src/tasks/readersTestMain)
     #add_test(processorsTest test/src/tasks/processorsTestMain)

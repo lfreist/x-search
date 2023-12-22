@@ -23,17 +23,12 @@ int main(int argc, char** argv) {
   std::string pattern(argv[1]);
   std::string file(argv[2]);
 
-  xs::Searcher<xs::FileReader<xs::strtype>, xs::IndexSearcher<xs::strtype>, xs::Result<xs::PartRes1<size_t>>, xs::PartRes1<size_t>, void> searcher(
-      xs::FileReader(file), xs::IndexSearcher(pattern), 1);
-  auto res = searcher.execute<xs::execute::blocking>();
+  xs::Searcher<xs::FileReader<xs::strtype>, xs::LineSearcher<xs::strtype>, xs::Result<xs::PartRes1<std::string>>, xs::PartRes1<std::string>, void> searcher(
+      xs::FileReader(file), xs::LineSearcher(pattern), 1);
+  auto res = searcher.execute<xs::execute::live>();
 
-  while (searcher.running()) {
-    std::cout << "running..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::nanoseconds (500));
-  }
-
-  for (auto& pr : res.get().get()) {
-    for (auto offset : pr) {
+  for (const auto& pr : res.get()) {
+    for (const auto& offset : pr) {
       std::cout << offset << std::endl;
     }
   }

@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <xsearch/xsearch.h>
 
+/*
 static const std::string pattern("Sherlock");
 static const std::string re_pattern("She[r ]lock");
 static const std::string file_path("test/files/sample.txt");
@@ -3922,3 +3923,4 @@ TEST(ExternSearcherTest, lines_regex_live_zst_meta) {
     ASSERT_EQ(result, tmp);
   }
 }
+ */

@@ -17,17 +17,26 @@
 
 namespace xs {
 
-template <DefaultDataC T = xs::strtype>
-class FileReader {
+template <DefaultDataC T>
+class Reader_I {
  public:
-  FileReader(std::string file_path, size_t chunk_size = 524288)
+  Reader_I() = default;
+  virtual ~Reader_I() = default;
+
+  virtual std::optional<T> operator()() = 0;
+};
+
+template <DefaultDataC T = xs::strtype>
+class FileReader : Reader_I<T> {
+ public:
+  explicit FileReader(std::string file_path, size_t chunk_size = 524288)
       : _file_path(std::move(file_path)), _fstream(_file_path), _chunk_size(chunk_size) {}
   ~FileReader() { _fstream.close(); }
 
   FileReader(FileReader&&) = default;
   FileReader& operator=(FileReader&&) = default;
 
-  std::optional<T> read() {
+  std::optional<T> operator()() override {
     if (_fstream.eof()) {
       return {};
     }

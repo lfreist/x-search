@@ -10,7 +10,6 @@
 #include <xsearch/concepts.h>
 #include <xsearch/utils/Semaphore.h>
 #include <xsearch/utils/Synchronized.h>
-#include <xsearch/utils/TSQueue.h>
 #include <xsearch/utils/UninitializedAllocator.h>
 #include <xsearch/utils/utils.h>
 #include <xsearch/types.h>
@@ -104,11 +103,11 @@ class Searcher {
       if (_force_stop.load()) {
         break;
       }
-      auto opt_data = _read_semaphore.access([&]() { return _reader.read(); });
+      auto opt_data = _read_semaphore.access([&]() { return _reader(); });
       if (!opt_data) {
         break;
       }
-      auto opt_result = _searcher.search(&opt_data.value());
+      auto opt_result = _searcher(opt_data.value());
       if (opt_result) {
         _result.add(std::move(opt_result.value()));
       }
@@ -116,24 +115,25 @@ class Searcher {
     atomic_fetch_sub(&_threads_running, 1);
     if (_threads_running.load() == 0) {
       _is_running.store(false);
+      _result.close();
     }
   }
 
-  std::future<const ResultT&> run_async() {
-    std::future<const ResultT&> future_result =
-        std::async(std::launch::async, [this]() -> const ResultT& { return run_blocking().get(); });
+  std::future<ResultT&> run_async() {
+    std::future<ResultT&> future_result =
+        std::async(std::launch::async, [this]() -> ResultT& { return run_blocking().get(); });
     return future_result;
   }
 
-  std::future<const ResultT&> run_blocking() {
+  std::future<ResultT&> run_blocking() {
     auto ret = run_live();
     join();
     return ret;
   }
 
-  std::future<const ResultT&> run_live() {
+  std::future<ResultT&> run_live() {
     run();
-    std::promise<const ResultT&> promise;
+    std::promise<ResultT&> promise;
     promise.set_value(_result);
     return promise.get_future();
   }
@@ -152,8 +152,6 @@ class Searcher {
   ReaderT _reader;
   SearcherT _searcher;
   ResultT _result;
-
-  utils::TSQueue<DataT> _read_queue;
 
   std::vector<std::thread> _threads;
   xs::utils::Semaphore _read_semaphore;

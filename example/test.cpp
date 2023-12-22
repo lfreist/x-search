@@ -1,6 +1,13 @@
-#include <xmemory>
+/******************************************************************************
 
-namespace xs {
+Welcome to GDB Online.
+GDB online is an online compiler and debugger tool for C, C++, Python, Java, PHP, Ruby, Perl,
+C#, OCaml, VB, Swift, Pascal, Fortran, Haskell, Objective-C, Assembly, HTML, CSS, JS, SQLite, Prolog.
+Code, Compile, Run and Debug online from anywhere in world.
+
+*******************************************************************************/
+#include <iostream>
+#include <vector>
 
 template <typename T>
 class uninit_allocator : public std::allocator<T> {
@@ -31,4 +38,17 @@ class uninit_allocator : public std::allocator<T> {
   }
 };
 
-}  // namespace xs
+
+int main()
+{
+  std::vector<char, uninit_allocator<char>> data(10);
+  std::vector<char> data2(10);
+
+  std::cout << data.size() << std::endl;
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    std::cout << (int)data[i] << " " << (int)data2[i] << std::endl;
+  }
+
+  return 0;
+}
